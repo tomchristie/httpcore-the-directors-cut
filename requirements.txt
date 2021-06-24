@@ -1,0 +1,4 @@
+pytest
+trio
+pytest-trio
+coverage
