@@ -79,6 +79,19 @@ class ConnectionPool:
             return sum([len(conns) for conns in self._pool.values()])
 
     async def pool_info(self) -> Dict[str, List[str]]:
+        """
+        Return a dictionary mapping origins to lists of connection info.
+
+        {
+            "http://example.com:80": [
+                "HTTP/1.1, IDLE, Request Count: 1"
+            ]
+            "https://example.com:443": [
+                "HTTP/1.1, ACTIVE, Request Count: 6",
+                "HTTP/1.1, IDLE, Request Count: 9"
+            ]
+        }
+        """
         async with self._pool_lock:
             return {
                 str(origin): [conn.info() for conn in conns]
