@@ -21,10 +21,17 @@ class Lock:
 
 class Semaphore:
     def __init__(self, bound: int):
-        self._limiter = trio.CapacityLimiter(bound)
+        self._semaphore = trio.Semaphore(initial_value=bound, max_value=bound)
+
+    async def acquire_noblock(self) -> bool:
+        try:
+            self._semaphore.acquire_nowait()
+        except trio.WouldBlock:
+            return False
+        return True
 
     async def acquire(self):
-        await self._limiter.acquire()
+        await self._semaphore.acquire()
 
-    def release(self):
-        self._limiter.release()
+    async def release(self):
+        self._semaphore.release()

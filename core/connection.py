@@ -17,9 +17,11 @@ class HTTPConnection(ConnectionInterface):
         self._connection_close = False
         self._state = HTTPConnectionState.NEW
         self._state_lock = Lock()
+        self._request_count = 0
 
     async def handle_request(self, request: RawRequest) -> RawResponse:
         async with self._state_lock:
+            self._request_count += 1
             if self._state in (HTTPConnectionState.NEW, HTTPConnectionState.IDLE):
                 self._state = HTTPConnectionState.ACTIVE
             else:
@@ -60,7 +62,7 @@ class HTTPConnection(ConnectionInterface):
         self._state = HTTPConnectionState.CLOSED
 
     def info(self) -> str:
-        return f"HTTP/1.1, {self._state.name}"
+        return f"HTTP/1.1, {self._state.name}, Request Count: {self._request_count}"
 
     def get_origin(self) -> Origin:
         return self._origin
