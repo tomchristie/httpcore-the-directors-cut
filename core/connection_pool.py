@@ -26,12 +26,18 @@ class ConnectionPool:
         return HTTPConnection(origin=origin)
 
     async def _add_to_pool(self, connection: ConnectionInterface) -> None:
+        """
+        Add an HTTP connection to the pool.
+        """
         origin = connection.get_origin()
         async with self._pool_lock:
             self._pool.setdefault(origin, [])
             self._pool[origin].append(connection)
 
     async def _remove_from_pool(self, connection: ConnectionInterface) -> None:
+        """
+        Remove an HTTP connection from the pool.
+        """
         origin = connection.get_origin()
         async with self._pool_lock:
             self._pool[origin].remove(connection)
@@ -39,6 +45,10 @@ class ConnectionPool:
                 self._pool.pop(origin)
 
     async def _close_one_idle_connection(self) -> bool:
+        """
+        Close one IDLE connection from the pool, returning `True` if successful,
+        and `False` otherwise.
+        """
         async with self._pool_lock:
             connections = list(itertools.chain.from_iterable(self._pool.values()))
 
@@ -53,10 +63,20 @@ class ConnectionPool:
         return False
 
     async def _get_available_connections(self, origin: Origin) -> List[ConnectionInterface]:
+        """
+        Return a list of any HTTP connections that are currently available for reuse,
+        filtered to a signle given origin.
+        """
         async with self._pool_lock:
             available_connections = self._pool.get(origin, [])
-            available_connections = [c for c in available_connections if c.is_available()]
-        return available_connections
+            return [c for c in available_connections if c.is_available()]
+
+    async def _count_existing_connections(self) -> int:
+        """
+        Return the number of HTTP connections currently in the connection pool.
+        """
+        async with self._pool_lock:
+            return sum([len(conns) for conns in self._pool.values()])
 
     async def pool_info(self) -> Dict[str, List[str]]:
         async with self._pool_lock:
@@ -66,32 +86,72 @@ class ConnectionPool:
             }
 
     async def handle_request(self, request: RawRequest) -> RawResponse:
+        """
+        Send an HTTP request, and return an HTTP response.
+        """
         origin = self.get_origin(request)
 
         while True:
             available_connections = await self._get_available_connections(origin)
 
             if available_connections:
+                # An existing connection was available. This could be:
+                #
+                # * An IDLE HTTP/1.1 connection.
+                # * An IDLE or ACTIVE HTTP/2 connection.
+                # * An HTTP connection that is in the process of being
+                #   opened, and that *might* result in an HTTP/2 connection.
                 connection = random.choice(available_connections)
             else:
                 while True:
+                    # If no existing connection are available, we need to make
+                    # sure not to exceed the maximum allowable number of
+                    # connections, before we create on and add it to the pool.
+
+                    # Try to obtain a ticket from the semaphore without
+                    # blocking. If we get one, then we're now good to go.
                     if await self._pool_semaphore.acquire_noblock():
                         break
+
+                    # If we couldn't get a ticket from the semaphore, then
+                    # attempt to close one IDLE connection from the pool,
+                    # before looping again.
                     if not await self._close_one_idle_connection():
+                        # If we couldn't get a ticket from the semaphore,
+                        # and there are no IDLE connections that we can close
+                        # then we need a blocking wait on the semaphore.
                         await self._pool_semaphore.acquire()
                         break
 
+                # Create a new connection and add it to the pool.
                 connection = self.create_connection(origin)
                 await self._add_to_pool(connection)
 
             try:
+                # We've selected a connection to use, let's send the request.
                 response = await connection.handle_request(request)
             except NewConnectionRequired:
+                # Turns out the connection wasn't able to handle the request
+                # for us. This could be because:
+                #
+                # * Multiple requests attempted to reuse an existing HTTP/1.1
+                #   connection in close concurrency.
+                # * A request attempted to reuse an existing connection,
+                #   that ended up being closed in close concurrency.
+                # * Multiple requests were contending for an opening connection
+                #   that ended up resulting in an HTTP/1.1 connection.
+                # * The request was to an HTTP/2 connection, but the stream ID
+                #   space became exhausted, or a global error occured.
                 pass
             except BaseException as exc:
+                # If an exception occurs we check if we can release the
+                # the connection to the pool.
                 await self.response_closed(connection)
                 raise exc
 
+            # When we return the response, we wrap the stream in a special class
+            # that handles notifying the connection pool once the response
+            # has been released.
             return RawResponse(
                 status=response.status,
                 headers=response.headers,
@@ -103,8 +163,9 @@ class ConnectionPool:
         if connection.is_closed():
             await self._remove_from_pool(connection)
             await self._pool_semaphore.release()
-        elif self._max_keepalive_connections is not None:
-            num_connections = sum([len(conns) for conns in self._pool.values()])
+
+        if self._max_keepalive_connections is not None:
+            num_connections = await self._count_existing_connections()
             while num_connections > self._max_keepalive_connections:
                 if await self._close_one_idle_connection():
                     num_connections -= 1
