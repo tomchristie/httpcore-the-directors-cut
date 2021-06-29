@@ -1,4 +1,4 @@
-from typing import AsyncIterator, Dict, List, Type
+from typing import AsyncIterator, Dict, List, Optional, Type
 from types import TracebackType
 from .base import ByteStream, ConnectionInterface, RawRequest, RawResponse, Origin, NewConnectionRequired
 from .connection import HTTPConnection
@@ -12,8 +12,10 @@ class ConnectionPool:
         self,
         max_connections: int,
         max_keepalive_connections: int = None,
+        keepalive_expiry: float = None,
     ) -> None:
         self._max_keepalive_connections = max_keepalive_connections
+        self._keepalive_expiry = keepalive_expiry
 
         self._pool: Dict[Origin, List[ConnectionInterface]] = {}
         self._pool_lock = Lock()
@@ -23,7 +25,7 @@ class ConnectionPool:
         return request.url.origin
 
     def create_connection(self, origin: Origin) -> ConnectionInterface:
-        return HTTPConnection(origin=origin)
+        return HTTPConnection(origin=origin, keepalive_expiry=self._keepalive_expiry)
 
     async def _add_to_pool(self, connection: ConnectionInterface) -> None:
         """
@@ -44,32 +46,47 @@ class ConnectionPool:
             if not self._pool[origin]:
                 self._pool.pop(origin)
 
+    async def _get_from_pool(self, origin: Origin) -> Optional[ConnectionInterface]:
+        """
+        Return an available HTTP connection for the given origin,
+        if one currently exists in the pool.
+        """
+        async with self._pool_lock:
+            available_connections = self._pool.get(origin, [])
+            available_connections = [c for c in available_connections if c.is_available()]
+
+        if available_connections:
+            return random.choice(available_connections)
+        return None
+
     async def _close_one_idle_connection(self) -> bool:
         """
         Close one IDLE connection from the pool, returning `True` if successful,
         and `False` otherwise.
         """
         async with self._pool_lock:
-            connections = list(itertools.chain.from_iterable(self._pool.values()))
+            idle_connections = list(itertools.chain.from_iterable(self._pool.values()))
+            idle_connections = [c for c in idle_connections if c.is_idle()]
 
-        random.shuffle(connections)
-        for connection in connections:
-            if connection.is_idle():
-                closed = await connection.attempt_close()
-                if closed:
-                    await self._remove_from_pool(connection)
-                    await self._pool_semaphore.release()
-                    return True
+        random.shuffle(idle_connections)
+        for connection in idle_connections:
+            closed = await connection.attempt_close()
+            if closed:
+                await self._remove_from_pool(connection)
+                await self._pool_semaphore.release()
+                return True
         return False
 
-    async def _get_available_connections(self, origin: Origin) -> List[ConnectionInterface]:
-        """
-        Return a list of any HTTP connections that are currently available for reuse,
-        filtered to a signle given origin.
-        """
+    async def _close_expired_connections(self) -> None:
         async with self._pool_lock:
-            available_connections = self._pool.get(origin, [])
-            return [c for c in available_connections if c.is_available()]
+            expired_connections = list(itertools.chain.from_iterable(self._pool.values()))
+            expired_connections = [c for c in expired_connections if c.has_expired()]
+
+        for connection in expired_connections:
+            closed = await connection.attempt_close()
+            if closed:
+                await self._remove_from_pool(connection)
+                await self._pool_semaphore.release()
 
     async def _count_existing_connections(self) -> int:
         """
@@ -105,16 +122,16 @@ class ConnectionPool:
         origin = self.get_origin(request)
 
         while True:
-            available_connections = await self._get_available_connections(origin)
+            existing_connection = await self._get_from_pool(origin)
 
-            if available_connections:
+            if existing_connection is not None:
                 # An existing connection was available. This could be:
                 #
                 # * An IDLE HTTP/1.1 connection.
                 # * An IDLE or ACTIVE HTTP/2 connection.
                 # * An HTTP connection that is in the process of being
                 #   opened, and that *might* result in an HTTP/2 connection.
-                connection = random.choice(available_connections)
+                connection = existing_connection
             else:
                 while True:
                     # If no existing connection are available, we need to make
@@ -173,9 +190,16 @@ class ConnectionPool:
             )
 
     async def response_closed(self, connection: ConnectionInterface) -> None:
+        """
+        This method acts as a callback once the request/response cycle is complete.
+
+        It is called into from the `ConnectionPoolByteStream.aclose()` method.
+        """
         if connection.is_closed():
             await self._remove_from_pool(connection)
             await self._pool_semaphore.release()
+
+        await self._close_expired_connections()
 
         # Where possible we want to close off IDLE connections, until we're sure
         # the pool semaphore is not blocked waiting.

@@ -78,6 +78,28 @@ async def test_connection_pool_with_close():
 
 
 @pytest.mark.trio
+async def test_connection_pool_with_immediate_expiry():
+    """
+    Connection pools with keepalive_expiry=0.0 should immediately expire
+    keep alive connections.
+    """
+    async with ConnectionPool(max_connections=10, max_keepalive_connections=10, keepalive_expiry=0.0) as pool:
+        url = RawURL(b"https", b"example.com", 443, b"/")
+        request = RawRequest(b"GET", url, [], ByteStream(), {})
+
+        # Sending an intial request, which once complete will not return to the pool.
+        async with await pool.handle_request(request) as response:
+            info = await pool.pool_info()
+            assert info == {"https://example.com:443": ["HTTP/1.1, ACTIVE, Request Count: 1"]}
+            body = await response.stream.aread()
+
+        assert response.status == 200
+        assert body == b"Hello, world!"
+        info = await pool.pool_info()
+        assert info == {}
+
+
+@pytest.mark.trio
 async def test_connection_pool_with_no_keepalive_connections_allowed():
     """
     When 'max_keepalive_connections=0' is used, IDLE connections should not

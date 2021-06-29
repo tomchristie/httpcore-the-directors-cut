@@ -2,6 +2,7 @@ from .base import ByteStream, ConnectionInterface, NewConnectionRequired, Origin
 from .synchronization import Lock
 from typing import AsyncIterator
 import enum
+import time
 
 
 class HTTPConnectionState(enum.IntEnum):
@@ -12,8 +13,10 @@ class HTTPConnectionState(enum.IntEnum):
 
 
 class HTTPConnection(ConnectionInterface):
-    def __init__(self, origin: Origin) -> None:
+    def __init__(self, origin: Origin, keepalive_expiry: float=None) -> None:
         self._origin = origin
+        self._keepalive_expiry = keepalive_expiry
+        self._expire_at: float = None
         self._connection_close = False
         self._state = HTTPConnectionState.NEW
         self._state_lock = Lock()
@@ -24,6 +27,7 @@ class HTTPConnection(ConnectionInterface):
             self._request_count += 1
             if self._state in (HTTPConnectionState.NEW, HTTPConnectionState.IDLE):
                 self._state = HTTPConnectionState.ACTIVE
+                self._expire_at = None
             else:
                 raise NewConnectionRequired()
 
@@ -49,6 +53,8 @@ class HTTPConnection(ConnectionInterface):
                 # self._stream.close()
             else:
                 self._state = HTTPConnectionState.IDLE
+                if self._keepalive_expiry is not None:
+                    self._expire_at = self._now() + self._keepalive_expiry
 
     async def attempt_close(self) -> bool:
         async with self._state_lock:
@@ -75,13 +81,16 @@ class HTTPConnection(ConnectionInterface):
         return self._state == HTTPConnectionState.IDLE
 
     def has_expired(self) -> bool:
-        return False
+        return self._expire_at is not None and self._now() > self._expire_at
 
     def is_idle(self) -> bool:
         return self._state == HTTPConnectionState.IDLE
 
     def is_closed(self) -> bool:
         return self._state == HTTPConnectionState.CLOSED
+
+    def _now(self) -> float:
+        return time.monotonic()
 
 
 class HTTPConnectionByteStream(ByteStream):
