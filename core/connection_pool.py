@@ -178,7 +178,7 @@ class ConnectionPool:
                 #   that ended up resulting in an HTTP/1.1 connection.
                 # * The request was to an HTTP/2 connection, but the stream ID
                 #   space became exhausted, or a global error occured.
-                pass
+                continue
             except BaseException as exc:
                 # If an exception occurs we check if we can release the
                 # the connection to the pool.
