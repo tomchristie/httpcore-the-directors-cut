@@ -17,6 +17,7 @@ class ConnectionPool:
         self._max_keepalive_connections = max_keepalive_connections
         self._keepalive_expiry = keepalive_expiry
 
+        self._num_connections = 0
         self._pool: Dict[Origin, List[ConnectionInterface]] = {}
         self._pool_lock = Lock()
         self._pool_semaphore = Semaphore(bound=max_connections)
@@ -35,6 +36,7 @@ class ConnectionPool:
         async with self._pool_lock:
             self._pool.setdefault(origin, [])
             self._pool[origin].append(connection)
+            self._num_connections += 1
 
     async def _remove_from_pool(self, connection: ConnectionInterface) -> None:
         """
@@ -43,6 +45,7 @@ class ConnectionPool:
         origin = connection.get_origin()
         async with self._pool_lock:
             self._pool[origin].remove(connection)
+            self._num_connections -= 1
             if not self._pool[origin]:
                 self._pool.pop(origin)
 
@@ -87,13 +90,6 @@ class ConnectionPool:
             if closed:
                 await self._remove_from_pool(connection)
                 await self._pool_semaphore.release()
-
-    async def _count_existing_connections(self) -> int:
-        """
-        Return the number of HTTP connections currently in the connection pool.
-        """
-        async with self._pool_lock:
-            return sum([len(conns) for conns in self._pool.values()])
 
     async def pool_info(self) -> Dict[str, List[str]]:
         """
@@ -210,11 +206,8 @@ class ConnectionPool:
         # Where possible we want to close off IDLE connections, until we're not
         # exceeding the max_keepalive_connections config.
         if self._max_keepalive_connections is not None:
-            num_connections = await self._count_existing_connections()
-            while num_connections > self._max_keepalive_connections:
-                if await self._close_one_idle_connection():
-                    num_connections -= 1
-                else:
+            while self._num_connections > self._max_keepalive_connections:
+                if not await self._close_one_idle_connection():
                     break
 
     async def aclose(self):
