@@ -1,4 +1,4 @@
-from .base import ByteStream, ConnectionInterface, NewConnectionRequired, Origin, RawRequest, RawResponse
+from .base import ByteStream, ConnectionInterface, ConnectionNotAvailable, Origin, RawRequest, RawResponse
 from .synchronization import Lock
 from typing import AsyncIterator
 import enum
@@ -24,12 +24,12 @@ class HTTPConnection(ConnectionInterface):
 
     async def handle_request(self, request: RawRequest) -> RawResponse:
         async with self._state_lock:
-            self._request_count += 1
             if self._state in (HTTPConnectionState.NEW, HTTPConnectionState.IDLE):
+                self._request_count += 1
                 self._state = HTTPConnectionState.ACTIVE
                 self._expire_at = None
             else:
-                raise NewConnectionRequired()
+                raise ConnectionNotAvailable()
 
         self._connection_close = any([
             (k.lower(), v.lower()) == (b'connection', b'close')

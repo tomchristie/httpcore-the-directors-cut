@@ -136,5 +136,5 @@ class ConnectionInterface:
         raise NotImplementedError()  # pragma: nocover
 
 
-class NewConnectionRequired(Exception):
+class ConnectionNotAvailable(Exception):
     pass

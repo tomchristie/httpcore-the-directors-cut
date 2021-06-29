@@ -1,6 +1,6 @@
 from typing import AsyncIterator, Dict, List, Optional, Type
 from types import TracebackType
-from .base import ByteStream, ConnectionInterface, RawRequest, RawResponse, Origin, NewConnectionRequired
+from .base import ByteStream, ConnectionNotAvailable, ConnectionInterface, RawRequest, RawResponse, Origin
 from .connection import HTTPConnection
 from .synchronization import Lock, Semaphore
 import random
@@ -166,7 +166,7 @@ class ConnectionPool:
             try:
                 # We've selected a connection to use, let's send the request.
                 response = await connection.handle_request(request)
-            except NewConnectionRequired:
+            except ConnectionNotAvailable:
                 # Turns out the connection wasn't able to handle the request
                 # for us. This could be because:
                 #
