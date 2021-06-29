@@ -28,6 +28,16 @@ class ConnectionPool:
     def create_connection(self, origin: Origin) -> ConnectionInterface:
         return HTTPConnection(origin=origin, keepalive_expiry=self._keepalive_expiry)
 
+    def _max_keepalive_exceeded(self) -> bool:
+        """
+        Return `True` if the number of connections currently in the pool
+        is exceeding the `max_keepalive_connections` watermark.
+        """
+        return (
+            self._max_keepalive_connections is not None and
+            self._num_connections > self._max_keepalive_connections
+        )
+
     async def _add_to_pool(self, connection: ConnectionInterface) -> None:
         """
         Add an HTTP connection to the pool.
@@ -195,20 +205,15 @@ class ConnectionPool:
             await self._remove_from_pool(connection)
             await self._pool_semaphore.release()
 
+        # Close any connections that have expired their keepalive time.
         await self._close_expired_connections()
 
-        # Where possible we want to close off IDLE connections, until we're sure
-        # the pool semaphore is not blocked waiting.
-        while await self._pool_semaphore.would_block():
+        # Where possible we want to close off IDLE connections, until we're not
+        # exceeding the max_keepalive_connections config, and the the pool
+        # semaphore is not blocked waiting.
+        while self._max_keepalive_exceeded() or await self._pool_semaphore.would_block():
             if not await self._close_one_idle_connection():
                 break
-
-        # Where possible we want to close off IDLE connections, until we're not
-        # exceeding the max_keepalive_connections config.
-        if self._max_keepalive_connections is not None:
-            while self._num_connections > self._max_keepalive_connections:
-                if not await self._close_one_idle_connection():
-                    break
 
     async def aclose(self):
         async with self._pool_lock:
