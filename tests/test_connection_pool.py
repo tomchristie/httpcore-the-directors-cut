@@ -78,6 +78,25 @@ async def test_connection_pool_with_close():
 
 
 @pytest.mark.trio
+async def test_connection_pool_with_exception():
+    """
+    HTTP/1.1 requests that result in an exception should not be returned to the
+    connection pool.
+    """
+    async with ConnectionPool(max_connections=10, max_keepalive_connections=10) as pool:
+        url = RawURL(b"https", b"example.com", 443, b"/")
+        request = RawRequest(b"GET", url, [(b"x-raise", b"exception")], ByteStream(), {})
+
+        # Sending an intial request, which once complete will not return to the pool.
+        with pytest.raises(RuntimeError):
+            async with await pool.handle_request(request) as response:
+                pass  # pragma: nocover
+
+        info = await pool.pool_info()
+        assert info == {}
+
+
+@pytest.mark.trio
 async def test_connection_pool_with_immediate_expiry():
     """
     Connection pools with keepalive_expiry=0.0 should immediately expire
@@ -154,30 +173,3 @@ async def test_connection_pool_concurrency():
                 "http://e.com:80"
             ]
             assert v == ['HTTP/1.1, ACTIVE, Request Count: 1']
-
-# @pytest.mark.trio
-# async def test_request_with_connection_keepalive():
-#     pool = ConnectionPool(max_connections=10)
-#     assert pool.info() == {}
-#
-#     url = RawURL(b"https", b"example.com", 443, b"/")
-#     request = RawRequest(b"GET", url, [], ByteStream(), {})
-#
-#     async with await pool.handle_request(request) as response:
-#         assert pool.info() == {"https://example.com:443": ["HTTP/1.1, ACTIVE"]}
-#
-#     assert pool.info() == {"https://example.com:443": ["HTTP/1.1, IDLE"]}
-#
-#
-# @pytest.mark.trio
-# async def test_request_with_connection_close():
-#     pool = ConnectionPool(max_connections=10)
-#     assert pool.info() == {}
-#
-#     url = RawURL(b"https", b"example.com", 443, b"/")
-#     request = RawRequest(b"GET", url, [], ByteStream(), {})
-#
-#     async with await pool.handle_request(request) as response:
-#         assert pool.info() == {"https://example.com:443": ["HTTP/1.1, ACTIVE"]}
-#
-#     assert pool.info() == {}

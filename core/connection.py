@@ -31,20 +31,30 @@ class HTTPConnection(ConnectionInterface):
             else:
                 raise ConnectionNotAvailable()
 
-        self._connection_close = any([
-            (k.lower(), v.lower()) == (b'connection', b'close')
-            for k, v in request.headers
-        ])
+        try:
+            if any([
+                (k.lower(), v.lower()) == (b'x-raise', b'exception')
+                for k, v in request.headers
+            ]):
+                raise RuntimeError()
 
-        return RawResponse(
-            status=200,
-            headers=[(b'Content-Length', b'13')],
-            stream=HTTPConnectionByteStream(b"Hello, world!", self),
-            extensions={
-                'http_version': b'HTTP/1.1',
-                'reason_phrase': b'OK'
-            }
-        )
+            self._connection_close = any([
+                (k.lower(), v.lower()) == (b'connection', b'close')
+                for k, v in request.headers
+            ])
+
+            return RawResponse(
+                status=200,
+                headers=[(b'Content-Length', b'13')],
+                stream=HTTPConnectionByteStream(b"Hello, world!", self),
+                extensions={
+                    'http_version': b'HTTP/1.1',
+                    'reason_phrase': b'OK'
+                }
+            )
+        except BaseException as exc:
+            await self.aclose()
+            raise exc
 
     async def response_closed(self) -> None:
         async with self._state_lock:
