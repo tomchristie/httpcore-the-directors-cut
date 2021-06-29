@@ -30,8 +30,11 @@ class Semaphore:
             return False
         return True
 
-    async def acquire(self):
+    async def acquire(self) -> None:
         await self._semaphore.acquire()
 
-    async def release(self):
+    async def release(self) -> None:
         self._semaphore.release()
+
+    async def would_block(self) -> bool:
+        return self._semaphore.value == 0

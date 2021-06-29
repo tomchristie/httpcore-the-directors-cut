@@ -177,6 +177,14 @@ class ConnectionPool:
             await self._remove_from_pool(connection)
             await self._pool_semaphore.release()
 
+        # Where possible we want to close off IDLE connections, until we're sure
+        # the pool semaphore is not blocked waiting.
+        while await self._pool_semaphore.would_block():
+            if not await self._close_one_idle_connection():
+                break
+
+        # Where possible we want to close off IDLE connections, until we're not
+        # exceeding the max_keepalive_connections config.
         if self._max_keepalive_connections is not None:
             num_connections = await self._count_existing_connections()
             while num_connections > self._max_keepalive_connections:
