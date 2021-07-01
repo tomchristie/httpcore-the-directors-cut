@@ -1,0 +1,5 @@
+export PYTHONPATH=.
+
+venv/bin/coverage run -m pytest -s
+venv/bin/coverage report --include 'core/*' --show-missing
+venv/bin/coverage html --include 'core/*'

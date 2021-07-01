@@ -91,6 +91,9 @@ class ConnectionPool:
         return False
 
     async def _close_expired_connections(self) -> None:
+        """
+        Close any connections in the pool that have expired their keepalive.
+        """
         async with self._pool_lock:
             expired_connections = list(itertools.chain.from_iterable(self._pool.values()))
             expired_connections = [c for c in expired_connections if c.has_expired()]

@@ -1,5 +1,25 @@
 Working notes...
 
+Change pool, so that it is a plain ol' list...
+
+```python
+[
+    <HTTPConnection "https://www.example.com:443", OPENING, Request Count: 1>
+    <HTTPConnection "http://www.example.com:80", HTTP/1.1, ACTIVE, Request Count: 6>
+    <HTTPConnection "http://www.example.com:80", HTTP/1.1, IDLE, Request Count: 1>
+    <HTTPConnection "http://www.example.com:80", HTTP/1.1, IDLE, Request Count: 3>
+]
+```
+
+* Always select the most recent available connection first.
+* Always expire the oldest connections first.
+* Push a connection to the top of the stack whenever a request is sent on it.
+
+Change exception to `ConnectionNotAvailable`.
+
+* Guard against multiple closes on a stream.
+* RuntimeError if making a request against a pool that has been closed.
+
 ```python
 class ForwardProxy:
     def handle_request(self, request: RawRequest) -> RawResponse:
@@ -72,3 +92,6 @@ class NetworkConnector:
     def start_tls(self, stream: NetworkStream) -> dict:
         ...
 ```
+
+https://http2-explained.haxx.se
+https://http3-explained.haxx.se
