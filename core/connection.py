@@ -1,4 +1,11 @@
-from .base import ByteStream, ConnectionInterface, ConnectionNotAvailable, Origin, RawRequest, RawResponse
+from .base import (
+    ByteStream,
+    ConnectionInterface,
+    ConnectionNotAvailable,
+    Origin,
+    RawRequest,
+    RawResponse,
+)
 from .synchronization import Lock
 from typing import AsyncIterator
 import enum
@@ -13,7 +20,7 @@ class HTTPConnectionState(enum.IntEnum):
 
 
 class HTTPConnection(ConnectionInterface):
-    def __init__(self, origin: Origin, keepalive_expiry: float=None) -> None:
+    def __init__(self, origin: Origin, keepalive_expiry: float = None) -> None:
         self._origin = origin
         self._keepalive_expiry = keepalive_expiry
         self._expire_at: float = None
@@ -32,25 +39,26 @@ class HTTPConnection(ConnectionInterface):
                 raise ConnectionNotAvailable()
 
         try:
-            if any([
-                (k.lower(), v.lower()) == (b'x-raise', b'exception')
-                for k, v in request.headers
-            ]):
+            if any(
+                [
+                    (k.lower(), v.lower()) == (b"x-raise", b"exception")
+                    for k, v in request.headers
+                ]
+            ):
                 raise RuntimeError()
 
-            self._connection_close = any([
-                (k.lower(), v.lower()) == (b'connection', b'close')
-                for k, v in request.headers
-            ])
+            self._connection_close = any(
+                [
+                    (k.lower(), v.lower()) == (b"connection", b"close")
+                    for k, v in request.headers
+                ]
+            )
 
             return RawResponse(
                 status=200,
-                headers=[(b'Content-Length', b'13')],
+                headers=[(b"Content-Length", b"13")],
                 stream=HTTPConnectionByteStream(b"Hello, world!", self),
-                extensions={
-                    'http_version': b'HTTP/1.1',
-                    'reason_phrase': b'OK'
-                }
+                extensions={"http_version": b"HTTP/1.1", "reason_phrase": b"OK"},
             )
         except BaseException as exc:
             await self.aclose()

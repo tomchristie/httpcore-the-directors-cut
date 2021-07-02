@@ -4,7 +4,7 @@ from types import TracebackType
 
 class ByteStream:
     async def __aiter__(self) -> AsyncIterator[bytes]:
-        yield b''  # pragma: nocover
+        yield b""  # pragma: nocover
 
     async def aclose(self) -> None:
         pass  # pragma: nocover
@@ -25,10 +25,10 @@ class Origin:
 
     def __eq__(self, other: Any) -> bool:
         return (
-            isinstance(other, Origin) and
-            self.scheme == other.scheme and
-            self.host == other.host and
-            self.port == other.port
+            isinstance(other, Origin)
+            and self.scheme == other.scheme
+            and self.host == other.host
+            and self.port == other.port
         )
 
     def __str__(self):
@@ -51,7 +51,14 @@ class RawURL:
 
 
 class RawRequest:
-    def __init__(self, method: bytes, url: RawURL, headers: List[Tuple[bytes, bytes]], stream: ByteStream, extensions: dict) -> None:
+    def __init__(
+        self,
+        method: bytes,
+        url: RawURL,
+        headers: List[Tuple[bytes, bytes]],
+        stream: ByteStream,
+        extensions: dict,
+    ) -> None:
         self.method = method
         self.url = url
         self.headers = headers
@@ -60,18 +67,27 @@ class RawRequest:
 
 
 class RawResponse:
-    def __init__(self, status: int, headers: List[Tuple[bytes, bytes]], stream: ByteStream, extensions: dict) -> None:
+    def __init__(
+        self,
+        status: int,
+        headers: List[Tuple[bytes, bytes]],
+        stream: ByteStream,
+        extensions: dict,
+    ) -> None:
         self.status = status
         self.headers = headers
         self.stream = stream
         self.extensions = extensions
 
-    async def __aenter__(self) -> 'RawResponse':
+    async def __aenter__(self) -> "RawResponse":
         return self
 
-    async def __aexit__(self, exc_type: Type[BaseException] = None,
-exc_value: BaseException = None,
-traceback: TracebackType = None,) -> None:
+    async def __aexit__(
+        self,
+        exc_type: Type[BaseException] = None,
+        exc_value: BaseException = None,
+        traceback: TracebackType = None,
+    ) -> None:
         await self.aclose()
 
     async def aclose(self) -> None:

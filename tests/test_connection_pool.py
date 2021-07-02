@@ -15,7 +15,9 @@ async def test_connection_pool_with_keepalive():
         # Sending an intial request, which once complete will return to the pool, IDLE.
         async with await pool.handle_request(request) as response:
             info = await pool.pool_info()
-            assert info == {"https://example.com:443": ["HTTP/1.1, ACTIVE, Request Count: 1"]}
+            assert info == {
+                "https://example.com:443": ["HTTP/1.1, ACTIVE, Request Count: 1"]
+            }
             body = await response.stream.aread()
 
         assert response.status == 200
@@ -26,7 +28,9 @@ async def test_connection_pool_with_keepalive():
         # Sending a second request to the same origin will reuse the existing IDLE connection.
         async with await pool.handle_request(request) as response:
             info = await pool.pool_info()
-            assert info == {"https://example.com:443": ["HTTP/1.1, ACTIVE, Request Count: 2"]}
+            assert info == {
+                "https://example.com:443": ["HTTP/1.1, ACTIVE, Request Count: 2"]
+            }
             body = await response.stream.aread()
 
         assert response.status == 200
@@ -42,7 +46,7 @@ async def test_connection_pool_with_keepalive():
             info = await pool.pool_info()
             assert info == {
                 "https://example.com:443": ["HTTP/1.1, IDLE, Request Count: 2"],
-                "http://example.com:80": ["HTTP/1.1, ACTIVE, Request Count: 1"]
+                "http://example.com:80": ["HTTP/1.1, ACTIVE, Request Count: 1"],
             }
             body = await response.stream.aread()
 
@@ -51,7 +55,7 @@ async def test_connection_pool_with_keepalive():
         info = await pool.pool_info()
         assert info == {
             "https://example.com:443": ["HTTP/1.1, IDLE, Request Count: 2"],
-            "http://example.com:80": ["HTTP/1.1, IDLE, Request Count: 1"]
+            "http://example.com:80": ["HTTP/1.1, IDLE, Request Count: 1"],
         }
 
 
@@ -68,7 +72,9 @@ async def test_connection_pool_with_close():
         # Sending an intial request, which once complete will not return to the pool.
         async with await pool.handle_request(request) as response:
             info = await pool.pool_info()
-            assert info == {"https://example.com:443": ["HTTP/1.1, ACTIVE, Request Count: 1"]}
+            assert info == {
+                "https://example.com:443": ["HTTP/1.1, ACTIVE, Request Count: 1"]
+            }
             body = await response.stream.aread()
 
         assert response.status == 200
@@ -85,7 +91,9 @@ async def test_connection_pool_with_exception():
     """
     async with ConnectionPool(max_connections=10, max_keepalive_connections=10) as pool:
         url = RawURL(b"https", b"example.com", 443, b"/")
-        request = RawRequest(b"GET", url, [(b"x-raise", b"exception")], ByteStream(), {})
+        request = RawRequest(
+            b"GET", url, [(b"x-raise", b"exception")], ByteStream(), {}
+        )
 
         # Sending an intial request, which once complete will not return to the pool.
         with pytest.raises(RuntimeError):
@@ -102,14 +110,18 @@ async def test_connection_pool_with_immediate_expiry():
     Connection pools with keepalive_expiry=0.0 should immediately expire
     keep alive connections.
     """
-    async with ConnectionPool(max_connections=10, max_keepalive_connections=10, keepalive_expiry=0.0) as pool:
+    async with ConnectionPool(
+        max_connections=10, max_keepalive_connections=10, keepalive_expiry=0.0
+    ) as pool:
         url = RawURL(b"https", b"example.com", 443, b"/")
         request = RawRequest(b"GET", url, [], ByteStream(), {})
 
         # Sending an intial request, which once complete will not return to the pool.
         async with await pool.handle_request(request) as response:
             info = await pool.pool_info()
-            assert info == {"https://example.com:443": ["HTTP/1.1, ACTIVE, Request Count: 1"]}
+            assert info == {
+                "https://example.com:443": ["HTTP/1.1, ACTIVE, Request Count: 1"]
+            }
             body = await response.stream.aread()
 
         assert response.status == 200
@@ -131,7 +143,9 @@ async def test_connection_pool_with_no_keepalive_connections_allowed():
         # Sending an intial request, which once complete will not return to the pool.
         async with await pool.handle_request(request) as response:
             info = await pool.pool_info()
-            assert info == {"https://example.com:443": ["HTTP/1.1, ACTIVE, Request Count: 1"]}
+            assert info == {
+                "https://example.com:443": ["HTTP/1.1, ACTIVE, Request Count: 1"]
+            }
             body = await response.stream.aread()
 
         assert response.status == 200
@@ -146,6 +160,7 @@ async def test_connection_pool_concurrency():
     HTTP/1.1 requests made in concurrency must not ever exceed the maximum number
     of allowable connection in the pool.
     """
+
     async def fetch(pool, domain, info_list):
         url = RawURL(b"http", domain, 80, b"/")
         request = RawRequest(b"GET", url, [], ByteStream(), {})
@@ -170,6 +185,6 @@ async def test_connection_pool_concurrency():
                 "http://b.com:80",
                 "http://c.com:80",
                 "http://d.com:80",
-                "http://e.com:80"
+                "http://e.com:80",
             ]
-            assert v == ['HTTP/1.1, ACTIVE, Request Count: 1']
+            assert v == ["HTTP/1.1, ACTIVE, Request Count: 1"]

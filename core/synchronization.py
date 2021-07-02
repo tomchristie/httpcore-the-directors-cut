@@ -14,7 +14,7 @@ class Lock:
         self,
         exc_type: Type[BaseException] = None,
         exc_value: BaseException = None,
-        traceback: TracebackType = None
+        traceback: TracebackType = None,
     ):
         self._lock.release()
 

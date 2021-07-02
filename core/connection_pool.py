@@ -1,6 +1,13 @@
 from typing import AsyncIterator, Dict, List, Optional, Type
 from types import TracebackType
-from .base import ByteStream, ConnectionNotAvailable, ConnectionInterface, RawRequest, RawResponse, Origin
+from .base import (
+    ByteStream,
+    ConnectionNotAvailable,
+    ConnectionInterface,
+    RawRequest,
+    RawResponse,
+    Origin,
+)
 from .connection import HTTPConnection
 from .synchronization import Lock, Semaphore
 import random
@@ -34,8 +41,8 @@ class ConnectionPool:
         is exceeding the `max_keepalive_connections` watermark.
         """
         return (
-            self._max_keepalive_connections is not None and
-            self._num_connections > self._max_keepalive_connections
+            self._max_keepalive_connections is not None
+            and self._num_connections > self._max_keepalive_connections
         )
 
     async def _add_to_pool(self, connection: ConnectionInterface) -> None:
@@ -66,7 +73,9 @@ class ConnectionPool:
         """
         async with self._pool_lock:
             available_connections = self._pool.get(origin, [])
-            available_connections = [c for c in available_connections if c.is_available()]
+            available_connections = [
+                c for c in available_connections if c.is_available()
+            ]
 
         if available_connections:
             return random.choice(available_connections)
@@ -95,7 +104,9 @@ class ConnectionPool:
         Close any connections in the pool that have expired their keepalive.
         """
         async with self._pool_lock:
-            expired_connections = list(itertools.chain.from_iterable(self._pool.values()))
+            expired_connections = list(
+                itertools.chain.from_iterable(self._pool.values())
+            )
             expired_connections = [c for c in expired_connections if c.has_expired()]
 
         for connection in expired_connections:
@@ -195,7 +206,7 @@ class ConnectionPool:
                 status=response.status,
                 headers=response.headers,
                 stream=ConnectionPoolByteStream(response.stream, self, connection),
-                extensions=response.extensions
+                extensions=response.extensions,
             )
 
     async def response_closed(self, connection: ConnectionInterface) -> None:
@@ -214,7 +225,9 @@ class ConnectionPool:
         # Where possible we want to close off IDLE connections, until we're not
         # exceeding the max_keepalive_connections config, and the the pool
         # semaphore is not blocked waiting.
-        while self._max_keepalive_exceeded() or await self._pool_semaphore.would_block():
+        while (
+            self._max_keepalive_exceeded() or await self._pool_semaphore.would_block()
+        ):
             if not await self._close_one_idle_connection():
                 break
 
@@ -232,7 +245,7 @@ class ConnectionPool:
         self,
         exc_type: Type[BaseException] = None,
         exc_value: BaseException = None,
-        traceback: TracebackType = None
+        traceback: TracebackType = None,
     ):
         await self.aclose()
 
@@ -242,9 +255,12 @@ class ConnectionPoolByteStream(ByteStream):
     A wrapper around the response byte stream, that additionally handles
     notifying the connection pool when the response has been closed.
     """
-    def __init__(self, stream: ByteStream, pool: ConnectionPool, connection: ConnectionInterface) -> None:
+
+    def __init__(
+        self, stream: ByteStream, pool: ConnectionPool, connection: ConnectionInterface
+    ) -> None:
         self._stream = stream
-        self._pool  = pool
+        self._pool = pool
         self._connection = connection
 
     async def __aiter__(self) -> AsyncIterator[bytes]:
