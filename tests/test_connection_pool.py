@@ -1,24 +1,7 @@
-from core import ConnectionPool, ConnectionInterface, HTTP11Connection, NetworkStream, Origin, RawURL, RawRequest, ByteStream
+from core import ConnectionPool, ConnectionInterface, HTTPConnection, NetworkStream, Origin, RawURL, RawRequest, ByteStream
 from typing import List
 import pytest
 import trio
-
-
-class MockNetworkStream(NetworkStream):
-    def __init__(self, buffer: List[bytes]) -> None:
-        self._original_buffer = buffer
-        self._current_buffer = list(self._original_buffer)
-
-    async def read(self, max_bytes: int, timeout: float = None) -> bytes:
-        if not self._current_buffer:
-            self._current_buffer = list(self._original_buffer)
-        return self._current_buffer.pop(0)
-
-    async def write(self, buffer: bytes, timeout: float = None) -> None:
-        pass
-
-    async def aclose(self) -> None:
-        pass
 
 
 class MockConnectionPool(ConnectionPool):
@@ -37,10 +20,9 @@ class MockConnectionPool(ConnectionPool):
         self._buffer = list(buffer)
 
     def create_connection(self, origin: Origin) -> ConnectionInterface:
-        stream = MockNetworkStream(self._buffer)
-        return HTTP11Connection(
+        return HTTPConnection(
             origin=origin,
-            stream=stream,
+            buffer=self._buffer,
             keepalive_expiry=self._keepalive_expiry
         )
 
