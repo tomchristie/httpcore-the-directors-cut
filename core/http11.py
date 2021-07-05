@@ -145,6 +145,7 @@ class HTTP11Connection(ConnectionInterface):
                 and self._h11_state.their_state is h11.DONE
             ):
                 self._state = HTTPConnectionState.IDLE
+                self._h11_state.start_next_cycle()
                 if self._keepalive_expiry is not None:
                     now = time.monotonic()
                     self._expire_at = now + self._keepalive_expiry
@@ -191,7 +192,10 @@ class HTTP11Connection(ConnectionInterface):
                 return True
         return False
 
-    def __repr__(self):
+    def info(self) -> str:
+        return f"HTTP/1.1, {self._state.name}, Request Count: {self._request_count}"
+
+    def __repr__(self) -> str:
         return (
             f"<{self.__class__.__name__} [{self._state.name}, "
             f"Request Count: {self._request_count}]>"
