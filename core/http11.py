@@ -6,7 +6,7 @@ from .base import (
     RawRequest,
     RawResponse,
 )
-from .network import NetworkStream
+from .backends.base import NetworkStream
 from .synchronization import Lock
 from types import TracebackType
 from typing import AsyncIterator, Callable, Tuple, List, Type, Union

@@ -5,32 +5,16 @@ from core import (
     RawURL,
     ByteStream,
     ConnectionNotAvailable,
-    NetworkStream,
 )
+from core.backends.mock import MockStream
 import pytest
 from typing import List
-
-
-class MockNetworkStream(NetworkStream):
-    def __init__(self, buffer: List[bytes]) -> None:
-        self._buffer = buffer
-
-    async def read(self, max_bytes: int, timeout: float = None) -> bytes:
-        if not self._buffer:
-            return b''
-        return self._buffer.pop(0)
-
-    async def write(self, buffer: bytes, timeout: float = None) -> None:
-        pass
-
-    async def aclose(self) -> None:
-        pass
 
 
 @pytest.mark.trio
 async def test_http11_connection():
     origin = Origin(b"https", b"example.com", 443)
-    stream = MockNetworkStream([
+    stream = MockStream([
         b"HTTP/1.1 200 OK\r\n",
         b"Content-Type: plain/text\r\n",
         b"Content-Length: 13\r\n",
@@ -62,7 +46,7 @@ async def test_http11_connection_unread_response():
     then the connection will not be reusable.
     """
     origin = Origin(b"https", b"example.com", 443)
-    stream = MockNetworkStream([
+    stream = MockStream([
         b"HTTP/1.1 200 OK\r\n",
         b"Content-Type: plain/text\r\n",
         b"Content-Length: 13\r\n",
@@ -92,7 +76,7 @@ async def test_http11_connection_with_network_error():
     connection will not be reusable.
     """
     origin = Origin(b"https", b"example.com", 443)
-    stream = MockNetworkStream([
+    stream = MockStream([
         b"Wait, this isn't valid HTTP!"
     ])
     async with HTTP11Connection(
@@ -118,7 +102,7 @@ async def test_http11_connection_handles_one_active_request():
     a ConnectionNotAvailable exception.
     """
     origin = Origin(b"https", b"example.com", 443)
-    stream = MockNetworkStream([
+    stream = MockStream([
         b"HTTP/1.1 200 OK\r\n",
         b"Content-Type: plain/text\r\n",
         b"Content-Length: 13\r\n",
@@ -141,7 +125,7 @@ async def test_http11_connection_attempt_close():
     A connection can only be closed when it is idle.
     """
     origin = Origin(b"https", b"example.com", 443)
-    stream = MockNetworkStream([
+    stream = MockStream([
         b"HTTP/1.1 200 OK\r\n",
         b"Content-Type: plain/text\r\n",
         b"Content-Length: 13\r\n",

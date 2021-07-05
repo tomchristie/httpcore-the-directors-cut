@@ -1,4 +1,4 @@
-from core import ConnectionPool, ConnectionInterface, HTTPConnection, NetworkStream, Origin, RawURL, RawRequest, ByteStream
+from core import ConnectionPool, ConnectionInterface, HTTPConnection, Origin, RawURL, RawRequest, ByteStream
 from typing import List
 import pytest
 import trio

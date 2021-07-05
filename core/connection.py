@@ -7,28 +7,11 @@ from .base import (
     RawResponse,
 )
 from .http11 import HTTP11Connection
-from .network import NetworkStream
+from .backends.mock import MockStream
 from .synchronization import Lock
 from typing import AsyncIterator, List
 import enum
 import time
-
-
-class MockNetworkStream(NetworkStream):
-    def __init__(self, buffer: List[bytes]) -> None:
-        self._original_buffer = buffer
-        self._current_buffer = list(self._original_buffer)
-
-    async def read(self, max_bytes: int, timeout: float = None) -> bytes:
-        if not self._current_buffer:
-            self._current_buffer = list(self._original_buffer)
-        return self._current_buffer.pop(0)
-
-    async def write(self, buffer: bytes, timeout: float = None) -> None:
-        pass
-
-    async def aclose(self) -> None:
-        pass
 
 
 class HTTPConnection(ConnectionInterface):
@@ -41,7 +24,7 @@ class HTTPConnection(ConnectionInterface):
                 b"\r\n",
                 b"Hello, world!",
             ]
-        stream = MockNetworkStream(buffer=buffer)
+        stream = MockStream(buffer=buffer)
         self._connection: ConnectionInterface = HTTP11Connection(
             origin=origin,
             stream=stream,
