@@ -19,6 +19,7 @@ Change exception to `ConnectionNotAvailable`.
 
 * Guard against multiple closes on a stream.
 * RuntimeError if making a request against a pool that has been closed.
+* RuntimeError if making a request against a connection, with an invalid origin.
 
 ```python
 class ForwardProxy:
@@ -86,7 +87,7 @@ class NetworkStream:
 
 ```python
 class NetworkConnector:
-    def connect(self) -> dict:
+    def connect(self, origin: Origin) -> dict:
         ...
 
     def start_tls(self, stream: NetworkStream) -> dict:

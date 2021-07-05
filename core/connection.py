@@ -6,118 +6,71 @@ from .base import (
     RawRequest,
     RawResponse,
 )
+from .http11 import HTTP11Connection
+from .network import NetworkStream
 from .synchronization import Lock
-from typing import AsyncIterator
+from typing import AsyncIterator, List
 import enum
 import time
 
 
-class HTTPConnectionState(enum.IntEnum):
-    NEW = 0
-    ACTIVE = 1
-    IDLE = 2
-    CLOSED = 3
+class MockNetworkStream(NetworkStream):
+    def __init__(self, buffer: List[bytes]) -> None:
+        self._original_buffer = buffer
+        self._current_buffer = list(self._original_buffer)
+
+    async def read(self, max_bytes: int, timeout: float = None) -> bytes:
+        if not self._current_buffer:
+            self._current_buffer = list(self._original_buffer)
+        return self._current_buffer.pop(0)
+
+    async def write(self, buffer: bytes, timeout: float = None) -> None:
+        pass
+
+    async def aclose(self) -> None:
+        pass
 
 
 class HTTPConnection(ConnectionInterface):
-    def __init__(self, origin: Origin, keepalive_expiry: float = None) -> None:
-        self._origin = origin
-        self._keepalive_expiry = keepalive_expiry
-        self._expire_at: float = None
-        self._connection_close = False
-        self._state = HTTPConnectionState.NEW
-        self._state_lock = Lock()
-        self._request_count = 0
+    def __init__(self, origin: Origin, keepalive_expiry: float = None, buffer: List[bytes] = None) -> None:
+        if buffer is None:
+            buffer = [
+                b"HTTP/1.1 200 OK\r\n",
+                b"Content-Type: plain/text\r\n",
+                b"Content-Length: 13\r\n",
+                b"\r\n",
+                b"Hello, world!",
+            ]
+        stream = MockNetworkStream(buffer=buffer)
+        self._connection: ConnectionInterface = HTTP11Connection(
+            origin=origin,
+            stream=stream,
+            keepalive_expiry=keepalive_expiry
+        )
 
     async def handle_request(self, request: RawRequest) -> RawResponse:
-        async with self._state_lock:
-            if self._state in (HTTPConnectionState.NEW, HTTPConnectionState.IDLE):
-                self._request_count += 1
-                self._state = HTTPConnectionState.ACTIVE
-                self._expire_at = None
-            else:
-                raise ConnectionNotAvailable()
-
-        try:
-            if any(
-                [
-                    (k.lower(), v.lower()) == (b"x-raise", b"exception")
-                    for k, v in request.headers
-                ]
-            ):
-                raise RuntimeError()
-
-            self._connection_close = any(
-                [
-                    (k.lower(), v.lower()) == (b"connection", b"close")
-                    for k, v in request.headers
-                ]
-            )
-
-            return RawResponse(
-                status=200,
-                headers=[(b"Content-Length", b"13")],
-                stream=HTTPConnectionByteStream(b"Hello, world!", self),
-                extensions={"http_version": b"HTTP/1.1", "reason_phrase": b"OK"},
-            )
-        except BaseException as exc:
-            await self.aclose()
-            raise exc
-
-    async def response_closed(self) -> None:
-        async with self._state_lock:
-            if self._connection_close:
-                self._state = HTTPConnectionState.CLOSED
-                # self._stream.close()
-            else:
-                self._state = HTTPConnectionState.IDLE
-                if self._keepalive_expiry is not None:
-                    self._expire_at = self._now() + self._keepalive_expiry
+        return await self._connection.handle_request(request)
 
     async def attempt_close(self) -> bool:
-        async with self._state_lock:
-            closed = self._state in (HTTPConnectionState.NEW, HTTPConnectionState.IDLE)
-            if closed:
-                self._state = HTTPConnectionState.CLOSED
-
-        return closed
+        return await self._connection.attempt_close()
 
     async def aclose(self) -> None:
-        self._state = HTTPConnectionState.CLOSED
+        await self._connection.aclose()
 
     def info(self) -> str:
-        return f"HTTP/1.1, {self._state.name}, Request Count: {self._request_count}"
+        return self._connection.info()
 
     def get_origin(self) -> Origin:
-        return self._origin
+        return self._connection.get_origin()
 
     def is_available(self) -> bool:
-        # Note that HTTP/1.1 connections in the "NEW" state are not treated as
-        # being "available". The control flow which created the connection will
-        # be able to send an outgoing request, but the connection will not be
-        # acquired from the connection pool for any other request.
-        return self._state == HTTPConnectionState.IDLE
+        return self._connection.is_available()
 
     def has_expired(self) -> bool:
-        return self._expire_at is not None and self._now() > self._expire_at
+        return self._connection.has_expired()
 
     def is_idle(self) -> bool:
-        return self._state == HTTPConnectionState.IDLE
+        return self._connection.is_idle()
 
     def is_closed(self) -> bool:
-        return self._state == HTTPConnectionState.CLOSED
-
-    def _now(self) -> float:
-        return time.monotonic()
-
-
-class HTTPConnectionByteStream(ByteStream):
-    def __init__(self, content: bytes, connection: HTTPConnection):
-        self._content = content
-        self._connection = connection
-
-    async def __aiter__(self) -> AsyncIterator[bytes]:
-        yield self._content
-
-    async def aclose(self) -> None:
-        await self._connection.response_closed()
+        return self._connection.is_closed()
