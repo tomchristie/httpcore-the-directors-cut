@@ -204,7 +204,7 @@ class HTTP11Connection(ConnectionInterface):
     # These context managers are not used in the standard flow, but are
     # useful for testing or working with connection instances directly.
 
-    async def __aenter__(self) -> 'HTTP11Connection':
+    async def __aenter__(self) -> "HTTP11Connection":
         return self
 
     async def __aexit__(

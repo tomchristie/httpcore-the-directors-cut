@@ -20,6 +20,6 @@ class TrioStream(NetworkStream):
 class TrioBackend(NetworkBackend):
     async def connect(self, origin: Origin) -> NetworkStream:
         stream: trio.abc.Stream = await trio.open_tcp_stream(
-            hostname=origin.hostname, port=origin.port
+            host=origin.host, port=origin.port
         )
-        return NetworkStream(stream)
+        return TrioStream(stream)

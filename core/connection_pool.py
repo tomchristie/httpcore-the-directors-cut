@@ -1,5 +1,7 @@
 from typing import AsyncIterator, Dict, List, Optional, Type
 from types import TracebackType
+from .backends.base import NetworkBackend
+from .backends.trio import TrioBackend
 from .base import (
     ByteStream,
     ConnectionNotAvailable,
@@ -20,6 +22,7 @@ class ConnectionPool:
         max_connections: int,
         max_keepalive_connections: int = None,
         keepalive_expiry: float = None,
+        network_backend: NetworkBackend = None,
     ) -> None:
         self._max_keepalive_connections = max_keepalive_connections
         self._keepalive_expiry = keepalive_expiry
@@ -28,12 +31,15 @@ class ConnectionPool:
         self._pool: Dict[Origin, List[ConnectionInterface]] = {}
         self._pool_lock = Lock()
         self._pool_semaphore = Semaphore(bound=max_connections)
+        self._network_backend = (
+            TrioBackend() if network_backend is None else network_backend
+        )
 
     def get_origin(self, request: RawRequest) -> Origin:
         return request.url.origin
 
     def create_connection(self, origin: Origin) -> ConnectionInterface:
-        return HTTPConnection(origin=origin, keepalive_expiry=self._keepalive_expiry)
+        return HTTPConnection(origin=origin, keepalive_expiry=self._keepalive_expiry, network_backend=self._network_backend)
 
     def _max_keepalive_exceeded(self) -> bool:
         """

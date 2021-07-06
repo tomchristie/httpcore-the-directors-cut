@@ -5,7 +5,7 @@ from .base import (
     RawResponse,
     Origin,
     ConnectionNotAvailable,
-    ConnectionInterface
+    ConnectionInterface,
 )
 from .connection_pool import ConnectionPool
 from .connection import HTTPConnection
