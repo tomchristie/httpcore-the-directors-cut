@@ -2,10 +2,10 @@ from ..backends.base import NetworkBackend
 from ..backends.trio import TrioBackend
 from ..base import ConnectionNotAvailable, Origin
 from ..synchronization import Lock
-from .http11 import HTTP11Connection
+from .http11 import AsyncHTTP11Connection
 from .interfaces import (
-    ByteStream,
-    ConnectionInterface,
+    AsyncByteStream,
+    AsyncConnectionInterface,
     RawRequest,
     RawResponse,
 )
@@ -15,7 +15,7 @@ import enum
 import time
 
 
-class HTTPConnection(ConnectionInterface):
+class AsyncHTTPConnection(AsyncConnectionInterface):
     def __init__(
         self,
         origin: Origin,
@@ -28,7 +28,7 @@ class HTTPConnection(ConnectionInterface):
         self._network_backend: NetworkBackend = (
             TrioBackend() if network_backend is None else network_backend
         )
-        self._connection: Optional[ConnectionInterface] = None
+        self._connection: Optional[AsyncConnectionInterface] = None
         self._request_lock = Lock()
 
     async def handle_request(self, request: RawRequest) -> RawResponse:
@@ -36,7 +36,7 @@ class HTTPConnection(ConnectionInterface):
             if self._connection is None:
                 origin = self._origin
                 stream = await self._network_backend.connect(origin=origin)
-                self._connection = HTTP11Connection(
+                self._connection = AsyncHTTP11Connection(
                     origin=origin, stream=stream, keepalive_expiry=self._keepalive_expiry
                 )
             elif not self._connection.is_available():
@@ -89,7 +89,7 @@ class HTTPConnection(ConnectionInterface):
     # These context managers are not used in the standard flow, but are
     # useful for testing or working with connection instances directly.
 
-    async def __aenter__(self) -> "HTTP11Connection":
+    async def __aenter__(self) -> "AsyncHTTP11Connection":
         return self
 
     async def __aexit__(

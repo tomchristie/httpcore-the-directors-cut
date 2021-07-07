@@ -4,10 +4,10 @@ from ..backends.base import NetworkBackend
 from ..backends.trio import TrioBackend
 from ..base import ConnectionNotAvailable, Origin
 from ..synchronization import Lock, Semaphore
-from .connection import HTTPConnection
+from .connection import AsyncHTTPConnection
 from .interfaces import (
-    ByteStream,
-    ConnectionInterface,
+    AsyncByteStream,
+    AsyncConnectionInterface,
     RawRequest,
     RawResponse,
 )
@@ -15,7 +15,7 @@ import random
 import itertools
 
 
-class ConnectionPool:
+class AsyncConnectionPool:
     def __init__(
         self,
         max_connections: int,
@@ -27,7 +27,7 @@ class ConnectionPool:
         self._keepalive_expiry = keepalive_expiry
 
         self._num_connections = 0
-        self._pool: Dict[Origin, List[ConnectionInterface]] = {}
+        self._pool: Dict[Origin, List[AsyncConnectionInterface]] = {}
         self._pool_lock = Lock()
         self._pool_semaphore = Semaphore(bound=max_connections)
         self._network_backend = (
@@ -37,8 +37,8 @@ class ConnectionPool:
     def get_origin(self, request: RawRequest) -> Origin:
         return request.url.origin
 
-    def create_connection(self, origin: Origin) -> ConnectionInterface:
-        return HTTPConnection(origin=origin, keepalive_expiry=self._keepalive_expiry, network_backend=self._network_backend)
+    def create_connection(self, origin: Origin) -> AsyncConnectionInterface:
+        return AsyncHTTPConnection(origin=origin, keepalive_expiry=self._keepalive_expiry, network_backend=self._network_backend)
 
     def _max_keepalive_exceeded(self) -> bool:
         """
@@ -50,7 +50,7 @@ class ConnectionPool:
             and self._num_connections > self._max_keepalive_connections
         )
 
-    async def _add_to_pool(self, connection: ConnectionInterface) -> None:
+    async def _add_to_pool(self, connection: AsyncConnectionInterface) -> None:
         """
         Add an HTTP connection to the pool.
         """
@@ -60,7 +60,7 @@ class ConnectionPool:
             self._pool[origin].append(connection)
             self._num_connections += 1
 
-    async def _remove_from_pool(self, connection: ConnectionInterface) -> None:
+    async def _remove_from_pool(self, connection: AsyncConnectionInterface) -> None:
         """
         Remove an HTTP connection from the pool.
         """
@@ -71,7 +71,7 @@ class ConnectionPool:
             if not self._pool[origin]:
                 self._pool.pop(origin)
 
-    async def _get_from_pool(self, origin: Origin) -> Optional[ConnectionInterface]:
+    async def _get_from_pool(self, origin: Origin) -> Optional[AsyncConnectionInterface]:
         """
         Return an available HTTP connection for the given origin,
         if one currently exists in the pool.
@@ -214,7 +214,7 @@ class ConnectionPool:
                 extensions=response.extensions,
             )
 
-    async def response_closed(self, connection: ConnectionInterface) -> None:
+    async def response_closed(self, connection: AsyncConnectionInterface) -> None:
         """
         This method acts as a callback once the request/response cycle is complete.
 
@@ -255,14 +255,14 @@ class ConnectionPool:
         await self.aclose()
 
 
-class ConnectionPoolByteStream(ByteStream):
+class ConnectionPoolByteStream(AsyncByteStream):
     """
     A wrapper around the response byte stream, that additionally handles
     notifying the connection pool when the response has been closed.
     """
 
     def __init__(
-        self, stream: ByteStream, pool: ConnectionPool, connection: ConnectionInterface
+        self, stream: AsyncByteStream, pool: AsyncConnectionPool, connection: AsyncConnectionInterface
     ) -> None:
         self._stream = stream
         self._pool = pool

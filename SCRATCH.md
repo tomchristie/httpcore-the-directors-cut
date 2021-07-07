@@ -4,10 +4,10 @@ Change pool, so that it is a plain ol' list...
 
 ```python
 [
-    <HTTPConnection "https://www.example.com:443", OPENING, Request Count: 1>
-    <HTTPConnection "http://www.example.com:80", HTTP/1.1, ACTIVE, Request Count: 6>
-    <HTTPConnection "http://www.example.com:80", HTTP/1.1, IDLE, Request Count: 1>
-    <HTTPConnection "http://www.example.com:80", HTTP/1.1, IDLE, Request Count: 3>
+    <AsyncHTTPConnection "https://www.example.com:443", OPENING, Request Count: 1>
+    <AsyncHTTPConnection "http://www.example.com:80", HTTP/1.1, ACTIVE, Request Count: 6>
+    <AsyncHTTPConnection "http://www.example.com:80", HTTP/1.1, IDLE, Request Count: 1>
+    <AsyncHTTPConnection "http://www.example.com:80", HTTP/1.1, IDLE, Request Count: 3>
 ]
 ```
 
@@ -60,11 +60,11 @@ class TunnelProxy:
                     url=proxy_url,
                     headers=self.proxy_headers,
                 )
-                connection = HTTPConnection()
+                connection = AsyncHTTPConnection()
                 response = connection.handle_request(proxy_request)
                 stream = response.extensions["stream"]
                 stream = stream.start_tls()
-                self._connection = HTTPConnection(stream=stream)
+                self._connection = AsyncHTTPConnection(stream=stream)
         return self._connection.handle_request(request)
 
     def close(self):

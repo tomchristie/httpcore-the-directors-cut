@@ -1,5 +1,5 @@
 from core import (
-    HTTP11Connection,
+    AsyncHTTP11Connection,
     Origin,
     RawRequest,
     RawURL,
@@ -20,7 +20,7 @@ async def test_http11_connection():
         b"\r\n",
         b"Hello, world!",
     ])
-    async with HTTP11Connection(
+    async with AsyncHTTP11Connection(
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
         url = RawURL(b"https", b"example.com", 443, b"/")
@@ -35,7 +35,7 @@ async def test_http11_connection():
         assert not conn.is_closed()
         assert conn.is_available()
         assert not conn.has_expired()
-        assert repr(conn) == "<HTTP11Connection [IDLE, Request Count: 1]>"
+        assert repr(conn) == "<AsyncHTTP11Connection [IDLE, Request Count: 1]>"
 
 
 @pytest.mark.trio
@@ -52,7 +52,7 @@ async def test_http11_connection_unread_response():
         b"\r\n",
         b"Hello, world!",
     ])
-    async with HTTP11Connection(
+    async with AsyncHTTP11Connection(
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
         url = RawURL(b"https", b"example.com", 443, b"/")
@@ -65,7 +65,7 @@ async def test_http11_connection_unread_response():
         assert conn.is_closed()
         assert not conn.is_available()
         assert not conn.has_expired()
-        assert repr(conn) == "<HTTP11Connection [CLOSED, Request Count: 1]>"
+        assert repr(conn) == "<AsyncHTTP11Connection [CLOSED, Request Count: 1]>"
 
 
 @pytest.mark.trio
@@ -78,7 +78,7 @@ async def test_http11_connection_with_network_error():
     stream = MockStream([
         b"Wait, this isn't valid HTTP!"
     ])
-    async with HTTP11Connection(
+    async with AsyncHTTP11Connection(
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
         url = RawURL(b"https", b"example.com", 443, b"/")
@@ -91,7 +91,7 @@ async def test_http11_connection_with_network_error():
         assert conn.is_closed()
         assert not conn.is_available()
         assert not conn.has_expired()
-        assert repr(conn) == "<HTTP11Connection [CLOSED, Request Count: 1]>"
+        assert repr(conn) == "<AsyncHTTP11Connection [CLOSED, Request Count: 1]>"
 
 
 @pytest.mark.trio
@@ -108,7 +108,7 @@ async def test_http11_connection_handles_one_active_request():
         b"\r\n",
         b"Hello, world!",
     ])
-    async with HTTP11Connection(
+    async with AsyncHTTP11Connection(
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
         url = RawURL(b"https", b"example.com", 443, b"/")
@@ -131,7 +131,7 @@ async def test_http11_connection_attempt_close():
         b"\r\n",
         b"Hello, world!",
     ])
-    async with HTTP11Connection(
+    async with AsyncHTTP11Connection(
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
         url = RawURL(b"https", b"example.com", 443, b"/")

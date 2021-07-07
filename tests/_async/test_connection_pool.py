@@ -1,4 +1,4 @@
-from core import ConnectionPool, ConnectionInterface, HTTPConnection, Origin, RawURL, RawRequest, ByteStream
+from core import AsyncConnectionPool, AsyncConnectionInterface, AsyncHTTPConnection, Origin, RawURL, RawRequest, AsyncByteStream
 from core.backends.mock import MockBackend
 from typing import List
 import pytest
@@ -18,7 +18,7 @@ async def test_connection_pool_with_keepalive():
         b"Hello, world!",
     ])
 
-    async with ConnectionPool(max_connections=10, max_keepalive_connections=10, network_backend=network_backend) as pool:
+    async with AsyncConnectionPool(max_connections=10, max_keepalive_connections=10, network_backend=network_backend) as pool:
         url = RawURL(b"https", b"example.com", 443, b"/")
         request = RawRequest(b"GET", url, [(b'Host', b'example.com')])
 
@@ -83,7 +83,7 @@ async def test_connection_pool_with_close():
         b"Hello, world!",
     ])
 
-    async with ConnectionPool(max_connections=10, max_keepalive_connections=10, network_backend=network_backend) as pool:
+    async with AsyncConnectionPool(max_connections=10, max_keepalive_connections=10, network_backend=network_backend) as pool:
         url = RawURL(b"https", b"example.com", 443, b"/")
         headers = [(b'Host', b'example.com'), (b"Connection", b"close")]
         request = RawRequest(b"GET", url, headers)
@@ -110,7 +110,7 @@ async def test_connection_pool_with_exception():
     """
     network_backend = MockBackend([b"Wait, this isn't valid HTTP!"])
 
-    async with ConnectionPool(max_connections=10, max_keepalive_connections=10, network_backend=network_backend) as pool:
+    async with AsyncConnectionPool(max_connections=10, max_keepalive_connections=10, network_backend=network_backend) as pool:
         url = RawURL(b"https", b"example.com", 443, b"/")
         headers = [(b'Host', b'example.com')]
         request = RawRequest(b"GET", url, headers)
@@ -138,7 +138,7 @@ async def test_connection_pool_with_immediate_expiry():
         b"Hello, world!",
     ])
 
-    async with ConnectionPool(
+    async with AsyncConnectionPool(
         max_connections=10, max_keepalive_connections=10, keepalive_expiry=0.0, network_backend=network_backend
     ) as pool:
         url = RawURL(b"https", b"example.com", 443, b"/")
@@ -173,7 +173,7 @@ async def test_connection_pool_with_no_keepalive_connections_allowed():
         b"Hello, world!",
     ])
 
-    async with ConnectionPool(max_connections=10, max_keepalive_connections=0, network_backend=network_backend) as pool:
+    async with AsyncConnectionPool(max_connections=10, max_keepalive_connections=0, network_backend=network_backend) as pool:
         url = RawURL(b"https", b"example.com", 443, b"/")
         headers = [(b'Host', b'example.com')]
         request = RawRequest(b"GET", url, headers)
@@ -215,7 +215,7 @@ async def test_connection_pool_concurrency():
             info_list.append(info)
             body = await response.stream.aread()
 
-    async with ConnectionPool(max_connections=1, max_keepalive_connections=1, network_backend=network_backend) as pool:
+    async with AsyncConnectionPool(max_connections=1, max_keepalive_connections=1, network_backend=network_backend) as pool:
         info_list = []
         async with trio.open_nursery() as nursery:
             for domain in [b"a.com", b"b.com", b"c.com", b"d.com", b"e.com"]:

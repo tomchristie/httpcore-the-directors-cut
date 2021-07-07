@@ -1,9 +1,9 @@
 from core import (
-    HTTPConnection,
+    AsyncHTTPConnection,
     Origin,
     RawRequest,
     RawURL,
-    ByteStream,
+    AsyncByteStream,
     ConnectionNotAvailable
 )
 from core.backends.mock import MockBackend
@@ -22,7 +22,7 @@ async def test_http_connection():
         b"Hello, world!",
     ])
 
-    async with HTTPConnection(
+    async with AsyncHTTPConnection(
         origin=origin, network_backend=network_backend, keepalive_expiry=5.0
     ) as conn:
         assert conn.get_origin() == origin
@@ -30,12 +30,12 @@ async def test_http_connection():
         assert not conn.is_closed()
         assert conn.is_available()
         assert not conn.has_expired()
-        assert repr(conn) == "<HTTPConnection [CONNECTING]>"
+        assert repr(conn) == "<AsyncHTTPConnection [CONNECTING]>"
 
         url = RawURL(b"https", b"example.com", 443, b"/")
         request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
         async with await conn.handle_request(request) as response:
-            assert repr(conn) == "<HTTPConnection [HTTP/1.1, ACTIVE, Request Count: 1]>"
+            assert repr(conn) == "<AsyncHTTPConnection [HTTP/1.1, ACTIVE, Request Count: 1]>"
             content = await response.stream.aread()
             assert response.status == 200
             assert content == b"Hello, world!"
@@ -45,7 +45,7 @@ async def test_http_connection():
         assert not conn.is_closed()
         assert conn.is_available()
         assert not conn.has_expired()
-        assert repr(conn) == "<HTTPConnection [HTTP/1.1, IDLE, Request Count: 1]>"
+        assert repr(conn) == "<AsyncHTTPConnection [HTTP/1.1, IDLE, Request Count: 1]>"
 
 
 @pytest.mark.trio
@@ -63,7 +63,7 @@ async def test_concurrent_requests_not_available_on_http11_connections():
         b"Hello, world!",
     ])
 
-    async with HTTPConnection(
+    async with AsyncHTTPConnection(
         origin=origin, network_backend=network_backend, keepalive_expiry=5.0
     ) as conn:
         url = RawURL(b"https", b"example.com", 443, b"/")

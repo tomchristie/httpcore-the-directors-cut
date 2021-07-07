@@ -2,13 +2,13 @@ from .base import (
     Origin,
     ConnectionNotAvailable,
 )
-from ._async.connection_pool import ConnectionPool
-from ._async.connection import HTTPConnection
-from ._async.http11 import HTTP11Connection
+from ._async.connection_pool import AsyncConnectionPool
+from ._async.connection import AsyncHTTPConnection
+from ._async.http11 import AsyncHTTP11Connection
 from ._async.interfaces import (
-    ByteStream,
+    AsyncByteStream,
     RawURL,
     RawRequest,
     RawResponse,
-    ConnectionInterface,
+    AsyncConnectionInterface,
 )

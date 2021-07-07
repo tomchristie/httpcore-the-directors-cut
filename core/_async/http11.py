@@ -2,8 +2,8 @@ from ..base import ConnectionNotAvailable, Origin
 from ..backends.base import NetworkStream
 from ..synchronization import Lock
 from .interfaces import (
-    ByteStream,
-    ConnectionInterface,
+    AsyncByteStream,
+    AsyncConnectionInterface,
     RawRequest,
     RawResponse,
 )
@@ -31,7 +31,7 @@ class HTTPConnectionState(enum.IntEnum):
     CLOSED = 3
 
 
-class HTTP11Connection(ConnectionInterface):
+class AsyncHTTP11Connection(AsyncConnectionInterface):
     READ_NUM_BYTES = 64 * 1024
 
     def __init__(
@@ -160,7 +160,7 @@ class HTTP11Connection(ConnectionInterface):
         self._state = HTTPConnectionState.CLOSED
         await self._network_stream.aclose()
 
-    # The ConnectionInterface methods provide information about the state of
+    # The AsyncConnectionInterface methods provide information about the state of
     # the connection, allowing for a connection pooling implementation to
     # determine when to reuse and when to close the connection...
 
@@ -203,7 +203,7 @@ class HTTP11Connection(ConnectionInterface):
     # These context managers are not used in the standard flow, but are
     # useful for testing or working with connection instances directly.
 
-    async def __aenter__(self) -> "HTTP11Connection":
+    async def __aenter__(self) -> "AsyncHTTP11Connection":
         return self
 
     async def __aexit__(
@@ -215,7 +215,7 @@ class HTTP11Connection(ConnectionInterface):
         await self.aclose()
 
 
-class HTTPConnectionByteStream(ByteStream):
+class HTTPConnectionByteStream(AsyncByteStream):
     def __init__(self, aiterator: AsyncIterator[bytes], aclose_func: Callable):
         self._aiterator = aiterator
         self._aclose_func = aclose_func
