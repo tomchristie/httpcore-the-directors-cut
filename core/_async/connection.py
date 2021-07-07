@@ -37,7 +37,9 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
                 origin = self._origin
                 stream = await self._network_backend.connect(origin=origin)
                 self._connection = AsyncHTTP11Connection(
-                    origin=origin, stream=stream, keepalive_expiry=self._keepalive_expiry
+                    origin=origin,
+                    stream=stream,
+                    keepalive_expiry=self._keepalive_expiry,
                 )
             elif not self._connection.is_available():
                 raise ConnectionNotAvailable()
@@ -82,9 +84,7 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
         return self._connection.info()
 
     def __repr__(self) -> str:
-        return (
-            f"<{self.__class__.__name__} [{self.info()}]>"
-        )
+        return f"<{self.__class__.__name__} [{self.info()}]>"
 
     # These context managers are not used in the standard flow, but are
     # useful for testing or working with connection instances directly.

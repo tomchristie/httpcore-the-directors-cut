@@ -1,4 +1,12 @@
-from core import AsyncConnectionPool, AsyncConnectionInterface, AsyncHTTPConnection, Origin, RawURL, RawRequest, AsyncByteStream
+from core import (
+    AsyncConnectionPool,
+    AsyncConnectionInterface,
+    AsyncHTTPConnection,
+    Origin,
+    RawURL,
+    RawRequest,
+    AsyncByteStream,
+)
 from core.backends.mock import MockBackend
 from typing import List
 import pytest
@@ -10,17 +18,23 @@ async def test_connection_pool_with_keepalive():
     """
     By default HTTP/1.1 requests should be returned to the connection pool.
     """
-    network_backend = MockBackend([
-        b"HTTP/1.1 200 OK\r\n",
-        b"Content-Type: plain/text\r\n",
-        b"Content-Length: 13\r\n",
-        b"\r\n",
-        b"Hello, world!",
-    ])
+    network_backend = MockBackend(
+        [
+            b"HTTP/1.1 200 OK\r\n",
+            b"Content-Type: plain/text\r\n",
+            b"Content-Length: 13\r\n",
+            b"\r\n",
+            b"Hello, world!",
+        ]
+    )
 
-    async with AsyncConnectionPool(max_connections=10, max_keepalive_connections=10, network_backend=network_backend) as pool:
+    async with AsyncConnectionPool(
+        max_connections=10,
+        max_keepalive_connections=10,
+        network_backend=network_backend,
+    ) as pool:
         url = RawURL(b"https", b"example.com", 443, b"/")
-        request = RawRequest(b"GET", url, [(b'Host', b'example.com')])
+        request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
 
         # Sending an intial request, which once complete will return to the pool, IDLE.
         async with await pool.handle_async_request(request) as response:
@@ -50,7 +64,7 @@ async def test_connection_pool_with_keepalive():
 
         # Sending a request to a different origin will not reuse the existing IDLE connection.
         url = RawURL(b"http", b"example.com", 80, b"/")
-        request = RawRequest(b"GET", url, [(b'Host', b'example.com')])
+        request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
 
         async with await pool.handle_async_request(request) as response:
             info = await pool.pool_info()
@@ -75,17 +89,23 @@ async def test_connection_pool_with_close():
     HTTP/1.1 requests that include a 'Connection: Close' header should
     not be returned to the connection pool.
     """
-    network_backend = MockBackend([
-        b"HTTP/1.1 200 OK\r\n",
-        b"Content-Type: plain/text\r\n",
-        b"Content-Length: 13\r\n",
-        b"\r\n",
-        b"Hello, world!",
-    ])
+    network_backend = MockBackend(
+        [
+            b"HTTP/1.1 200 OK\r\n",
+            b"Content-Type: plain/text\r\n",
+            b"Content-Length: 13\r\n",
+            b"\r\n",
+            b"Hello, world!",
+        ]
+    )
 
-    async with AsyncConnectionPool(max_connections=10, max_keepalive_connections=10, network_backend=network_backend) as pool:
+    async with AsyncConnectionPool(
+        max_connections=10,
+        max_keepalive_connections=10,
+        network_backend=network_backend,
+    ) as pool:
         url = RawURL(b"https", b"example.com", 443, b"/")
-        headers = [(b'Host', b'example.com'), (b"Connection", b"close")]
+        headers = [(b"Host", b"example.com"), (b"Connection", b"close")]
         request = RawRequest(b"GET", url, headers)
 
         # Sending an intial request, which once complete will not return to the pool.
@@ -110,9 +130,13 @@ async def test_connection_pool_with_exception():
     """
     network_backend = MockBackend([b"Wait, this isn't valid HTTP!"])
 
-    async with AsyncConnectionPool(max_connections=10, max_keepalive_connections=10, network_backend=network_backend) as pool:
+    async with AsyncConnectionPool(
+        max_connections=10,
+        max_keepalive_connections=10,
+        network_backend=network_backend,
+    ) as pool:
         url = RawURL(b"https", b"example.com", 443, b"/")
-        headers = [(b'Host', b'example.com')]
+        headers = [(b"Host", b"example.com")]
         request = RawRequest(b"GET", url, headers)
 
         # Sending an intial request, which once complete will not return to the pool.
@@ -130,19 +154,24 @@ async def test_connection_pool_with_immediate_expiry():
     Connection pools with keepalive_expiry=0.0 should immediately expire
     keep alive connections.
     """
-    network_backend = MockBackend([
-        b"HTTP/1.1 200 OK\r\n",
-        b"Content-Type: plain/text\r\n",
-        b"Content-Length: 13\r\n",
-        b"\r\n",
-        b"Hello, world!",
-    ])
+    network_backend = MockBackend(
+        [
+            b"HTTP/1.1 200 OK\r\n",
+            b"Content-Type: plain/text\r\n",
+            b"Content-Length: 13\r\n",
+            b"\r\n",
+            b"Hello, world!",
+        ]
+    )
 
     async with AsyncConnectionPool(
-        max_connections=10, max_keepalive_connections=10, keepalive_expiry=0.0, network_backend=network_backend
+        max_connections=10,
+        max_keepalive_connections=10,
+        keepalive_expiry=0.0,
+        network_backend=network_backend,
     ) as pool:
         url = RawURL(b"https", b"example.com", 443, b"/")
-        headers = [(b'Host', b'example.com')]
+        headers = [(b"Host", b"example.com")]
         request = RawRequest(b"GET", url, headers)
 
         # Sending an intial request, which once complete will not return to the pool.
@@ -165,17 +194,21 @@ async def test_connection_pool_with_no_keepalive_connections_allowed():
     When 'max_keepalive_connections=0' is used, IDLE connections should not
     be returned to the pool.
     """
-    network_backend = MockBackend([
-        b"HTTP/1.1 200 OK\r\n",
-        b"Content-Type: plain/text\r\n",
-        b"Content-Length: 13\r\n",
-        b"\r\n",
-        b"Hello, world!",
-    ])
+    network_backend = MockBackend(
+        [
+            b"HTTP/1.1 200 OK\r\n",
+            b"Content-Type: plain/text\r\n",
+            b"Content-Length: 13\r\n",
+            b"\r\n",
+            b"Hello, world!",
+        ]
+    )
 
-    async with AsyncConnectionPool(max_connections=10, max_keepalive_connections=0, network_backend=network_backend) as pool:
+    async with AsyncConnectionPool(
+        max_connections=10, max_keepalive_connections=0, network_backend=network_backend
+    ) as pool:
         url = RawURL(b"https", b"example.com", 443, b"/")
-        headers = [(b'Host', b'example.com')]
+        headers = [(b"Host", b"example.com")]
         request = RawRequest(b"GET", url, headers)
 
         # Sending an intial request, which once complete will not return to the pool.
@@ -198,24 +231,28 @@ async def test_connection_pool_concurrency():
     HTTP/1.1 requests made in concurrency must not ever exceed the maximum number
     of allowable connection in the pool.
     """
-    network_backend = MockBackend([
-        b"HTTP/1.1 200 OK\r\n",
-        b"Content-Type: plain/text\r\n",
-        b"Content-Length: 13\r\n",
-        b"\r\n",
-        b"Hello, world!",
-    ])
+    network_backend = MockBackend(
+        [
+            b"HTTP/1.1 200 OK\r\n",
+            b"Content-Type: plain/text\r\n",
+            b"Content-Length: 13\r\n",
+            b"\r\n",
+            b"Hello, world!",
+        ]
+    )
 
     async def fetch(pool, domain, info_list):
         url = RawURL(b"http", domain, 80, b"/")
-        headers = [(b'Host', domain)]
+        headers = [(b"Host", domain)]
         request = RawRequest(b"GET", url, headers)
         async with await pool.handle_async_request(request) as response:
             info = await pool.pool_info()
             info_list.append(info)
             body = await response.stream.aread()
 
-    async with AsyncConnectionPool(max_connections=1, max_keepalive_connections=1, network_backend=network_backend) as pool:
+    async with AsyncConnectionPool(
+        max_connections=1, max_keepalive_connections=1, network_backend=network_backend
+    ) as pool:
         info_list = []
         async with trio.open_nursery() as nursery:
             for domain in [b"a.com", b"b.com", b"c.com", b"d.com", b"e.com"]:

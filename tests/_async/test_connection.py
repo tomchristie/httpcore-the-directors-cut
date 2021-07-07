@@ -4,7 +4,7 @@ from core import (
     RawRequest,
     RawURL,
     AsyncByteStream,
-    ConnectionNotAvailable
+    ConnectionNotAvailable,
 )
 from core.backends.mock import MockBackend
 import pytest
@@ -14,13 +14,15 @@ from typing import List
 @pytest.mark.trio
 async def test_http_connection():
     origin = Origin(b"https", b"example.com", 443)
-    network_backend = MockBackend([
-        b"HTTP/1.1 200 OK\r\n",
-        b"Content-Type: plain/text\r\n",
-        b"Content-Length: 13\r\n",
-        b"\r\n",
-        b"Hello, world!",
-    ])
+    network_backend = MockBackend(
+        [
+            b"HTTP/1.1 200 OK\r\n",
+            b"Content-Type: plain/text\r\n",
+            b"Content-Length: 13\r\n",
+            b"\r\n",
+            b"Hello, world!",
+        ]
+    )
 
     async with AsyncHTTPConnection(
         origin=origin, network_backend=network_backend, keepalive_expiry=5.0
@@ -35,7 +37,10 @@ async def test_http_connection():
         url = RawURL(b"https", b"example.com", 443, b"/")
         request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
         async with await conn.handle_async_request(request) as response:
-            assert repr(conn) == "<AsyncHTTPConnection [HTTP/1.1, ACTIVE, Request Count: 1]>"
+            assert (
+                repr(conn)
+                == "<AsyncHTTPConnection [HTTP/1.1, ACTIVE, Request Count: 1]>"
+            )
             content = await response.stream.aread()
             assert response.status == 200
             assert content == b"Hello, world!"
@@ -55,13 +60,15 @@ async def test_concurrent_requests_not_available_on_http11_connections():
     will raise a `ConnectionNotAvailable` exception.
     """
     origin = Origin(b"https", b"example.com", 443)
-    network_backend = MockBackend([
-        b"HTTP/1.1 200 OK\r\n",
-        b"Content-Type: plain/text\r\n",
-        b"Content-Length: 13\r\n",
-        b"\r\n",
-        b"Hello, world!",
-    ])
+    network_backend = MockBackend(
+        [
+            b"HTTP/1.1 200 OK\r\n",
+            b"Content-Type: plain/text\r\n",
+            b"Content-Length: 13\r\n",
+            b"\r\n",
+            b"Hello, world!",
+        ]
+    )
 
     async with AsyncHTTPConnection(
         origin=origin, network_backend=network_backend, keepalive_expiry=5.0

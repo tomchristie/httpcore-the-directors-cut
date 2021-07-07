@@ -38,7 +38,11 @@ class AsyncConnectionPool:
         return request.url.origin
 
     def create_connection(self, origin: Origin) -> AsyncConnectionInterface:
-        return AsyncHTTPConnection(origin=origin, keepalive_expiry=self._keepalive_expiry, network_backend=self._network_backend)
+        return AsyncHTTPConnection(
+            origin=origin,
+            keepalive_expiry=self._keepalive_expiry,
+            network_backend=self._network_backend,
+        )
 
     def _max_keepalive_exceeded(self) -> bool:
         """
@@ -71,7 +75,9 @@ class AsyncConnectionPool:
             if not self._pool[origin]:
                 self._pool.pop(origin)
 
-    async def _get_from_pool(self, origin: Origin) -> Optional[AsyncConnectionInterface]:
+    async def _get_from_pool(
+        self, origin: Origin
+    ) -> Optional[AsyncConnectionInterface]:
         """
         Return an available HTTP connection for the given origin,
         if one currently exists in the pool.
@@ -262,7 +268,10 @@ class ConnectionPoolByteStream(AsyncByteStream):
     """
 
     def __init__(
-        self, stream: AsyncByteStream, pool: AsyncConnectionPool, connection: AsyncConnectionInterface
+        self,
+        stream: AsyncByteStream,
+        pool: AsyncConnectionPool,
+        connection: AsyncConnectionInterface,
     ) -> None:
         self._stream = stream
         self._pool = pool
