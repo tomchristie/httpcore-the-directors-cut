@@ -23,7 +23,7 @@ Change exception to `ConnectionNotAvailable`.
 
 ```python
 class ForwardProxy:
-    def handle_request(self, request: RawRequest) -> RawResponse:
+    def handle_async_request(self, request: RawRequest) -> RawResponse:
         proxy_url = RawURL(
             scheme=self.proxy_scheme,
             host=self.proxy_host,
@@ -37,7 +37,7 @@ class ForwardProxy:
             stream=request.stream
             extensions=request.extensions
         )
-        return self._connection.handle_request(proxy_request)
+        return self._connection.handle_async_request(proxy_request)
 
     def close(self):
         self._connection.close()
@@ -46,7 +46,7 @@ class ForwardProxy:
 
 ```python
 class TunnelProxy:
-    def handle_request(self, request: RawRequest) -> RawResponse:
+    def handle_async_request(self, request: RawRequest) -> RawResponse:
         with self._connect_lock:
             if self._connection is None:
                 proxy_url = RawURL(
@@ -61,11 +61,11 @@ class TunnelProxy:
                     headers=self.proxy_headers,
                 )
                 connection = AsyncHTTPConnection()
-                response = connection.handle_request(proxy_request)
+                response = connection.handle_async_request(proxy_request)
                 stream = response.extensions["stream"]
                 stream = stream.start_tls()
                 self._connection = AsyncHTTPConnection(stream=stream)
-        return self._connection.handle_request(request)
+        return self._connection.handle_async_request(request)
 
     def close(self):
         self._connection.close()
