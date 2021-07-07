@@ -1,14 +1,15 @@
 from ..backends.base import NetworkBackend
 from ..backends.trio import TrioBackend
-from ..base import ConnectionNotAvailable, Origin
-from ..synchronization import Lock
-from .http11 import AsyncHTTP11Connection
-from .interfaces import (
-    AsyncByteStream,
-    AsyncConnectionInterface,
+from ..base import (
+    ConnectionNotAvailable,
+    Origin,
     RawRequest,
     RawResponse,
+    AsyncByteStream,
 )
+from ..synchronization import Lock
+from .http11 import AsyncHTTP11Connection
+from .interfaces import AsyncConnectionInterface
 from typing import AsyncIterator, List, Optional, Type
 from types import TracebackType
 import enum

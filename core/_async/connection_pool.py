@@ -2,15 +2,16 @@ from typing import AsyncIterator, Dict, List, Optional, Type
 from types import TracebackType
 from ..backends.base import NetworkBackend
 from ..backends.trio import TrioBackend
-from ..base import ConnectionNotAvailable, Origin
-from ..synchronization import Lock, Semaphore
-from .connection import AsyncHTTPConnection
-from .interfaces import (
-    AsyncByteStream,
-    AsyncConnectionInterface,
+from ..base import (
+    ConnectionNotAvailable,
+    Origin,
     RawRequest,
     RawResponse,
+    AsyncByteStream,
 )
+from ..synchronization import Lock, Semaphore
+from .connection import AsyncHTTPConnection
+from .interfaces import AsyncConnectionInterface
 import random
 import itertools
 
