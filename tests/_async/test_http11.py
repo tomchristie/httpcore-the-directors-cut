@@ -3,7 +3,6 @@ from core import (
     Origin,
     RawRequest,
     RawURL,
-    ByteStream,
     ConnectionNotAvailable,
 )
 from core.backends.mock import MockStream
@@ -25,7 +24,7 @@ async def test_http11_connection():
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
         url = RawURL(b"https", b"example.com", 443, b"/")
-        request = RawRequest(b"GET", url, [(b"Host", b"example.com")], ByteStream(), {})
+        request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
         async with await conn.handle_request(request) as response:
             content = await response.stream.aread()
             assert response.status == 200
@@ -57,7 +56,7 @@ async def test_http11_connection_unread_response():
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
         url = RawURL(b"https", b"example.com", 443, b"/")
-        request = RawRequest(b"GET", url, [(b"Host", b"example.com")], ByteStream(), {})
+        request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
         async with await conn.handle_request(request) as response:
             assert response.status == 200
 
@@ -83,7 +82,7 @@ async def test_http11_connection_with_network_error():
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
         url = RawURL(b"https", b"example.com", 443, b"/")
-        request = RawRequest(b"GET", url, [(b"Host", b"example.com")], ByteStream(), {})
+        request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
         with pytest.raises(Exception):
             await conn.handle_request(request)
 
@@ -113,7 +112,7 @@ async def test_http11_connection_handles_one_active_request():
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
         url = RawURL(b"https", b"example.com", 443, b"/")
-        request = RawRequest(b"GET", url, [(b"Host", b"example.com")], ByteStream(), {})
+        request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
         async with await conn.handle_request(request) as response:
             with pytest.raises(ConnectionNotAvailable):
                 await conn.handle_request(request)
@@ -136,7 +135,7 @@ async def test_http11_connection_attempt_close():
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
         url = RawURL(b"https", b"example.com", 443, b"/")
-        request = RawRequest(b"GET", url, [(b"Host", b"example.com")], ByteStream(), {})
+        request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
         async with await conn.handle_request(request) as response:
             content = await response.stream.aread()
             assert response.status == 200

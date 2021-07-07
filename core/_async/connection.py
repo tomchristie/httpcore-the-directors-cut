@@ -1,16 +1,16 @@
-from .backends.base import NetworkBackend
-from .backends.trio import TrioBackend
-from .base import (
+from ..backends.base import NetworkBackend
+from ..backends.trio import TrioBackend
+from ..base import ConnectionNotAvailable, Origin
+from ..synchronization import Lock
+from .http11 import HTTP11Connection
+from .interfaces import (
     ByteStream,
     ConnectionInterface,
-    ConnectionNotAvailable,
-    Origin,
     RawRequest,
     RawResponse,
 )
-from .http11 import HTTP11Connection
-from .synchronization import Lock
-from typing import AsyncIterator, List, Optional
+from typing import AsyncIterator, List, Optional, Type
+from types import TracebackType
 import enum
 import time
 
@@ -29,14 +29,19 @@ class HTTPConnection(ConnectionInterface):
             TrioBackend() if network_backend is None else network_backend
         )
         self._connection: Optional[ConnectionInterface] = None
+        self._request_lock = Lock()
 
     async def handle_request(self, request: RawRequest) -> RawResponse:
-        if self._connection is None:
-            origin = self._origin
-            stream = await self._network_backend.connect(origin=origin)
-            self._connection = HTTP11Connection(
-                origin=origin, stream=stream, keepalive_expiry=self._keepalive_expiry
-            )
+        async with self._request_lock:
+            if self._connection is None:
+                origin = self._origin
+                stream = await self._network_backend.connect(origin=origin)
+                self._connection = HTTP11Connection(
+                    origin=origin, stream=stream, keepalive_expiry=self._keepalive_expiry
+                )
+            elif not self._connection.is_available():
+                raise ConnectionNotAvailable()
+
         return await self._connection.handle_request(request)
 
     async def attempt_close(self) -> bool:
@@ -47,11 +52,6 @@ class HTTPConnection(ConnectionInterface):
     async def aclose(self) -> None:
         if self._connection is not None:
             await self._connection.aclose()
-
-    def info(self) -> str:
-        if self._connection is None:
-            return 'Opening connection'
-        return self._connection.info()
 
     def get_origin(self) -> Origin:
         return self._origin
@@ -75,3 +75,27 @@ class HTTPConnection(ConnectionInterface):
         if self._connection is None:
             return False
         return self._connection.is_closed()
+
+    def info(self) -> str:
+        if self._connection is None:
+            return "CONNECTING"
+        return self._connection.info()
+
+    def __repr__(self) -> str:
+        return (
+            f"<{self.__class__.__name__} [{self.info()}]>"
+        )
+
+    # These context managers are not used in the standard flow, but are
+    # useful for testing or working with connection instances directly.
+
+    async def __aenter__(self) -> "HTTP11Connection":
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: Type[BaseException] = None,
+        exc_value: BaseException = None,
+        traceback: TracebackType = None,
+    ) -> None:
+        await self.aclose()

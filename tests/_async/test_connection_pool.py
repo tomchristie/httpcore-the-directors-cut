@@ -20,7 +20,7 @@ async def test_connection_pool_with_keepalive():
 
     async with ConnectionPool(max_connections=10, max_keepalive_connections=10, network_backend=network_backend) as pool:
         url = RawURL(b"https", b"example.com", 443, b"/")
-        request = RawRequest(b"GET", url, [(b'Host', b'example.com')], ByteStream(), {})
+        request = RawRequest(b"GET", url, [(b'Host', b'example.com')])
 
         # Sending an intial request, which once complete will return to the pool, IDLE.
         async with await pool.handle_request(request) as response:
@@ -50,7 +50,7 @@ async def test_connection_pool_with_keepalive():
 
         # Sending a request to a different origin will not reuse the existing IDLE connection.
         url = RawURL(b"http", b"example.com", 80, b"/")
-        request = RawRequest(b"GET", url, [(b'Host', b'example.com')], ByteStream(), {})
+        request = RawRequest(b"GET", url, [(b'Host', b'example.com')])
 
         async with await pool.handle_request(request) as response:
             info = await pool.pool_info()
@@ -86,7 +86,7 @@ async def test_connection_pool_with_close():
     async with ConnectionPool(max_connections=10, max_keepalive_connections=10, network_backend=network_backend) as pool:
         url = RawURL(b"https", b"example.com", 443, b"/")
         headers = [(b'Host', b'example.com'), (b"Connection", b"close")]
-        request = RawRequest(b"GET", url, headers, ByteStream(), {})
+        request = RawRequest(b"GET", url, headers)
 
         # Sending an intial request, which once complete will not return to the pool.
         async with await pool.handle_request(request) as response:
@@ -113,9 +113,7 @@ async def test_connection_pool_with_exception():
     async with ConnectionPool(max_connections=10, max_keepalive_connections=10, network_backend=network_backend) as pool:
         url = RawURL(b"https", b"example.com", 443, b"/")
         headers = [(b'Host', b'example.com')]
-        request = RawRequest(
-            b"GET", url, headers, ByteStream(), {}
-        )
+        request = RawRequest(b"GET", url, headers)
 
         # Sending an intial request, which once complete will not return to the pool.
         with pytest.raises(Exception):
@@ -145,7 +143,7 @@ async def test_connection_pool_with_immediate_expiry():
     ) as pool:
         url = RawURL(b"https", b"example.com", 443, b"/")
         headers = [(b'Host', b'example.com')]
-        request = RawRequest(b"GET", url, headers, ByteStream(), {})
+        request = RawRequest(b"GET", url, headers)
 
         # Sending an intial request, which once complete will not return to the pool.
         async with await pool.handle_request(request) as response:
@@ -178,7 +176,7 @@ async def test_connection_pool_with_no_keepalive_connections_allowed():
     async with ConnectionPool(max_connections=10, max_keepalive_connections=0, network_backend=network_backend) as pool:
         url = RawURL(b"https", b"example.com", 443, b"/")
         headers = [(b'Host', b'example.com')]
-        request = RawRequest(b"GET", url, headers, ByteStream(), {})
+        request = RawRequest(b"GET", url, headers)
 
         # Sending an intial request, which once complete will not return to the pool.
         async with await pool.handle_request(request) as response:
@@ -211,7 +209,7 @@ async def test_connection_pool_concurrency():
     async def fetch(pool, domain, info_list):
         url = RawURL(b"http", domain, 80, b"/")
         headers = [(b'Host', domain)]
-        request = RawRequest(b"GET", url, headers, ByteStream(), {})
+        request = RawRequest(b"GET", url, headers)
         async with await pool.handle_request(request) as response:
             info = await pool.pool_info()
             info_list.append(info)

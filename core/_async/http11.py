@@ -1,13 +1,12 @@
-from .base import (
+from ..base import ConnectionNotAvailable, Origin
+from ..backends.base import NetworkStream
+from ..synchronization import Lock
+from .interfaces import (
     ByteStream,
     ConnectionInterface,
-    ConnectionNotAvailable,
-    Origin,
     RawRequest,
     RawResponse,
 )
-from .backends.base import NetworkStream
-from .synchronization import Lock
 from types import TracebackType
 from typing import AsyncIterator, Callable, Tuple, List, Type, Union
 import enum
