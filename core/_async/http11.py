@@ -47,7 +47,7 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
         self._request_count = 0
         self._h11_state = h11.Connection(our_role=h11.CLIENT)
 
-    async def handle_request(self, request: RawRequest) -> RawResponse:
+    async def handle_async_request(self, request: RawRequest) -> RawResponse:
         async with self._state_lock:
             if self._state in (HTTPConnectionState.NEW, HTTPConnectionState.IDLE):
                 self._request_count += 1

@@ -140,7 +140,7 @@ class AsyncConnectionPool:
                 for origin, conns in self._pool.items()
             }
 
-    async def handle_request(self, request: RawRequest) -> RawResponse:
+    async def handle_async_request(self, request: RawRequest) -> RawResponse:
         """
         Send an HTTP request, and return an HTTP response.
         """
@@ -184,7 +184,7 @@ class AsyncConnectionPool:
 
             try:
                 # We've selected a connection to use, let's send the request.
-                response = await connection.handle_request(request)
+                response = await connection.handle_async_request(request)
             except ConnectionNotAvailable:
                 # Turns out the connection wasn't able to handle the request
                 # for us. This could be because:

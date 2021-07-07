@@ -31,7 +31,7 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
         self._connection: Optional[AsyncConnectionInterface] = None
         self._request_lock = Lock()
 
-    async def handle_request(self, request: RawRequest) -> RawResponse:
+    async def handle_async_request(self, request: RawRequest) -> RawResponse:
         async with self._request_lock:
             if self._connection is None:
                 origin = self._origin
@@ -42,7 +42,7 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
             elif not self._connection.is_available():
                 raise ConnectionNotAvailable()
 
-        return await self._connection.handle_request(request)
+        return await self._connection.handle_async_request(request)
 
     async def attempt_close(self) -> bool:
         if self._connection is None:

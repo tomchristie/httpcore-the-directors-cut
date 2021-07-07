@@ -59,7 +59,7 @@ class RawResponse:
 
 
 class AsyncConnectionInterface:
-    async def handle_request(self, request: RawRequest) -> RawResponse:
+    async def handle_async_request(self, request: RawRequest) -> RawResponse:
         raise NotImplementedError()  # pragma: nocover
 
     async def attempt_aclose(self) -> bool:

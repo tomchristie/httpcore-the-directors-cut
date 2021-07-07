@@ -34,7 +34,7 @@ async def test_http_connection():
 
         url = RawURL(b"https", b"example.com", 443, b"/")
         request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
-        async with await conn.handle_request(request) as response:
+        async with await conn.handle_async_request(request) as response:
             assert repr(conn) == "<AsyncHTTPConnection [HTTP/1.1, ACTIVE, Request Count: 1]>"
             content = await response.stream.aread()
             assert response.status == 200
@@ -68,6 +68,6 @@ async def test_concurrent_requests_not_available_on_http11_connections():
     ) as conn:
         url = RawURL(b"https", b"example.com", 443, b"/")
         request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
-        async with await conn.handle_request(request) as response:
+        async with await conn.handle_async_request(request) as response:
             with pytest.raises(ConnectionNotAvailable):
-                await conn.handle_request(request)
+                await conn.handle_async_request(request)

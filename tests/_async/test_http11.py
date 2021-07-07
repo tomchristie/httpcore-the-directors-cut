@@ -25,7 +25,7 @@ async def test_http11_connection():
     ) as conn:
         url = RawURL(b"https", b"example.com", 443, b"/")
         request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
-        async with await conn.handle_request(request) as response:
+        async with await conn.handle_async_request(request) as response:
             content = await response.stream.aread()
             assert response.status == 200
             assert content == b"Hello, world!"
@@ -57,7 +57,7 @@ async def test_http11_connection_unread_response():
     ) as conn:
         url = RawURL(b"https", b"example.com", 443, b"/")
         request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
-        async with await conn.handle_request(request) as response:
+        async with await conn.handle_async_request(request) as response:
             assert response.status == 200
 
         assert conn.get_origin() == origin
@@ -84,7 +84,7 @@ async def test_http11_connection_with_network_error():
         url = RawURL(b"https", b"example.com", 443, b"/")
         request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
         with pytest.raises(Exception):
-            await conn.handle_request(request)
+            await conn.handle_async_request(request)
 
         assert conn.get_origin() == origin
         assert not conn.is_idle()
@@ -113,9 +113,9 @@ async def test_http11_connection_handles_one_active_request():
     ) as conn:
         url = RawURL(b"https", b"example.com", 443, b"/")
         request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
-        async with await conn.handle_request(request) as response:
+        async with await conn.handle_async_request(request) as response:
             with pytest.raises(ConnectionNotAvailable):
-                await conn.handle_request(request)
+                await conn.handle_async_request(request)
 
 
 @pytest.mark.trio
@@ -136,7 +136,7 @@ async def test_http11_connection_attempt_close():
     ) as conn:
         url = RawURL(b"https", b"example.com", 443, b"/")
         request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
-        async with await conn.handle_request(request) as response:
+        async with await conn.handle_async_request(request) as response:
             content = await response.stream.aread()
             assert response.status == 200
             assert content == b"Hello, world!"
