@@ -1,9 +1,9 @@
-from .base import NetworkStream, NetworkBackend
+from .base import AsyncNetworkStream, AsyncNetworkBackend
 from ..base import Origin
 from typing import List
 
 
-class MockStream(NetworkStream):
+class AsyncMockStream(AsyncNetworkStream):
     def __init__(self, buffer: List[bytes]) -> None:
         self._original_buffer = buffer
         self._current_buffer = list(self._original_buffer)
@@ -20,9 +20,9 @@ class MockStream(NetworkStream):
         pass
 
 
-class MockBackend(NetworkBackend):
+class AsyncMockBackend(AsyncNetworkBackend):
     def __init__(self, buffer: List[bytes]) -> None:
         self._buffer = buffer
 
     async def connect(self, origin: Origin) -> None:
-        return MockStream(self._buffer)
+        return AsyncMockStream(self._buffer)

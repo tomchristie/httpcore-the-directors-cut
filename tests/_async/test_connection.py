@@ -6,7 +6,7 @@ from core import (
     AsyncByteStream,
     ConnectionNotAvailable,
 )
-from core.backends.mock import MockBackend
+from core.backends.mock import AsyncMockBackend
 import pytest
 from typing import List
 
@@ -14,7 +14,7 @@ from typing import List
 @pytest.mark.trio
 async def test_http_connection():
     origin = Origin(b"https", b"example.com", 443)
-    network_backend = MockBackend(
+    network_backend = AsyncMockBackend(
         [
             b"HTTP/1.1 200 OK\r\n",
             b"Content-Type: plain/text\r\n",
@@ -60,7 +60,7 @@ async def test_concurrent_requests_not_available_on_http11_connections():
     will raise a `ConnectionNotAvailable` exception.
     """
     origin = Origin(b"https", b"example.com", 443)
-    network_backend = MockBackend(
+    network_backend = AsyncMockBackend(
         [
             b"HTTP/1.1 200 OK\r\n",
             b"Content-Type: plain/text\r\n",

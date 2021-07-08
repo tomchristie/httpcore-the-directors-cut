@@ -1,15 +1,15 @@
 from ..base import (
-    AsyncByteStream,
+    ByteStream,
     ConnectionNotAvailable,
     Origin,
     RawRequest,
     RawResponse,
 )
-from ..backends.base import AsyncNetworkStream
+from ..backends.base import NetworkStream
 from ..synchronization import Lock
-from .interfaces import AsyncConnectionInterface
+from .interfaces import ConnectionInterface
 from types import TracebackType
-from typing import AsyncIterator, Callable, Tuple, List, Type, Union
+from typing import Iterator, Callable, Tuple, List, Type, Union
 import enum
 import time
 import h11
@@ -32,11 +32,11 @@ class HTTPConnectionState(enum.IntEnum):
     CLOSED = 3
 
 
-class AsyncHTTP11Connection(AsyncConnectionInterface):
+class HTTP11Connection(ConnectionInterface):
     READ_NUM_BYTES = 64 * 1024
 
     def __init__(
-        self, origin: Origin, stream: AsyncNetworkStream, keepalive_expiry: float = None
+        self, origin: Origin, stream: NetworkStream, keepalive_expiry: float = None
     ) -> None:
         self._origin = origin
         self._network_stream = stream
@@ -48,8 +48,8 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
         self._request_count = 0
         self._h11_state = h11.Connection(our_role=h11.CLIENT)
 
-    async def handle_async_request(self, request: RawRequest) -> RawResponse:
-        async with self._state_lock:
+    def handle_request(self, request: RawRequest) -> RawResponse:
+        with self._state_lock:
             if self._state in (HTTPConnectionState.NEW, HTTPConnectionState.IDLE):
                 self._request_count += 1
                 self._state = HTTPConnectionState.ACTIVE
@@ -58,20 +58,20 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
                 raise ConnectionNotAvailable()
 
         try:
-            await self._send_request_headers(request)
-            await self._send_request_body(request)
+            self._send_request_headers(request)
+            self._send_request_body(request)
             (
                 http_version,
                 status_code,
                 reason_phrase,
                 headers,
-            ) = await self._receive_response_headers()
+            ) = self._receive_response_headers()
             return RawResponse(
                 status=status_code,
                 headers=headers,
                 stream=HTTPConnectionByteStream(
-                    aiterator=self._receive_response_body(),
-                    aclose_func=self._response_closed,
+                    iterator=self._receive_response_body(),
+                    close_func=self._response_closed,
                 ),
                 extensions={
                     "http_version": http_version,
@@ -79,36 +79,36 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
                 },
             )
         except BaseException as exc:
-            await self.aclose()
+            self.close()
             raise exc
 
     # Sending the request...
 
-    async def _send_request_headers(self, request: RawRequest) -> None:
+    def _send_request_headers(self, request: RawRequest) -> None:
         event = h11.Request(
             method=request.method, target=request.url.target, headers=request.headers
         )
-        await self._send_event(event)
+        self._send_event(event)
 
-    async def _send_request_body(self, request: RawRequest) -> None:
-        async for chunk in request.stream:
+    def _send_request_body(self, request: RawRequest) -> None:
+        for chunk in request.stream:
             event = h11.Data(data=chunk)
-            await self._send_event(event)
+            self._send_event(event)
 
         event = h11.EndOfMessage()
-        await self._send_event(event)
+        self._send_event(event)
 
-    async def _send_event(self, event: H11Event) -> None:
+    def _send_event(self, event: H11Event) -> None:
         bytes_to_send = self._h11_state.send(event)
-        await self._network_stream.write(bytes_to_send)
+        self._network_stream.write(bytes_to_send)
 
     # Receiving the response...
 
-    async def _receive_response_headers(
+    def _receive_response_headers(
         self,
     ) -> Tuple[bytes, int, bytes, List[Tuple[bytes, bytes]]]:
         while True:
-            event = await self._receive_event()
+            event = self._receive_event()
             if isinstance(event, h11.Response):
                 break
 
@@ -120,26 +120,26 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
 
         return http_version, event.status_code, event.reason, headers
 
-    async def _receive_response_body(self) -> AsyncIterator[bytes]:
+    def _receive_response_body(self) -> Iterator[bytes]:
         while True:
-            event = await self._receive_event()
+            event = self._receive_event()
             if isinstance(event, h11.Data):
                 yield bytes(event.data)
             elif isinstance(event, (h11.EndOfMessage, h11.PAUSED)):
                 break
 
-    async def _receive_event(self) -> H11Event:
+    def _receive_event(self) -> H11Event:
         while True:
             event = self._h11_state.next_event()
 
             if event is h11.NEED_DATA:
-                data = await self._network_stream.read(self.READ_NUM_BYTES)
+                data = self._network_stream.read(self.READ_NUM_BYTES)
                 self._h11_state.receive_data(data)
             else:
                 return event
 
-    async def _response_closed(self) -> None:
-        async with self._state_lock:
+    def _response_closed(self) -> None:
+        with self._state_lock:
             if (
                 self._h11_state.our_state is h11.DONE
                 and self._h11_state.their_state is h11.DONE
@@ -150,18 +150,18 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
                     now = time.monotonic()
                     self._expire_at = now + self._keepalive_expiry
             else:
-                await self.aclose()
+                self.close()
 
     # Once the connection is no longer required...
 
-    async def aclose(self) -> None:
+    def close(self) -> None:
         # Note that this method unilaterally closes the connection, and does
         # not have any kind of locking in place around it.
         # For task-safe/thread-safe operations call into 'attempt_close' instead.
         self._state = HTTPConnectionState.CLOSED
-        await self._network_stream.aclose()
+        self._network_stream.close()
 
-    # The AsyncConnectionInterface methods provide information about the state of
+    # The ConnectionInterface methods provide information about the state of
     # the connection, allowing for a connection pooling implementation to
     # determine when to reuse and when to close the connection...
 
@@ -185,10 +185,10 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
     def is_closed(self) -> bool:
         return self._state == HTTPConnectionState.CLOSED
 
-    async def attempt_close(self) -> bool:
-        async with self._state_lock:
+    def attempt_close(self) -> bool:
+        with self._state_lock:
             if self._state in (HTTPConnectionState.NEW, HTTPConnectionState.IDLE):
-                await self.aclose()
+                self.close()
                 return True
         return False
 
@@ -204,26 +204,26 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
     # These context managers are not used in the standard flow, but are
     # useful for testing or working with connection instances directly.
 
-    async def __aenter__(self) -> "AsyncHTTP11Connection":
+    def __enter__(self) -> "HTTP11Connection":
         return self
 
-    async def __aexit__(
+    def __exit__(
         self,
         exc_type: Type[BaseException] = None,
         exc_value: BaseException = None,
         traceback: TracebackType = None,
     ) -> None:
-        await self.aclose()
+        self.close()
 
 
-class HTTPConnectionByteStream(AsyncByteStream):
-    def __init__(self, aiterator: AsyncIterator[bytes], aclose_func: Callable):
-        self._aiterator = aiterator
-        self._aclose_func = aclose_func
+class HTTPConnectionByteStream(ByteStream):
+    def __init__(self, iterator: Iterator[bytes], close_func: Callable):
+        self._aiterator = iterator
+        self._aclose_func = close_func
 
-    async def __aiter__(self) -> AsyncIterator[bytes]:
-        async for chunk in self._aiterator:
+    def __iter__(self) -> Iterator[bytes]:
+        for chunk in self._aiterator:
             yield chunk
 
-    async def aclose(self) -> None:
-        await self._aclose_func()
+    def close(self) -> None:
+        self._aclose_func()

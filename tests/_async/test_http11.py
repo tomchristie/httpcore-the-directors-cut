@@ -5,7 +5,7 @@ from core import (
     RawURL,
     ConnectionNotAvailable,
 )
-from core.backends.mock import MockStream
+from core.backends.mock import AsyncMockStream
 import pytest
 from typing import List
 
@@ -13,7 +13,7 @@ from typing import List
 @pytest.mark.trio
 async def test_http11_connection():
     origin = Origin(b"https", b"example.com", 443)
-    stream = MockStream(
+    stream = AsyncMockStream(
         [
             b"HTTP/1.1 200 OK\r\n",
             b"Content-Type: plain/text\r\n",
@@ -47,7 +47,7 @@ async def test_http11_connection_unread_response():
     then the connection will not be reusable.
     """
     origin = Origin(b"https", b"example.com", 443)
-    stream = MockStream(
+    stream = AsyncMockStream(
         [
             b"HTTP/1.1 200 OK\r\n",
             b"Content-Type: plain/text\r\n",
@@ -79,7 +79,7 @@ async def test_http11_connection_with_network_error():
     connection will not be reusable.
     """
     origin = Origin(b"https", b"example.com", 443)
-    stream = MockStream([b"Wait, this isn't valid HTTP!"])
+    stream = AsyncMockStream([b"Wait, this isn't valid HTTP!"])
     async with AsyncHTTP11Connection(
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
@@ -103,7 +103,7 @@ async def test_http11_connection_handles_one_active_request():
     a ConnectionNotAvailable exception.
     """
     origin = Origin(b"https", b"example.com", 443)
-    stream = MockStream(
+    stream = AsyncMockStream(
         [
             b"HTTP/1.1 200 OK\r\n",
             b"Content-Type: plain/text\r\n",
@@ -128,7 +128,7 @@ async def test_http11_connection_attempt_close():
     A connection can only be closed when it is idle.
     """
     origin = Origin(b"https", b"example.com", 443)
-    stream = MockStream(
+    stream = AsyncMockStream(
         [
             b"HTTP/1.1 200 OK\r\n",
             b"Content-Type: plain/text\r\n",

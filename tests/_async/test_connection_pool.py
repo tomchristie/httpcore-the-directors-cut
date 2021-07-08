@@ -7,7 +7,7 @@ from core import (
     RawRequest,
     AsyncByteStream,
 )
-from core.backends.mock import MockBackend
+from core.backends.mock import AsyncMockBackend
 from typing import List
 import pytest
 import trio
@@ -18,7 +18,7 @@ async def test_connection_pool_with_keepalive():
     """
     By default HTTP/1.1 requests should be returned to the connection pool.
     """
-    network_backend = MockBackend(
+    network_backend = AsyncMockBackend(
         [
             b"HTTP/1.1 200 OK\r\n",
             b"Content-Type: plain/text\r\n",
@@ -89,7 +89,7 @@ async def test_connection_pool_with_close():
     HTTP/1.1 requests that include a 'Connection: Close' header should
     not be returned to the connection pool.
     """
-    network_backend = MockBackend(
+    network_backend = AsyncMockBackend(
         [
             b"HTTP/1.1 200 OK\r\n",
             b"Content-Type: plain/text\r\n",
@@ -128,7 +128,7 @@ async def test_connection_pool_with_exception():
     HTTP/1.1 requests that result in an exception should not be returned to the
     connection pool.
     """
-    network_backend = MockBackend([b"Wait, this isn't valid HTTP!"])
+    network_backend = AsyncMockBackend([b"Wait, this isn't valid HTTP!"])
 
     async with AsyncConnectionPool(
         max_connections=10,
@@ -154,7 +154,7 @@ async def test_connection_pool_with_immediate_expiry():
     Connection pools with keepalive_expiry=0.0 should immediately expire
     keep alive connections.
     """
-    network_backend = MockBackend(
+    network_backend = AsyncMockBackend(
         [
             b"HTTP/1.1 200 OK\r\n",
             b"Content-Type: plain/text\r\n",
@@ -194,7 +194,7 @@ async def test_connection_pool_with_no_keepalive_connections_allowed():
     When 'max_keepalive_connections=0' is used, IDLE connections should not
     be returned to the pool.
     """
-    network_backend = MockBackend(
+    network_backend = AsyncMockBackend(
         [
             b"HTTP/1.1 200 OK\r\n",
             b"Content-Type: plain/text\r\n",
@@ -231,7 +231,7 @@ async def test_connection_pool_concurrency():
     HTTP/1.1 requests made in concurrency must not ever exceed the maximum number
     of allowable connection in the pool.
     """
-    network_backend = MockBackend(
+    network_backend = AsyncMockBackend(
         [
             b"HTTP/1.1 200 OK\r\n",
             b"Content-Type: plain/text\r\n",
