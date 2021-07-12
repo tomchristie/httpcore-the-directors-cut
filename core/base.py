@@ -19,10 +19,6 @@ class Origin:
         self.host = host
         self.port = port
 
-    def __hash__(self) -> int:
-        origin_tuple = (self.scheme, self.host, self.port)
-        return hash(origin_tuple)
-
     def __eq__(self, other: Any) -> bool:
         return (
             isinstance(other, Origin)

@@ -193,7 +193,8 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
         return False
 
     def info(self) -> str:
-        return f"HTTP/1.1, {self._state.name}, Request Count: {self._request_count}"
+        origin = str(self._origin)
+        return f"{origin!r}, HTTP/1.1, {self._state.name}, Request Count: {self._request_count}"
 
     def __repr__(self) -> str:
         return (

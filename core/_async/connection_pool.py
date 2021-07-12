@@ -112,29 +112,16 @@ class AsyncConnectionPool:
 
     async def pool_info(self) -> Dict[str, List[str]]:
         """
-        Return a dictionary mapping origins to lists of connection info.
+        Return a list of connection info for the connections currently in the pool.
 
-        {
-            "http://example.com:80": [
-                "HTTP/1.1, IDLE, Request Count: 1"
-            ]
-            "https://example.com:443": [
-                "HTTP/1.1, ACTIVE, Request Count: 6",
-                "HTTP/1.1, IDLE, Request Count: 9"
-            ]
-        }
+        [
+            "'https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 6",
+            "'http://example.com:80', HTTP/1.1, IDLE, Request Count: 1",
+            "'https://example.com:443', HTTP/1.1, IDLE, Request Count: 9" ,
+        ]
         """
         async with self._pool_lock:
-            old_style = {}
-            for conn in self._pool:
-                origin = conn.get_origin()
-                old_style.setdefault(origin, [])
-                old_style[origin].append(conn)
-
-            return {
-                str(origin): [conn.info() for conn in conns]
-                for origin, conns in old_style.items()
-            }
+            return [conn.info() for conn in self._pool]
 
     async def handle_async_request(self, request: RawRequest) -> RawResponse:
         """
