@@ -116,8 +116,8 @@ class AsyncConnectionPool:
 
         [
             "'https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 6",
-            "'http://example.com:80', HTTP/1.1, IDLE, Request Count: 1",
             "'https://example.com:443', HTTP/1.1, IDLE, Request Count: 9" ,
+            "'http://example.com:80', HTTP/1.1, IDLE, Request Count: 1",
         ]
         """
         async with self._pool_lock:
