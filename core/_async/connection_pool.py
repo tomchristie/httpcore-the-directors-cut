@@ -27,8 +27,7 @@ class AsyncConnectionPool:
         self._max_keepalive_connections = max_keepalive_connections
         self._keepalive_expiry = keepalive_expiry
 
-        self._num_connections = 0
-        self._pool: Dict[Origin, List[AsyncConnectionInterface]] = {}
+        self._pool: List[AsyncConnectionInterface] = []
         self._pool_lock = Lock()
         self._pool_semaphore = Semaphore(bound=max_connections)
         self._network_backend = (
@@ -52,29 +51,22 @@ class AsyncConnectionPool:
         """
         return (
             self._max_keepalive_connections is not None
-            and self._num_connections > self._max_keepalive_connections
+            and len(self._pool) > self._max_keepalive_connections
         )
 
     async def _add_to_pool(self, connection: AsyncConnectionInterface) -> None:
         """
         Add an HTTP connection to the pool.
         """
-        origin = connection.get_origin()
         async with self._pool_lock:
-            self._pool.setdefault(origin, [])
-            self._pool[origin].append(connection)
-            self._num_connections += 1
+            self._pool.insert(0, connection)
 
     async def _remove_from_pool(self, connection: AsyncConnectionInterface) -> None:
         """
         Remove an HTTP connection from the pool.
         """
-        origin = connection.get_origin()
         async with self._pool_lock:
-            self._pool[origin].remove(connection)
-            self._num_connections -= 1
-            if not self._pool[origin]:
-                self._pool.pop(origin)
+            self._pool.remove(connection)
 
     async def _get_from_pool(
         self, origin: Origin
@@ -84,13 +76,12 @@ class AsyncConnectionPool:
         if one currently exists in the pool.
         """
         async with self._pool_lock:
-            available_connections = self._pool.get(origin, [])
-            available_connections = [
-                c for c in available_connections if c.is_available()
-            ]
+            for idx, connection in enumerate(self._pool):
+                if connection.get_origin() == origin and connection.is_available():
+                    self._pool.pop(idx)
+                    self._pool.insert(0, connection)
+                    return connection
 
-        if available_connections:
-            return random.choice(available_connections)
         return None
 
     async def _close_one_idle_connection(self) -> bool:
@@ -99,16 +90,12 @@ class AsyncConnectionPool:
         and `False` otherwise.
         """
         async with self._pool_lock:
-            idle_connections = list(itertools.chain.from_iterable(self._pool.values()))
-            idle_connections = [c for c in idle_connections if c.is_idle()]
-
-        random.shuffle(idle_connections)
-        for connection in idle_connections:
-            closed = await connection.attempt_close()
-            if closed:
-                await self._remove_from_pool(connection)
-                await self._pool_semaphore.release()
-                return True
+            for idx, connection in reversed(list(enumerate(self._pool))):
+                closed = await connection.attempt_close()
+                if closed:
+                    self._pool.pop(idx)
+                    await self._pool_semaphore.release()
+                    return True
         return False
 
     async def _close_expired_connections(self) -> None:
@@ -116,16 +103,12 @@ class AsyncConnectionPool:
         Close any connections in the pool that have expired their keepalive.
         """
         async with self._pool_lock:
-            expired_connections = list(
-                itertools.chain.from_iterable(self._pool.values())
-            )
-            expired_connections = [c for c in expired_connections if c.has_expired()]
-
-        for connection in expired_connections:
-            closed = await connection.attempt_close()
-            if closed:
-                await self._remove_from_pool(connection)
-                await self._pool_semaphore.release()
+            for idx, connection in reversed(list(enumerate(self._pool))):
+                if connection.has_expired():
+                    closed = await connection.attempt_close()
+                    if closed:
+                        self._pool.pop(idx)
+                        await self._pool_semaphore.release()
 
     async def pool_info(self) -> Dict[str, List[str]]:
         """
@@ -142,9 +125,15 @@ class AsyncConnectionPool:
         }
         """
         async with self._pool_lock:
+            old_style = {}
+            for conn in self._pool:
+                origin = conn.get_origin()
+                old_style.setdefault(origin, [])
+                old_style[origin].append(conn)
+
             return {
                 str(origin): [conn.info() for conn in conns]
-                for origin, conns in self._pool.items()
+                for origin, conns in old_style.items()
             }
 
     async def handle_async_request(self, request: RawRequest) -> RawResponse:
@@ -245,10 +234,9 @@ class AsyncConnectionPool:
 
     async def aclose(self):
         async with self._pool_lock:
-            for connections in self._pool.values():
-                for connection in connections:
-                    await connection.aclose()
-            self._pool = {}
+            for connection in self._pool:
+                await connection.aclose()
+            self._pool = []
 
     async def __aenter__(self):
         return self
