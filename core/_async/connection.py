@@ -7,7 +7,7 @@ from ..base import (
     RawResponse,
     AsyncByteStream,
 )
-from ..synchronization import Lock
+from ..synchronization import AsyncLock
 from .http11 import AsyncHTTP11Connection
 from .interfaces import AsyncConnectionInterface
 from typing import AsyncIterator, List, Optional, Type
@@ -30,7 +30,7 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
             TrioBackend() if network_backend is None else network_backend
         )
         self._connection: Optional[AsyncConnectionInterface] = None
-        self._request_lock = Lock()
+        self._request_lock = AsyncLock()
 
     async def handle_async_request(self, request: RawRequest) -> RawResponse:
         async with self._request_lock:

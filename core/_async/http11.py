@@ -6,7 +6,7 @@ from ..base import (
     RawResponse,
 )
 from ..backends.base import NetworkStream
-from ..synchronization import Lock
+from ..synchronization import AsyncLock
 from .interfaces import AsyncConnectionInterface
 from types import TracebackType
 from typing import AsyncIterator, Callable, Tuple, List, Type, Union
@@ -44,7 +44,7 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
         self._expire_at: float = None
         self._connection_close = False
         self._state = HTTPConnectionState.NEW
-        self._state_lock = Lock()
+        self._state_lock = AsyncLock()
         self._request_count = 0
         self._h11_state = h11.Connection(our_role=h11.CLIENT)
 

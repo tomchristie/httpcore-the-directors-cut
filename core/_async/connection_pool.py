@@ -9,7 +9,7 @@ from ..base import (
     RawResponse,
     AsyncByteStream,
 )
-from ..synchronization import Lock, Semaphore
+from ..synchronization import AsyncLock, AsyncSemaphore
 from .connection import AsyncHTTPConnection
 from .interfaces import AsyncConnectionInterface
 import random
@@ -24,12 +24,18 @@ class AsyncConnectionPool:
         keepalive_expiry: float = None,
         network_backend: NetworkBackend = None,
     ) -> None:
-        self._max_keepalive_connections = max_keepalive_connections
+        if max_keepalive_connections is None:
+            max_keepalive_connections = max_connections - 1
+
+        # We always close off keep-alives to allow at least one slot
+        # in the connection pool. There are more nifty stratagies that we
+        # could use, but this keeps things nice and simple.
+        self._max_keepalive_connections = min(max_keepalive_connections, max_connections - 1)
         self._keepalive_expiry = keepalive_expiry
 
         self._pool: List[AsyncConnectionInterface] = []
-        self._pool_lock = Lock()
-        self._pool_semaphore = Semaphore(bound=max_connections)
+        self._pool_lock = AsyncLock()
+        self._pool_semaphore = AsyncSemaphore(bound=max_connections)
         self._network_backend = (
             TrioBackend() if network_backend is None else network_backend
         )
@@ -42,16 +48,6 @@ class AsyncConnectionPool:
             origin=origin,
             keepalive_expiry=self._keepalive_expiry,
             network_backend=self._network_backend,
-        )
-
-    def _max_keepalive_exceeded(self) -> bool:
-        """
-        Return `True` if the number of connections currently in the pool
-        is exceeding the `max_keepalive_connections` watermark.
-        """
-        return (
-            self._max_keepalive_connections is not None
-            and len(self._pool) > self._max_keepalive_connections
         )
 
     async def _add_to_pool(self, connection: AsyncConnectionInterface) -> None:
@@ -211,11 +207,8 @@ class AsyncConnectionPool:
         await self._close_expired_connections()
 
         # Where possible we want to close off IDLE connections, until we're not
-        # exceeding the max_keepalive_connections config, and the the pool
-        # semaphore is not blocked waiting.
-        while (
-            self._max_keepalive_exceeded() or await self._pool_semaphore.would_block()
-        ):
+        # exceeding the max_keepalive_connections.
+        while len(self._pool) > self._max_keepalive_connections:
             if not await self._close_one_idle_connection():
                 break
 

@@ -30,7 +30,6 @@ async def test_connection_pool_with_keepalive():
 
     async with AsyncConnectionPool(
         max_connections=10,
-        max_keepalive_connections=10,
         network_backend=network_backend,
     ) as pool:
         url = RawURL(b"https", b"example.com", 443, b"/")
@@ -101,7 +100,6 @@ async def test_connection_pool_with_close():
 
     async with AsyncConnectionPool(
         max_connections=10,
-        max_keepalive_connections=10,
         network_backend=network_backend,
     ) as pool:
         url = RawURL(b"https", b"example.com", 443, b"/")
@@ -132,7 +130,6 @@ async def test_connection_pool_with_exception():
 
     async with AsyncConnectionPool(
         max_connections=10,
-        max_keepalive_connections=10,
         network_backend=network_backend,
     ) as pool:
         url = RawURL(b"https", b"example.com", 443, b"/")
@@ -166,7 +163,6 @@ async def test_connection_pool_with_immediate_expiry():
 
     async with AsyncConnectionPool(
         max_connections=10,
-        max_keepalive_connections=10,
         keepalive_expiry=0.0,
         network_backend=network_backend,
     ) as pool:
@@ -251,7 +247,7 @@ async def test_connection_pool_concurrency():
             body = await response.stream.aread()
 
     async with AsyncConnectionPool(
-        max_connections=1, max_keepalive_connections=1, network_backend=network_backend
+        max_connections=1, network_backend=network_backend
     ) as pool:
         info_list = []
         async with trio.open_nursery() as nursery:

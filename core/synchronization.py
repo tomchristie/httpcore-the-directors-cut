@@ -3,7 +3,7 @@ from types import TracebackType
 from typing import Type
 
 
-class Lock:
+class AsyncLock:
     def __init__(self):
         self._lock = trio.Lock()
 
@@ -19,7 +19,7 @@ class Lock:
         self._lock.release()
 
 
-class Semaphore:
+class AsyncSemaphore:
     def __init__(self, bound: int):
         self._semaphore = trio.Semaphore(initial_value=bound, max_value=bound)
 
@@ -35,6 +35,3 @@ class Semaphore:
 
     async def release(self) -> None:
         self._semaphore.release()
-
-    async def would_block(self) -> bool:
-        return self._semaphore.value == 0
