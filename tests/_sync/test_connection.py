@@ -1,20 +1,20 @@
 from core import (
-    AsyncHTTPConnection,
+    HTTPConnection,
     Origin,
     RawRequest,
     RawURL,
-    AsyncByteStream,
+    ByteStream,
     ConnectionNotAvailable,
 )
-from core.backends.mock import AsyncMockBackend
+from core.backends.mock import MockBackend
 import pytest
 from typing import List
 
 
-@pytest.mark.trio
-async def test_http_connection():
+
+def test_http_connection():
     origin = Origin(b"https", b"example.com", 443)
-    network_backend = AsyncMockBackend(
+    network_backend = MockBackend(
         [
             b"HTTP/1.1 200 OK\r\n",
             b"Content-Type: plain/text\r\n",
@@ -24,7 +24,7 @@ async def test_http_connection():
         ]
     )
 
-    async with AsyncHTTPConnection(
+    with HTTPConnection(
         origin=origin, network_backend=network_backend, keepalive_expiry=5.0
     ) as conn:
         assert conn.get_origin() == origin
@@ -32,16 +32,16 @@ async def test_http_connection():
         assert not conn.is_closed()
         assert conn.is_available()
         assert not conn.has_expired()
-        assert repr(conn) == "<AsyncHTTPConnection [CONNECTING]>"
+        assert repr(conn) == "<HTTPConnection [CONNECTING]>"
 
         url = RawURL(b"https", b"example.com", 443, b"/")
         request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
-        async with await conn.handle_async_request(request) as response:
+        with conn.handle_request(request) as response:
             assert (
                 repr(conn)
-                == "<AsyncHTTPConnection ['https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 1]>"
+                == "<HTTPConnection ['https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 1]>"
             )
-            content = await response.stream.aread()
+            content = response.stream.read()
             assert response.status == 200
             assert content == b"Hello, world!"
 
@@ -50,17 +50,17 @@ async def test_http_connection():
         assert not conn.is_closed()
         assert conn.is_available()
         assert not conn.has_expired()
-        assert repr(conn) == "<AsyncHTTPConnection ['https://example.com:443', HTTP/1.1, IDLE, Request Count: 1]>"
+        assert repr(conn) == "<HTTPConnection ['https://example.com:443', HTTP/1.1, IDLE, Request Count: 1]>"
 
 
-@pytest.mark.trio
-async def test_concurrent_requests_not_available_on_http11_connections():
+
+def test_concurrent_requests_not_available_on_http11_connections():
     """
     Attempting to issue a request against an already active HTTP/1.1 connection
     will raise a `ConnectionNotAvailable` exception.
     """
     origin = Origin(b"https", b"example.com", 443)
-    network_backend = AsyncMockBackend(
+    network_backend = MockBackend(
         [
             b"HTTP/1.1 200 OK\r\n",
             b"Content-Type: plain/text\r\n",
@@ -70,11 +70,11 @@ async def test_concurrent_requests_not_available_on_http11_connections():
         ]
     )
 
-    async with AsyncHTTPConnection(
+    with HTTPConnection(
         origin=origin, network_backend=network_backend, keepalive_expiry=5.0
     ) as conn:
         url = RawURL(b"https", b"example.com", 443, b"/")
         request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
-        async with await conn.handle_async_request(request) as response:
+        with conn.handle_request(request) as response:
             with pytest.raises(ConnectionNotAvailable):
-                await conn.handle_async_request(request)
+                conn.handle_request(request)
