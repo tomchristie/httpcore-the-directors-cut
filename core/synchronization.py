@@ -59,7 +59,7 @@ class Semaphore:
         self._semaphore = threading.Semaphore(value=bound)
 
     def acquire_noblock(self) -> bool:
-        self._semaphore.acquire(blocking=False)
+        return self._semaphore.acquire(blocking=False)
 
     def acquire(self) -> None:
         self._semaphore.acquire()
