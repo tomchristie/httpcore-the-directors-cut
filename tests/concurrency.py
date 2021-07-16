@@ -1,3 +1,13 @@
+"""
+Some of our tests require branching of flow control.
+
+We'd like to have the same kind of test for both async and sync environments,
+and so we have functionality here that replicate's Trio's `open_nursery` API,
+but in a plain old multi-threaded context.
+
+We don't do any smarts around cancellations, or managing exceptions from
+childen, because we don't need that for our use-case.
+"""
 from typing import Iterator, Dict, List, Optional, Type
 from types import TracebackType
 import threading
