@@ -1,24 +1,23 @@
 from core import (
-    AsyncConnectionPool,
-    AsyncConnectionInterface,
-    AsyncHTTPConnection,
+    ConnectionPool,
+    ConnectionInterface,
+    HTTPConnection,
     Origin,
     RawURL,
     RawRequest,
-    AsyncByteStream,
+    ByteStream,
 )
-from core.backends.mock import AsyncMockBackend
+from core.backends.mock import MockBackend
 from typing import List
 import pytest
-import trio
+from tests import concurrency
 
 
-@pytest.mark.trio
-async def test_connection_pool_with_keepalive():
+def test_connection_pool_with_keepalive():
     """
     By default HTTP/1.1 requests should be returned to the connection pool.
     """
-    network_backend = AsyncMockBackend(
+    network_backend = MockBackend(
         [
             b"HTTP/1.1 200 OK\r\n",
             b"Content-Type: plain/text\r\n",
@@ -28,7 +27,7 @@ async def test_connection_pool_with_keepalive():
         ]
     )
 
-    async with AsyncConnectionPool(
+    with ConnectionPool(
         max_connections=10,
         network_backend=network_backend,
     ) as pool:
@@ -36,59 +35,58 @@ async def test_connection_pool_with_keepalive():
         request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
 
         # Sending an intial request, which once complete will return to the pool, IDLE.
-        async with await pool.handle_async_request(request) as response:
-            info = await pool.pool_info()
+        with pool.handle_request(request) as response:
+            info = pool.pool_info()
             assert info == [
                 "'https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 1"
             ]
-            body = await response.stream.aread()
+            body = response.stream.read()
 
         assert response.status == 200
         assert body == b"Hello, world!"
-        info = await pool.pool_info()
+        info = pool.pool_info()
         assert info == ["'https://example.com:443', HTTP/1.1, IDLE, Request Count: 1"]
 
         # Sending a second request to the same origin will reuse the existing IDLE connection.
-        async with await pool.handle_async_request(request) as response:
-            info = await pool.pool_info()
+        with pool.handle_request(request) as response:
+            info = pool.pool_info()
             assert info == [
                 "'https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 2"
             ]
-            body = await response.stream.aread()
+            body = response.stream.read()
 
         assert response.status == 200
         assert body == b"Hello, world!"
-        info = await pool.pool_info()
+        info = pool.pool_info()
         assert info == ["'https://example.com:443', HTTP/1.1, IDLE, Request Count: 2"]
 
         # Sending a request to a different origin will not reuse the existing IDLE connection.
         url = RawURL(b"http", b"example.com", 80, b"/")
         request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
 
-        async with await pool.handle_async_request(request) as response:
-            info = await pool.pool_info()
+        with pool.handle_request(request) as response:
+            info = pool.pool_info()
             assert info == [
                 "'http://example.com:80', HTTP/1.1, ACTIVE, Request Count: 1",
                 "'https://example.com:443', HTTP/1.1, IDLE, Request Count: 2",
             ]
-            body = await response.stream.aread()
+            body = response.stream.read()
 
         assert response.status == 200
         assert body == b"Hello, world!"
-        info = await pool.pool_info()
+        info = pool.pool_info()
         assert info == [
             "'http://example.com:80', HTTP/1.1, IDLE, Request Count: 1",
             "'https://example.com:443', HTTP/1.1, IDLE, Request Count: 2",
         ]
 
 
-@pytest.mark.trio
-async def test_connection_pool_with_close():
+def test_connection_pool_with_close():
     """
     HTTP/1.1 requests that include a 'Connection: Close' header should
     not be returned to the connection pool.
     """
-    network_backend = AsyncMockBackend(
+    network_backend = MockBackend(
         [
             b"HTTP/1.1 200 OK\r\n",
             b"Content-Type: plain/text\r\n",
@@ -98,7 +96,7 @@ async def test_connection_pool_with_close():
         ]
     )
 
-    async with AsyncConnectionPool(
+    with ConnectionPool(
         max_connections=10,
         network_backend=network_backend,
     ) as pool:
@@ -107,28 +105,27 @@ async def test_connection_pool_with_close():
         request = RawRequest(b"GET", url, headers)
 
         # Sending an intial request, which once complete will not return to the pool.
-        async with await pool.handle_async_request(request) as response:
-            info = await pool.pool_info()
+        with pool.handle_request(request) as response:
+            info = pool.pool_info()
             assert info == [
                 "'https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 1"
             ]
-            body = await response.stream.aread()
+            body = response.stream.read()
 
         assert response.status == 200
         assert body == b"Hello, world!"
-        info = await pool.pool_info()
+        info = pool.pool_info()
         assert info == []
 
 
-@pytest.mark.trio
-async def test_connection_pool_with_exception():
+def test_connection_pool_with_exception():
     """
     HTTP/1.1 requests that result in an exception should not be returned to the
     connection pool.
     """
-    network_backend = AsyncMockBackend([b"Wait, this isn't valid HTTP!"])
+    network_backend = MockBackend([b"Wait, this isn't valid HTTP!"])
 
-    async with AsyncConnectionPool(
+    with ConnectionPool(
         max_connections=10,
         network_backend=network_backend,
     ) as pool:
@@ -138,20 +135,19 @@ async def test_connection_pool_with_exception():
 
         # Sending an intial request, which once complete will not return to the pool.
         with pytest.raises(Exception):
-            async with await pool.handle_async_request(request) as response:
+            with pool.handle_request(request) as response:
                 pass  # pragma: nocover
 
-        info = await pool.pool_info()
+        info = pool.pool_info()
         assert info == []
 
 
-@pytest.mark.trio
-async def test_connection_pool_with_immediate_expiry():
+def test_connection_pool_with_immediate_expiry():
     """
     Connection pools with keepalive_expiry=0.0 should immediately expire
     keep alive connections.
     """
-    network_backend = AsyncMockBackend(
+    network_backend = MockBackend(
         [
             b"HTTP/1.1 200 OK\r\n",
             b"Content-Type: plain/text\r\n",
@@ -161,7 +157,7 @@ async def test_connection_pool_with_immediate_expiry():
         ]
     )
 
-    async with AsyncConnectionPool(
+    with ConnectionPool(
         max_connections=10,
         keepalive_expiry=0.0,
         network_backend=network_backend,
@@ -171,26 +167,25 @@ async def test_connection_pool_with_immediate_expiry():
         request = RawRequest(b"GET", url, headers)
 
         # Sending an intial request, which once complete will not return to the pool.
-        async with await pool.handle_async_request(request) as response:
-            info = await pool.pool_info()
+        with pool.handle_request(request) as response:
+            info = pool.pool_info()
             assert info == [
                 "'https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 1"
             ]
-            body = await response.stream.aread()
+            body = response.stream.read()
 
         assert response.status == 200
         assert body == b"Hello, world!"
-        info = await pool.pool_info()
+        info = pool.pool_info()
         assert info == []
 
 
-@pytest.mark.trio
-async def test_connection_pool_with_no_keepalive_connections_allowed():
+def test_connection_pool_with_no_keepalive_connections_allowed():
     """
     When 'max_keepalive_connections=0' is used, IDLE connections should not
     be returned to the pool.
     """
-    network_backend = AsyncMockBackend(
+    network_backend = MockBackend(
         [
             b"HTTP/1.1 200 OK\r\n",
             b"Content-Type: plain/text\r\n",
@@ -200,7 +195,7 @@ async def test_connection_pool_with_no_keepalive_connections_allowed():
         ]
     )
 
-    async with AsyncConnectionPool(
+    with ConnectionPool(
         max_connections=10, max_keepalive_connections=0, network_backend=network_backend
     ) as pool:
         url = RawURL(b"https", b"example.com", 443, b"/")
@@ -208,26 +203,25 @@ async def test_connection_pool_with_no_keepalive_connections_allowed():
         request = RawRequest(b"GET", url, headers)
 
         # Sending an intial request, which once complete will not return to the pool.
-        async with await pool.handle_async_request(request) as response:
-            info = await pool.pool_info()
+        with pool.handle_request(request) as response:
+            info = pool.pool_info()
             assert info == [
                 "'https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 1"
             ]
-            body = await response.stream.aread()
+            body = response.stream.read()
 
         assert response.status == 200
         assert body == b"Hello, world!"
-        info = await pool.pool_info()
+        info = pool.pool_info()
         assert info == []
 
 
-@pytest.mark.trio
-async def test_connection_pool_concurrency():
+def test_connection_pool_concurrency():
     """
     HTTP/1.1 requests made in concurrency must not ever exceed the maximum number
     of allowable connection in the pool.
     """
-    network_backend = AsyncMockBackend(
+    network_backend = MockBackend(
         [
             b"HTTP/1.1 200 OK\r\n",
             b"Content-Type: plain/text\r\n",
@@ -237,20 +231,18 @@ async def test_connection_pool_concurrency():
         ]
     )
 
-    async def fetch(pool, domain, info_list):
+    def fetch(pool, domain, info_list):
         url = RawURL(b"http", domain, 80, b"/")
         headers = [(b"Host", domain)]
         request = RawRequest(b"GET", url, headers)
-        async with await pool.handle_async_request(request) as response:
-            info = await pool.pool_info()
+        with pool.handle_request(request) as response:
+            info = pool.pool_info()
             info_list.append(info)
-            body = await response.stream.aread()
+            body = response.stream.read()
 
-    async with AsyncConnectionPool(
-        max_connections=1, network_backend=network_backend
-    ) as pool:
+    with ConnectionPool(max_connections=1, network_backend=network_backend) as pool:
         info_list = []
-        async with trio.open_nursery() as nursery:
+        with concurrency.open_nursery() as nursery:
             for domain in [b"a.com", b"b.com", b"c.com", b"d.com", b"e.com"]:
                 nursery.start_soon(fetch, pool, domain, info_list)
 

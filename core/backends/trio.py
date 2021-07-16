@@ -1,9 +1,9 @@
 import trio
-from .base import NetworkStream, NetworkBackend
+from .base import AsyncNetworkStream, AsyncNetworkBackend
 from ..base import Origin
 
 
-class TrioStream(NetworkStream):
+class TrioStream(AsyncNetworkStream):
     def __init__(self, stream: trio.abc.Stream) -> None:
         self._stream = stream
 
@@ -17,8 +17,8 @@ class TrioStream(NetworkStream):
         await self._stream.aclose()
 
 
-class TrioBackend(NetworkBackend):
-    async def connect(self, origin: Origin) -> NetworkStream:
+class TrioBackend(AsyncNetworkBackend):
+    async def connect(self, origin: Origin) -> AsyncNetworkStream:
         stream: trio.abc.Stream = await trio.open_tcp_stream(
             host=origin.host, port=origin.port
         )

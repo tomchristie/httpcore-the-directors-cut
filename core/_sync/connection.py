@@ -1,43 +1,43 @@
-from ..backends.base import AsyncNetworkBackend
+from ..backends.base import NetworkBackend
 from ..backends.trio import TrioBackend
 from ..base import (
     ConnectionNotAvailable,
     Origin,
     RawRequest,
     RawResponse,
-    AsyncByteStream,
+    ByteStream,
 )
-from ..synchronization import AsyncLock
-from .http11 import AsyncHTTP11Connection
-from .interfaces import AsyncConnectionInterface
-from typing import AsyncIterator, List, Optional, Type
+from ..synchronization import Lock
+from .http11 import HTTP11Connection
+from .interfaces import ConnectionInterface
+from typing import Iterator, List, Optional, Type
 from types import TracebackType
 import enum
 import time
 
 
-class AsyncHTTPConnection(AsyncConnectionInterface):
+class HTTPConnection(ConnectionInterface):
     def __init__(
         self,
         origin: Origin,
         keepalive_expiry: float = None,
         buffer: List[bytes] = None,
-        network_backend: AsyncNetworkBackend = None,
+        network_backend: NetworkBackend = None,
     ) -> None:
         self._origin = origin
         self._keepalive_expiry = keepalive_expiry
-        self._network_backend: AsyncNetworkBackend = (
+        self._network_backend: NetworkBackend = (
             TrioBackend() if network_backend is None else network_backend
         )
-        self._connection: Optional[AsyncConnectionInterface] = None
-        self._request_lock = AsyncLock()
+        self._connection: Optional[ConnectionInterface] = None
+        self._request_lock = Lock()
 
-    async def handle_async_request(self, request: RawRequest) -> RawResponse:
-        async with self._request_lock:
+    def handle_request(self, request: RawRequest) -> RawResponse:
+        with self._request_lock:
             if self._connection is None:
                 origin = self._origin
-                stream = await self._network_backend.connect(origin=origin)
-                self._connection = AsyncHTTP11Connection(
+                stream = self._network_backend.connect(origin=origin)
+                self._connection = HTTP11Connection(
                     origin=origin,
                     stream=stream,
                     keepalive_expiry=self._keepalive_expiry,
@@ -45,16 +45,16 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
             elif not self._connection.is_available():
                 raise ConnectionNotAvailable()
 
-        return await self._connection.handle_async_request(request)
+        return self._connection.handle_request(request)
 
-    async def attempt_close(self) -> bool:
+    def attempt_close(self) -> bool:
         if self._connection is None:
             return False
-        return await self._connection.attempt_close()
+        return self._connection.attempt_close()
 
-    async def aclose(self) -> None:
+    def close(self) -> None:
         if self._connection is not None:
-            await self._connection.aclose()
+            self._connection.close()
 
     def get_origin(self) -> Origin:
         return self._origin
@@ -90,13 +90,13 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
     # These context managers are not used in the standard flow, but are
     # useful for testing or working with connection instances directly.
 
-    async def __aenter__(self) -> "AsyncHTTP11Connection":
+    def __enter__(self) -> "HTTP11Connection":
         return self
 
-    async def __aexit__(
+    def __exit__(
         self,
         exc_type: Type[BaseException] = None,
         exc_value: BaseException = None,
         traceback: TracebackType = None,
     ) -> None:
-        await self.aclose()
+        self.close()
