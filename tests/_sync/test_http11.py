@@ -10,7 +10,6 @@ import pytest
 from typing import List
 
 
-
 def test_http11_connection():
     origin = Origin(b"https", b"example.com", 443)
     stream = MockStream(
@@ -22,9 +21,7 @@ def test_http11_connection():
             b"Hello, world!",
         ]
     )
-    with HTTP11Connection(
-        origin=origin, stream=stream, keepalive_expiry=5.0
-    ) as conn:
+    with HTTP11Connection(origin=origin, stream=stream, keepalive_expiry=5.0) as conn:
         url = RawURL(b"https", b"example.com", 443, b"/")
         request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
         with conn.handle_request(request) as response:
@@ -38,7 +35,6 @@ def test_http11_connection():
         assert conn.is_available()
         assert not conn.has_expired()
         assert repr(conn) == "<HTTP11Connection [IDLE, Request Count: 1]>"
-
 
 
 def test_http11_connection_unread_response():
@@ -56,9 +52,7 @@ def test_http11_connection_unread_response():
             b"Hello, world!",
         ]
     )
-    with HTTP11Connection(
-        origin=origin, stream=stream, keepalive_expiry=5.0
-    ) as conn:
+    with HTTP11Connection(origin=origin, stream=stream, keepalive_expiry=5.0) as conn:
         url = RawURL(b"https", b"example.com", 443, b"/")
         request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
         with conn.handle_request(request) as response:
@@ -72,7 +66,6 @@ def test_http11_connection_unread_response():
         assert repr(conn) == "<HTTP11Connection [CLOSED, Request Count: 1]>"
 
 
-
 def test_http11_connection_with_network_error():
     """
     If a network error occurs, then no response will be returned, and the
@@ -80,9 +73,7 @@ def test_http11_connection_with_network_error():
     """
     origin = Origin(b"https", b"example.com", 443)
     stream = MockStream([b"Wait, this isn't valid HTTP!"])
-    with HTTP11Connection(
-        origin=origin, stream=stream, keepalive_expiry=5.0
-    ) as conn:
+    with HTTP11Connection(origin=origin, stream=stream, keepalive_expiry=5.0) as conn:
         url = RawURL(b"https", b"example.com", 443, b"/")
         request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
         with pytest.raises(Exception):
@@ -94,7 +85,6 @@ def test_http11_connection_with_network_error():
         assert not conn.is_available()
         assert not conn.has_expired()
         assert repr(conn) == "<HTTP11Connection [CLOSED, Request Count: 1]>"
-
 
 
 def test_http11_connection_handles_one_active_request():
@@ -112,15 +102,12 @@ def test_http11_connection_handles_one_active_request():
             b"Hello, world!",
         ]
     )
-    with HTTP11Connection(
-        origin=origin, stream=stream, keepalive_expiry=5.0
-    ) as conn:
+    with HTTP11Connection(origin=origin, stream=stream, keepalive_expiry=5.0) as conn:
         url = RawURL(b"https", b"example.com", 443, b"/")
         request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
         with conn.handle_request(request) as response:
             with pytest.raises(ConnectionNotAvailable):
                 conn.handle_request(request)
-
 
 
 def test_http11_connection_attempt_close():
@@ -137,9 +124,7 @@ def test_http11_connection_attempt_close():
             b"Hello, world!",
         ]
     )
-    with HTTP11Connection(
-        origin=origin, stream=stream, keepalive_expiry=5.0
-    ) as conn:
+    with HTTP11Connection(origin=origin, stream=stream, keepalive_expiry=5.0) as conn:
         url = RawURL(b"https", b"example.com", 443, b"/")
         request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
         with conn.handle_request(request) as response:

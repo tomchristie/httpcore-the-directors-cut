@@ -11,7 +11,6 @@ import pytest
 from typing import List
 
 
-
 def test_http_connection():
     origin = Origin(b"https", b"example.com", 443)
     network_backend = MockBackend(
@@ -50,8 +49,10 @@ def test_http_connection():
         assert not conn.is_closed()
         assert conn.is_available()
         assert not conn.has_expired()
-        assert repr(conn) == "<HTTPConnection ['https://example.com:443', HTTP/1.1, IDLE, Request Count: 1]>"
-
+        assert (
+            repr(conn)
+            == "<HTTPConnection ['https://example.com:443', HTTP/1.1, IDLE, Request Count: 1]>"
+        )
 
 
 def test_concurrent_requests_not_available_on_http11_connections():
