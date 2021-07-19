@@ -1,5 +1,5 @@
 from ..backends.base import NetworkBackend
-from ..backends.trio import TrioBackend
+from ..backends.sync import SyncBackend
 from ..base import (
     ConnectionNotAvailable,
     Origin,
@@ -27,7 +27,7 @@ class HTTPConnection(ConnectionInterface):
         self._origin = origin
         self._keepalive_expiry = keepalive_expiry
         self._network_backend: NetworkBackend = (
-            TrioBackend() if network_backend is None else network_backend
+            SyncBackend() if network_backend is None else network_backend
         )
         self._connection: Optional[ConnectionInterface] = None
         self._request_lock = Lock()

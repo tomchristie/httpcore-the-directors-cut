@@ -1,7 +1,7 @@
 from typing import Iterator, Dict, List, Optional, Type
 from types import TracebackType
 from ..backends.base import NetworkBackend
-from ..backends.trio import TrioBackend
+from ..backends.sync import SyncBackend
 from ..base import (
     ConnectionNotAvailable,
     Origin,
@@ -37,7 +37,7 @@ class ConnectionPool:
         self._pool_lock = Lock()
         self._pool_semaphore = Semaphore(bound=max_connections)
         self._network_backend = (
-            TrioBackend() if network_backend is None else network_backend
+            SyncBackend() if network_backend is None else network_backend
         )
 
     def get_origin(self, request: RawRequest) -> Origin:

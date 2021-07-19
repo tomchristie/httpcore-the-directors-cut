@@ -20,12 +20,10 @@ SUBS = [
     ('__aenter__', '__enter__'),
     ('__aexit__', '__exit__'),
     ('__aiter__', '__iter__'),
-    ('@pytest.mark.anyio', ''),
     ('@pytest.mark.trio', ''),
-    (r'@pytest.fixture\(params=\["auto", "anyio"\]\)',
-     '@pytest.fixture(params=["sync"])'),
-    ('lookup_async_backend', "lookup_sync_backend"),
-    ('auto', 'sync'),
+    ('import trio as concurrency', 'from tests import concurrency'),
+    ('from ..backends.trio import TrioBackend', 'from ..backends.sync import SyncBackend'),
+    ('TrioBackend', 'SyncBackend'),
 ]
 COMPILED_SUBS = [
     (re.compile(r'(^|\b)' + regex + r'($|\b)'), repl)

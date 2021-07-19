@@ -10,7 +10,7 @@ from core import (
 from core.backends.mock import AsyncMockBackend
 from typing import List
 import pytest
-import trio
+import trio as concurrency
 
 
 @pytest.mark.trio
@@ -250,7 +250,7 @@ async def test_connection_pool_concurrency():
         max_connections=1, network_backend=network_backend
     ) as pool:
         info_list = []
-        async with trio.open_nursery() as nursery:
+        async with concurrency.open_nursery() as nursery:
             for domain in [b"a.com", b"b.com", b"c.com", b"d.com", b"e.com"]:
                 nursery.start_soon(fetch, pool, domain, info_list)
 
