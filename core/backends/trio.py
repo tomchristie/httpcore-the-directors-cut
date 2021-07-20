@@ -17,8 +17,12 @@ class TrioStream(AsyncNetworkStream):
     async def aclose(self) -> None:
         await self._stream.aclose()
 
-    async def start_tls(self, ssl_context: ssl.SSLContext) -> AsyncNetworkStream:
-        trio_ssl_stream = trio.SSLStream(self._stream, ssl_context)
+    async def start_tls(self, ssl_context: ssl.SSLContext, server_hostname: bytes = None) -> AsyncNetworkStream:
+        trio_ssl_stream = trio.SSLStream(
+            self._stream,
+            ssl_context,
+            server_hostname=server_hostname.decode("ascii")
+        )
         await trio_ssl_stream.do_handshake()
         return TrioStream(trio_ssl_stream)
 
@@ -33,5 +37,5 @@ class TrioBackend(AsyncNetworkBackend):
         )
         stream = TrioStream(trio_stream)
         if origin.scheme == b"https":
-            stream = await stream.start_tls(self._ssl_context)
+            stream = await stream.start_tls(self._ssl_context, server_hostname=origin.host)
         return stream

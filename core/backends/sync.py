@@ -19,8 +19,11 @@ class SyncStream(NetworkStream):
     def close(self) -> None:
         self._sock.close()
 
-    def start_tls(self, ssl_context: ssl.SSLContext) -> NetworkStream:
-        sock = ssl_context.wrap_socket(self._sock)
+    def start_tls(self, ssl_context: ssl.SSLContext, server_hostname: bytes = None) -> NetworkStream:
+        sock = ssl_context.wrap_socket(
+            self._sock,
+            server_hostname=server_hostname.decode("ascii")
+        )
         return SyncStream(sock)
 
 
@@ -33,5 +36,5 @@ class SyncBackend(NetworkBackend):
         sock = socket.create_connection(address)
         stream = SyncStream(sock)
         if origin.scheme == b"https":
-            stream = stream.start_tls(self._ssl_context)
+            stream = stream.start_tls(self._ssl_context, server_hostname=origin.host)
         return stream
