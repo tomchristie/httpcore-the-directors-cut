@@ -14,12 +14,14 @@ from .connection import HTTPConnection
 from .interfaces import ConnectionInterface
 import random
 import itertools
+import ssl
 
 
 class ConnectionPool:
     def __init__(
         self,
-        max_connections: int,
+        ssl_context: ssl.SSLContext = None,
+        max_connections: int = 10,
         max_keepalive_connections: int = None,
         keepalive_expiry: float = None,
         network_backend: NetworkBackend = None,
@@ -37,7 +39,7 @@ class ConnectionPool:
         self._pool_lock = Lock()
         self._pool_semaphore = Semaphore(bound=max_connections)
         self._network_backend = (
-            SyncBackend() if network_backend is None else network_backend
+            SyncBackend(ssl_context=ssl_context) if network_backend is None else network_backend
         )
 
     def get_origin(self, request: RawRequest) -> Origin:

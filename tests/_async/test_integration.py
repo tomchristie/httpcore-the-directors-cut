@@ -1,4 +1,5 @@
 import pytest
+import ssl
 import urllib
 from core import (
     AsyncConnectionPool,
@@ -19,8 +20,20 @@ def parse(url_string: str) -> RawURL:
 
 @pytest.mark.trio
 async def test_request(httpbin):
-    async with AsyncConnectionPool(max_connections=10) as pool:
+    async with AsyncConnectionPool() as pool:
         url = parse(httpbin.url)
+        request = RawRequest(b"GET", url, [(b"Host", url.host)])
+        async with await pool.handle_async_request(request) as response:
+            assert response.status == 200
+
+
+@pytest.mark.trio
+async def test_request(httpbin_secure):
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    async with AsyncConnectionPool(ssl_context=ssl_context) as pool:
+        url = parse(httpbin_secure.url)
         request = RawRequest(b"GET", url, [(b"Host", url.host)])
         async with await pool.handle_async_request(request) as response:
             assert response.status == 200

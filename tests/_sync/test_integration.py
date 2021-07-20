@@ -1,4 +1,5 @@
 import pytest
+import ssl
 import urllib
 from core import (
     ConnectionPool,
@@ -19,8 +20,20 @@ def parse(url_string: str) -> RawURL:
 
 
 def test_request(httpbin):
-    with ConnectionPool(max_connections=10) as pool:
+    with ConnectionPool() as pool:
         url = parse(httpbin.url)
+        request = RawRequest(b"GET", url, [(b"Host", url.host)])
+        with pool.handle_request(request) as response:
+            assert response.status == 200
+
+
+
+def test_request(httpbin_secure):
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    with ConnectionPool(ssl_context=ssl_context) as pool:
+        url = parse(httpbin_secure.url)
         request = RawRequest(b"GET", url, [(b"Host", url.host)])
         with pool.handle_request(request) as response:
             assert response.status == 200

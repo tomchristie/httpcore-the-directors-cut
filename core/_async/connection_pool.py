@@ -14,12 +14,14 @@ from .connection import AsyncHTTPConnection
 from .interfaces import AsyncConnectionInterface
 import random
 import itertools
+import ssl
 
 
 class AsyncConnectionPool:
     def __init__(
         self,
-        max_connections: int,
+        ssl_context: ssl.SSLContext = None,
+        max_connections: int = 10,
         max_keepalive_connections: int = None,
         keepalive_expiry: float = None,
         network_backend: AsyncNetworkBackend = None,
@@ -37,7 +39,7 @@ class AsyncConnectionPool:
         self._pool_lock = AsyncLock()
         self._pool_semaphore = AsyncSemaphore(bound=max_connections)
         self._network_backend = (
-            TrioBackend() if network_backend is None else network_backend
+            TrioBackend(ssl_context=ssl_context) if network_backend is None else network_backend
         )
 
     def get_origin(self, request: RawRequest) -> Origin:
