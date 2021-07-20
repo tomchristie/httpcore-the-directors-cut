@@ -19,17 +19,20 @@ class SyncStream(NetworkStream):
     def close(self) -> None:
         self._sock.close()
 
-    def start_tls(self, ssl_context: ssl.SSLContext, server_hostname: bytes = None) -> NetworkStream:
+    def start_tls(
+        self, ssl_context: ssl.SSLContext, server_hostname: bytes = None
+    ) -> NetworkStream:
         sock = ssl_context.wrap_socket(
-            self._sock,
-            server_hostname=server_hostname.decode("ascii")
+            self._sock, server_hostname=server_hostname.decode("ascii")
         )
         return SyncStream(sock)
 
 
 class SyncBackend(NetworkBackend):
     def __init__(self, ssl_context: ssl.SSLContext = None) -> None:
-        self._ssl_context = ssl.create_default_context() if ssl_context is None else ssl_context
+        self._ssl_context = (
+            ssl.create_default_context() if ssl_context is None else ssl_context
+        )
 
     def connect(self, origin: Origin) -> SyncStream:
         address = (origin.host.decode("ascii"), origin.port)

@@ -32,14 +32,18 @@ class ConnectionPool:
         # We always close off keep-alives to allow at least one slot
         # in the connection pool. There are more nifty stratagies that we
         # could use, but this keeps things nice and simple.
-        self._max_keepalive_connections = min(max_keepalive_connections, max_connections - 1)
+        self._max_keepalive_connections = min(
+            max_keepalive_connections, max_connections - 1
+        )
         self._keepalive_expiry = keepalive_expiry
 
         self._pool: List[ConnectionInterface] = []
         self._pool_lock = Lock()
         self._pool_semaphore = Semaphore(bound=max_connections)
         self._network_backend = (
-            SyncBackend(ssl_context=ssl_context) if network_backend is None else network_backend
+            SyncBackend(ssl_context=ssl_context)
+            if network_backend is None
+            else network_backend
         )
 
     def get_origin(self, request: RawRequest) -> Origin:
@@ -66,9 +70,7 @@ class ConnectionPool:
         with self._pool_lock:
             self._pool.remove(connection)
 
-    def _get_from_pool(
-        self, origin: Origin
-    ) -> Optional[ConnectionInterface]:
+    def _get_from_pool(self, origin: Origin) -> Optional[ConnectionInterface]:
         """
         Return an available HTTP connection for the given origin,
         if one currently exists in the pool.

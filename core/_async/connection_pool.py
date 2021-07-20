@@ -32,14 +32,18 @@ class AsyncConnectionPool:
         # We always close off keep-alives to allow at least one slot
         # in the connection pool. There are more nifty stratagies that we
         # could use, but this keeps things nice and simple.
-        self._max_keepalive_connections = min(max_keepalive_connections, max_connections - 1)
+        self._max_keepalive_connections = min(
+            max_keepalive_connections, max_connections - 1
+        )
         self._keepalive_expiry = keepalive_expiry
 
         self._pool: List[AsyncConnectionInterface] = []
         self._pool_lock = AsyncLock()
         self._pool_semaphore = AsyncSemaphore(bound=max_connections)
         self._network_backend = (
-            TrioBackend(ssl_context=ssl_context) if network_backend is None else network_backend
+            TrioBackend(ssl_context=ssl_context)
+            if network_backend is None
+            else network_backend
         )
 
     def get_origin(self, request: RawRequest) -> Origin:
