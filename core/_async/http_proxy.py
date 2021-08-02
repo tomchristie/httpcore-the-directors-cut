@@ -79,7 +79,7 @@ class AsyncForwardHTTPConnection(AsyncConnectionInterface):
             port=self._proxy_origin.port,
             target=target
         )
-        proxy_request = RawRequest(
+        proxy_request = AsyncRawRequest(
             method=request.method,
             url=proxy_url,
             headers=request.headers,
@@ -135,7 +135,7 @@ class AsyncTunnelHTTPConnection(AsyncConnectionInterface):
         self._connected = False
 
     async def handle_async_request(self, request: AsyncRawRequest) -> AsyncRawResponse:
-        with self._connect_lock:
+        async with self._connect_lock:
             if not self._connected:
                 target = b''.join([
                     self._remote_origin.host,
@@ -151,12 +151,12 @@ class AsyncTunnelHTTPConnection(AsyncConnectionInterface):
                     port=self._proxy_origin.port,
                     target=target
                 )
-                proxy_request = RawRequest(
+                proxy_request = AsyncRawRequest(
                     method="CONNECT",
                     url=proxy_url,
                     headers=headers
                 )
-                response = self._connection.handle_async_request(proxy_request)
+                response = await self._connection.handle_async_request(proxy_request)
                 stream = response.extensions["stream"]
                 stream = await stream.start_tls(
                     ssl_context=self._ssl_context,

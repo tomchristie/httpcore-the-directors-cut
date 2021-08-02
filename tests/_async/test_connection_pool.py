@@ -1,7 +1,5 @@
 from core import (
     AsyncConnectionPool,
-    AsyncConnectionInterface,
-    AsyncHTTPConnection,
     Origin,
     RawURL,
     AsyncRawRequest,

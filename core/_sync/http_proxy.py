@@ -57,12 +57,12 @@ class ForwardHTTPConnection(ConnectionInterface):
         keepalive_expiry: float = None,
         network_backend: NetworkBackend = None,
     ) -> None:
-        self._proxy_origin = proxy_origin
         self._connection = HTTPConnection(
             origin=proxy_origin,
             keepalive_expiry=keepalive_expiry,
             network_backend=network_backend
         )
+        self._proxy_origin = proxy_origin
 
     def handle_request(self, request: RawRequest) -> RawResponse:
         target = b''.join([
@@ -122,18 +122,17 @@ class TunnelHTTPConnection(ConnectionInterface):
         keepalive_expiry: float = None,
         network_backend: NetworkBackend = None,
     ) -> None:
+        self._connection = HTTPConnection(
+            origin=proxy_origin,
+            keepalive_expiry=keepalive_expiry,
+            network_backend=network_backend
+        )
         self._proxy_origin = proxy_origin
         self._remote_origin = remote_origin
         self._ssl_context = ssl_context
         self._keepalive_expiry = keepalive_expiry
-        self._network_backend = network_backend
-        self._connection = HTTPConnection(
-            origin=self._proxy_origin,
-            keepalive_expiry=self._keepalive_expiry,
-            network_backend=self._network_backend
-        )
-        self._connected = False
         self._connect_lock = Lock()
+        self._connected = False
 
     def handle_request(self, request: RawRequest) -> RawResponse:
         with self._connect_lock:

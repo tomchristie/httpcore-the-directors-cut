@@ -1,6 +1,7 @@
 from .base import AsyncNetworkStream, AsyncNetworkBackend, NetworkStream, NetworkBackend
 from ..urls import Origin
 from typing import List
+import ssl
 
 
 class MockStream(NetworkStream):
@@ -18,6 +19,11 @@ class MockStream(NetworkStream):
 
     def close(self) -> None:
         pass
+
+    def start_tls(
+        self, ssl_context: ssl.SSLContext, server_hostname: bytes = None
+    ) -> NetworkStream:
+        return self
 
 
 class MockBackend(NetworkBackend):
@@ -43,6 +49,11 @@ class AsyncMockStream(AsyncNetworkStream):
 
     async def aclose(self) -> None:
         pass
+
+    async def start_tls(
+        self, ssl_context: ssl.SSLContext, server_hostname: bytes = None
+    ) -> NetworkStream:
+        return self
 
 
 class AsyncMockBackend(AsyncNetworkBackend):

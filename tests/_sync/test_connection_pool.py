@@ -1,7 +1,5 @@
 from core import (
     ConnectionPool,
-    ConnectionInterface,
-    HTTPConnection,
     Origin,
     RawURL,
     RawRequest,
