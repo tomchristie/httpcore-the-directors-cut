@@ -1,3 +1,9 @@
+__all__ = [
+    'ConnectionNotAvailable',
+    'UnsupportedProtocol'
+]
+
+
 class UnsupportedProtocol(Exception):
     pass
 

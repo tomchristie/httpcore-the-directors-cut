@@ -1,3 +1,11 @@
+# from ..backends.base import AsyncNetworkBackend
+# from ..urls import Origin
+# from.connection_pool import AsyncConnectionPool
+# from .interfaces import AsyncConnectionInterface
+# from .models import AsyncRawRequest, AsyncRawResponse
+# import ssl
+#
+#
 # class AsyncHTTPProxy(AsyncConnectionPool):
 #     def __init__(
 #         self,
@@ -42,7 +50,7 @@
 #             network_backend=network_backend
 #         )
 #
-#     async def handle_async_request(self, request: RawRequest) -> RawResponse:
+#     async def handle_async_request(self, request: AsyncRawRequest) -> AsyncRawResponse:
 #         proxy_url = RawURL(
 #             scheme=self.proxy_origin.scheme,
 #             host=self.proxy_origin.host,

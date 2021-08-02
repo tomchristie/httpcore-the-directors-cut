@@ -1,6 +1,11 @@
 from typing import Any, Optional
 
 
+__all__ = [
+    'Origin',
+    'RawURL'
+]
+
 class Origin:
     def __init__(self, scheme: bytes, host: bytes, port: int) -> None:
         self.scheme = scheme
