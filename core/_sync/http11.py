@@ -73,6 +73,7 @@ class HTTP11Connection(ConnectionInterface):
                 extensions={
                     "http_version": http_version,
                     "reason_phrase": reason_phrase,
+                    "stream": self._network_stream
                 },
             )
         except BaseException as exc:
