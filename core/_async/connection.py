@@ -1,19 +1,14 @@
+from types import TracebackType
+from typing import Optional, Type
+
 from ..backends.base import AsyncNetworkBackend
 from ..backends.trio import TrioBackend
-from ..base import (
-    ConnectionNotAvailable,
-    Origin,
-    RawRequest,
-    RawResponse,
-    AsyncByteStream,
-)
+from ..exceptions import ConnectionNotAvailable
 from ..synchronization import AsyncLock
+from ..urls import Origin
 from .http11 import AsyncHTTP11Connection
 from .interfaces import AsyncConnectionInterface
-from typing import AsyncIterator, List, Optional, Type
-from types import TracebackType
-import enum
-import time
+from .models import AsyncRawRequest, AsyncRawResponse
 
 
 class AsyncHTTPConnection(AsyncConnectionInterface):
@@ -21,7 +16,6 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
         self,
         origin: Origin,
         keepalive_expiry: float = None,
-        buffer: List[bytes] = None,
         network_backend: AsyncNetworkBackend = None,
     ) -> None:
         self._origin = origin
@@ -32,7 +26,7 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
         self._connection: Optional[AsyncConnectionInterface] = None
         self._request_lock = AsyncLock()
 
-    async def handle_async_request(self, request: RawRequest) -> RawResponse:
+    async def handle_async_request(self, request: AsyncRawRequest) -> AsyncRawResponse:
         async with self._request_lock:
             if self._connection is None:
                 origin = self._origin
@@ -47,10 +41,11 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
 
         return await self._connection.handle_async_request(request)
 
-    async def attempt_close(self) -> bool:
-        if self._connection is None:
-            return False
-        return await self._connection.attempt_close()
+    async def attempt_aclose(self) -> bool:
+        closed = False
+        if self._connection is not None:
+            closed = await self._connection.attempt_aclose()
+        return closed
 
     async def aclose(self) -> None:
         if self._connection is not None:
@@ -90,7 +85,7 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
     # These context managers are not used in the standard flow, but are
     # useful for testing or working with connection instances directly.
 
-    async def __aenter__(self) -> "AsyncHTTP11Connection":
+    async def __aenter__(self) -> "AsyncHTTPConnection":
         return self
 
     async def __aexit__(

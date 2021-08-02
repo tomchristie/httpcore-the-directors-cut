@@ -1,19 +1,16 @@
-from ..base import (
-    AsyncByteStream,
-    ConnectionNotAvailable,
-    Origin,
-    RawRequest,
-    RawResponse,
-)
-from ..backends.base import AsyncNetworkStream
-from ..synchronization import AsyncLock
-from .interfaces import AsyncConnectionInterface
-from types import TracebackType
-from typing import AsyncIterator, Callable, Tuple, List, Type, Union
 import enum
 import time
+from types import TracebackType
+from typing import AsyncIterator, Callable, List, Optional, Tuple, Type, Union
+
 import h11
 
+from ..backends.base import AsyncNetworkStream
+from ..exceptions import ConnectionNotAvailable
+from ..synchronization import AsyncLock
+from ..urls import Origin
+from .interfaces import AsyncConnectionInterface
+from .models import AsyncByteStream, AsyncRawRequest, AsyncRawResponse
 
 H11Event = Union[
     h11.Request,
@@ -40,15 +37,15 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
     ) -> None:
         self._origin = origin
         self._network_stream = stream
-        self._keepalive_expiry = keepalive_expiry
-        self._expire_at: float = None
+        self._keepalive_expiry: Optional[float] = keepalive_expiry
+        self._expire_at: Optional[float] = None
         self._connection_close = False
         self._state = HTTPConnectionState.NEW
         self._state_lock = AsyncLock()
         self._request_count = 0
         self._h11_state = h11.Connection(our_role=h11.CLIENT)
 
-    async def handle_async_request(self, request: RawRequest) -> RawResponse:
+    async def handle_async_request(self, request: AsyncRawRequest) -> AsyncRawResponse:
         async with self._state_lock:
             if self._state in (HTTPConnectionState.NEW, HTTPConnectionState.IDLE):
                 self._request_count += 1
@@ -66,7 +63,7 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
                 reason_phrase,
                 headers,
             ) = await self._receive_response_headers()
-            return RawResponse(
+            return AsyncRawResponse(
                 status=status_code,
                 headers=headers,
                 stream=HTTPConnectionByteStream(
@@ -84,13 +81,13 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
 
     # Sending the request...
 
-    async def _send_request_headers(self, request: RawRequest) -> None:
+    async def _send_request_headers(self, request: AsyncRawRequest) -> None:
         event = h11.Request(
             method=request.method, target=request.url.target, headers=request.headers
         )
         await self._send_event(event)
 
-    async def _send_request_body(self, request: RawRequest) -> None:
+    async def _send_request_body(self, request: AsyncRawRequest) -> None:
         async for chunk in request.stream:
             event = h11.Data(data=chunk)
             await self._send_event(event)
@@ -185,7 +182,7 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
     def is_closed(self) -> bool:
         return self._state == HTTPConnectionState.CLOSED
 
-    async def attempt_close(self) -> bool:
+    async def attempt_aclose(self) -> bool:
         async with self._state_lock:
             if self._state in (HTTPConnectionState.NEW, HTTPConnectionState.IDLE):
                 await self.aclose()

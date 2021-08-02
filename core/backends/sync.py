@@ -1,5 +1,5 @@
 from .base import NetworkStream, NetworkBackend
-from ..base import Origin
+from ..urls import Origin
 import socket
 import ssl
 

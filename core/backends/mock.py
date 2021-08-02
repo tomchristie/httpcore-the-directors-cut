@@ -1,5 +1,5 @@
 from .base import AsyncNetworkStream, AsyncNetworkBackend, NetworkStream, NetworkBackend
-from ..base import Origin
+from ..urls import Origin
 from typing import List
 
 

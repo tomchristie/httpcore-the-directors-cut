@@ -1,19 +1,14 @@
+from types import TracebackType
+from typing import Optional, Type
+
 from ..backends.base import NetworkBackend
 from ..backends.sync import SyncBackend
-from ..base import (
-    ConnectionNotAvailable,
-    Origin,
-    RawRequest,
-    RawResponse,
-    ByteStream,
-)
+from ..exceptions import ConnectionNotAvailable
 from ..synchronization import Lock
+from ..urls import Origin
 from .http11 import HTTP11Connection
 from .interfaces import ConnectionInterface
-from typing import Iterator, List, Optional, Type
-from types import TracebackType
-import enum
-import time
+from .models import RawRequest, RawResponse
 
 
 class HTTPConnection(ConnectionInterface):
@@ -21,7 +16,6 @@ class HTTPConnection(ConnectionInterface):
         self,
         origin: Origin,
         keepalive_expiry: float = None,
-        buffer: List[bytes] = None,
         network_backend: NetworkBackend = None,
     ) -> None:
         self._origin = origin
@@ -47,10 +41,11 @@ class HTTPConnection(ConnectionInterface):
 
         return self._connection.handle_request(request)
 
-    def attempt_close(self) -> bool:
-        if self._connection is None:
-            return False
-        return self._connection.attempt_close()
+    def attempt_aclose(self) -> bool:
+        closed = False
+        if self._connection is not None:
+            closed = self._connection.attempt_aclose()
+        return closed
 
     def close(self) -> None:
         if self._connection is not None:
@@ -90,7 +85,7 @@ class HTTPConnection(ConnectionInterface):
     # These context managers are not used in the standard flow, but are
     # useful for testing or working with connection instances directly.
 
-    def __enter__(self) -> "HTTP11Connection":
+    def __enter__(self) -> "HTTPConnection":
         return self
 
     def __exit__(

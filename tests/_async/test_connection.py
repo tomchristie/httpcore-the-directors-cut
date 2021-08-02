@@ -1,7 +1,7 @@
 from core import (
     AsyncHTTPConnection,
     Origin,
-    RawRequest,
+    AsyncRawRequest,
     RawURL,
     AsyncByteStream,
     ConnectionNotAvailable,
@@ -35,7 +35,7 @@ async def test_http_connection():
         assert repr(conn) == "<AsyncHTTPConnection [CONNECTING]>"
 
         url = RawURL(b"https", b"example.com", 443, b"/")
-        request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
+        request = AsyncRawRequest(b"GET", url, [(b"Host", b"example.com")])
         async with await conn.handle_async_request(request) as response:
             assert (
                 repr(conn)
@@ -77,7 +77,7 @@ async def test_concurrent_requests_not_available_on_http11_connections():
         origin=origin, network_backend=network_backend, keepalive_expiry=5.0
     ) as conn:
         url = RawURL(b"https", b"example.com", 443, b"/")
-        request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
+        request = AsyncRawRequest(b"GET", url, [(b"Host", b"example.com")])
         async with await conn.handle_async_request(request) as response:
             with pytest.raises(ConnectionNotAvailable):
                 await conn.handle_async_request(request)

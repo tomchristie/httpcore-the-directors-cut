@@ -1,7 +1,7 @@
 import ssl
 import trio
 from .base import AsyncNetworkStream, AsyncNetworkBackend
-from ..base import Origin
+from ..urls import Origin
 
 
 class TrioStream(AsyncNetworkStream):

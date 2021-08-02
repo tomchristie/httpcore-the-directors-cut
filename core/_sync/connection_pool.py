@@ -1,20 +1,15 @@
-from typing import Iterator, Dict, List, Optional, Type
+import ssl
 from types import TracebackType
+from typing import Iterator, List, Optional, Type
+
 from ..backends.base import NetworkBackend
 from ..backends.sync import SyncBackend
-from ..base import (
-    ConnectionNotAvailable,
-    Origin,
-    RawRequest,
-    RawResponse,
-    ByteStream,
-)
+from ..exceptions import ConnectionNotAvailable, UnsupportedProtocol
 from ..synchronization import Lock, Semaphore
+from ..urls import Origin
 from .connection import HTTPConnection
 from .interfaces import ConnectionInterface
-import random
-import itertools
-import ssl
+from .models import ByteStream, RawRequest, RawResponse
 
 
 class ConnectionPool:
@@ -70,7 +65,9 @@ class ConnectionPool:
         with self._pool_lock:
             self._pool.remove(connection)
 
-    def _get_from_pool(self, origin: Origin) -> Optional[ConnectionInterface]:
+    def _get_from_pool(
+        self, origin: Origin
+    ) -> Optional[ConnectionInterface]:
         """
         Return an available HTTP connection for the given origin,
         if one currently exists in the pool.
@@ -91,7 +88,7 @@ class ConnectionPool:
         """
         with self._pool_lock:
             for idx, connection in reversed(list(enumerate(self._pool))):
-                closed = connection.attempt_close()
+                closed = connection.attempt_aclose()
                 if closed:
                     self._pool.pop(idx)
                     self._pool_semaphore.release()
@@ -105,12 +102,12 @@ class ConnectionPool:
         with self._pool_lock:
             for idx, connection in reversed(list(enumerate(self._pool))):
                 if connection.has_expired():
-                    closed = connection.attempt_close()
+                    closed = connection.attempt_aclose()
                     if closed:
                         self._pool.pop(idx)
                         self._pool_semaphore.release()
 
-    def pool_info(self) -> Dict[str, List[str]]:
+    def pool_info(self) -> List[str]:
         """
         Return a list of connection info for the connections currently in the pool.
 
@@ -127,6 +124,16 @@ class ConnectionPool:
         """
         Send an HTTP request, and return an HTTP response.
         """
+        scheme = request.url.scheme.decode()
+        if scheme == "":
+            raise UnsupportedProtocol(
+                f"The request to '{request.url}' is missing an 'http://' or 'https://' protocol."
+            )
+        if scheme not in ("http", "https"):
+            raise UnsupportedProtocol(
+                f"The request to '{request.url}' has an unsupported protocol '{scheme}://'."
+            )
+
         origin = self.get_origin(request)
 
         while True:
@@ -180,7 +187,7 @@ class ConnectionPool:
                 #   that ended up resulting in an HTTP/1.1 connection.
                 # * The request was to an HTTP/2 connection, but the stream ID
                 #   space became exhausted, or a global error occured.
-                continue
+                continue  # pragma: nocover
             except BaseException as exc:
                 # If an exception occurs we check if we can release the
                 # the connection to the pool.
@@ -193,7 +200,9 @@ class ConnectionPool:
             return RawResponse(
                 status=response.status,
                 headers=response.headers,
-                stream=ConnectionPoolByteStream(response.stream, self, connection),
+                stream=ConnectionPoolByteStream(
+                    response.stream, self, connection
+                ),
                 extensions=response.extensions,
             )
 
@@ -214,15 +223,15 @@ class ConnectionPool:
         # exceeding the max_keepalive_connections.
         while len(self._pool) > self._max_keepalive_connections:
             if not self._close_one_idle_connection():
-                break
+                break  # pragma: nocover
 
-    def close(self):
+    def close(self) -> None:
         with self._pool_lock:
             for connection in self._pool:
                 connection.close()
             self._pool = []
 
-    def __enter__(self):
+    def __enter__(self) -> "ConnectionPool":
         return self
 
     def __exit__(
@@ -230,7 +239,7 @@ class ConnectionPool:
         exc_type: Type[BaseException] = None,
         exc_value: BaseException = None,
         traceback: TracebackType = None,
-    ):
+    ) -> None:
         self.close()
 
 
@@ -254,7 +263,7 @@ class ConnectionPoolByteStream(ByteStream):
         for part in self._stream:
             yield part
 
-    def close(self):
+    def close(self) -> None:
         try:
             self._stream.close()
         finally:

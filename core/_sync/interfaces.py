@@ -1,4 +1,5 @@
-from ..base import RawRequest, RawResponse, Origin
+from ..urls import Origin
+from .models import RawRequest, RawResponse
 
 
 class ConnectionInterface:

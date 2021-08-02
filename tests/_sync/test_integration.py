@@ -3,8 +3,8 @@ import ssl
 import urllib
 from core import (
     ConnectionPool,
-    RawURL,
     RawRequest,
+    RawURL,
 )
 
 
@@ -18,12 +18,14 @@ def parse(url_string: str) -> RawURL:
     return RawURL(scheme, host, port, target)
 
 
+
 def test_request(httpbin):
     with ConnectionPool() as pool:
         url = parse(httpbin.url)
         request = RawRequest(b"GET", url, [(b"Host", url.host)])
         with pool.handle_request(request) as response:
             assert response.status == 200
+
 
 
 def test_request(httpbin_secure):

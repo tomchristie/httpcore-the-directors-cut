@@ -1,19 +1,16 @@
-from ..base import (
-    ByteStream,
-    ConnectionNotAvailable,
-    Origin,
-    RawRequest,
-    RawResponse,
-)
-from ..backends.base import NetworkStream
-from ..synchronization import Lock
-from .interfaces import ConnectionInterface
-from types import TracebackType
-from typing import Iterator, Callable, Tuple, List, Type, Union
 import enum
 import time
+from types import TracebackType
+from typing import Iterator, Callable, List, Optional, Tuple, Type, Union
+
 import h11
 
+from ..backends.base import NetworkStream
+from ..exceptions import ConnectionNotAvailable
+from ..synchronization import Lock
+from ..urls import Origin
+from .interfaces import ConnectionInterface
+from .models import ByteStream, RawRequest, RawResponse
 
 H11Event = Union[
     h11.Request,
@@ -40,8 +37,8 @@ class HTTP11Connection(ConnectionInterface):
     ) -> None:
         self._origin = origin
         self._network_stream = stream
-        self._keepalive_expiry = keepalive_expiry
-        self._expire_at: float = None
+        self._keepalive_expiry: Optional[float] = keepalive_expiry
+        self._expire_at: Optional[float] = None
         self._connection_close = False
         self._state = HTTPConnectionState.NEW
         self._state_lock = Lock()
@@ -185,7 +182,7 @@ class HTTP11Connection(ConnectionInterface):
     def is_closed(self) -> bool:
         return self._state == HTTPConnectionState.CLOSED
 
-    def attempt_close(self) -> bool:
+    def attempt_aclose(self) -> bool:
         with self._state_lock:
             if self._state in (HTTPConnectionState.NEW, HTTPConnectionState.IDLE):
                 self.close()

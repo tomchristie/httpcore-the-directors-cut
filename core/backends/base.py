@@ -1,4 +1,4 @@
-from ..base import Origin
+from ..urls import Origin
 
 
 class NetworkStream:

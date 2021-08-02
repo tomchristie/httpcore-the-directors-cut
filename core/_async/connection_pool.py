@@ -1,20 +1,15 @@
-from typing import AsyncIterator, Dict, List, Optional, Type
+import ssl
 from types import TracebackType
+from typing import AsyncIterator, List, Optional, Type
+
 from ..backends.base import AsyncNetworkBackend
 from ..backends.trio import TrioBackend
-from ..base import (
-    ConnectionNotAvailable,
-    Origin,
-    RawRequest,
-    RawResponse,
-    AsyncByteStream,
-)
+from ..exceptions import ConnectionNotAvailable, UnsupportedProtocol
 from ..synchronization import AsyncLock, AsyncSemaphore
+from ..urls import Origin
 from .connection import AsyncHTTPConnection
 from .interfaces import AsyncConnectionInterface
-import random
-import itertools
-import ssl
+from .models import AsyncByteStream, AsyncRawRequest, AsyncRawResponse
 
 
 class AsyncConnectionPool:
@@ -46,7 +41,7 @@ class AsyncConnectionPool:
             else network_backend
         )
 
-    def get_origin(self, request: RawRequest) -> Origin:
+    def get_origin(self, request: AsyncRawRequest) -> Origin:
         return request.url.origin
 
     def create_connection(self, origin: Origin) -> AsyncConnectionInterface:
@@ -93,7 +88,7 @@ class AsyncConnectionPool:
         """
         async with self._pool_lock:
             for idx, connection in reversed(list(enumerate(self._pool))):
-                closed = await connection.attempt_close()
+                closed = await connection.attempt_aclose()
                 if closed:
                     self._pool.pop(idx)
                     await self._pool_semaphore.release()
@@ -107,12 +102,12 @@ class AsyncConnectionPool:
         async with self._pool_lock:
             for idx, connection in reversed(list(enumerate(self._pool))):
                 if connection.has_expired():
-                    closed = await connection.attempt_close()
+                    closed = await connection.attempt_aclose()
                     if closed:
                         self._pool.pop(idx)
                         await self._pool_semaphore.release()
 
-    async def pool_info(self) -> Dict[str, List[str]]:
+    async def pool_info(self) -> List[str]:
         """
         Return a list of connection info for the connections currently in the pool.
 
@@ -125,10 +120,20 @@ class AsyncConnectionPool:
         async with self._pool_lock:
             return [conn.info() for conn in self._pool]
 
-    async def handle_async_request(self, request: RawRequest) -> RawResponse:
+    async def handle_async_request(self, request: AsyncRawRequest) -> AsyncRawResponse:
         """
         Send an HTTP request, and return an HTTP response.
         """
+        scheme = request.url.scheme.decode()
+        if scheme == "":
+            raise UnsupportedProtocol(
+                f"The request to '{request.url}' is missing an 'http://' or 'https://' protocol."
+            )
+        if scheme not in ("http", "https"):
+            raise UnsupportedProtocol(
+                f"The request to '{request.url}' has an unsupported protocol '{scheme}://'."
+            )
+
         origin = self.get_origin(request)
 
         while True:
@@ -182,7 +187,7 @@ class AsyncConnectionPool:
                 #   that ended up resulting in an HTTP/1.1 connection.
                 # * The request was to an HTTP/2 connection, but the stream ID
                 #   space became exhausted, or a global error occured.
-                continue
+                continue  # pragma: nocover
             except BaseException as exc:
                 # If an exception occurs we check if we can release the
                 # the connection to the pool.
@@ -192,10 +197,12 @@ class AsyncConnectionPool:
             # When we return the response, we wrap the stream in a special class
             # that handles notifying the connection pool once the response
             # has been released.
-            return RawResponse(
+            return AsyncRawResponse(
                 status=response.status,
                 headers=response.headers,
-                stream=ConnectionPoolByteStream(response.stream, self, connection),
+                stream=ConnectionPoolByteStream(
+                    response.stream, self, connection
+                ),
                 extensions=response.extensions,
             )
 
@@ -216,15 +223,15 @@ class AsyncConnectionPool:
         # exceeding the max_keepalive_connections.
         while len(self._pool) > self._max_keepalive_connections:
             if not await self._close_one_idle_connection():
-                break
+                break  # pragma: nocover
 
-    async def aclose(self):
+    async def aclose(self) -> None:
         async with self._pool_lock:
             for connection in self._pool:
                 await connection.aclose()
             self._pool = []
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "AsyncConnectionPool":
         return self
 
     async def __aexit__(
@@ -232,7 +239,7 @@ class AsyncConnectionPool:
         exc_type: Type[BaseException] = None,
         exc_value: BaseException = None,
         traceback: TracebackType = None,
-    ):
+    ) -> None:
         await self.aclose()
 
 
@@ -256,7 +263,7 @@ class ConnectionPoolByteStream(AsyncByteStream):
         async for part in self._stream:
             yield part
 
-    async def aclose(self):
+    async def aclose(self) -> None:
         try:
             await self._stream.aclose()
         finally:
