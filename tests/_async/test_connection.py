@@ -27,7 +27,6 @@ async def test_http_connection():
     async with AsyncHTTPConnection(
         origin=origin, network_backend=network_backend, keepalive_expiry=5.0
     ) as conn:
-        assert conn.get_origin() == origin
         assert not conn.is_idle()
         assert not conn.is_closed()
         assert conn.is_available()
@@ -45,7 +44,6 @@ async def test_http_connection():
             assert response.status == 200
             assert content == b"Hello, world!"
 
-        assert conn.get_origin() == origin
         assert conn.is_idle()
         assert not conn.is_closed()
         assert conn.is_available()
@@ -81,3 +79,17 @@ async def test_concurrent_requests_not_available_on_http11_connections():
         async with await conn.handle_async_request(request) as response:
             with pytest.raises(ConnectionNotAvailable):
                 await conn.handle_async_request(request)
+
+
+@pytest.mark.trio
+async def test_request_to_incorrect_origin():
+    """
+    A connection can only send requests whichever origin it is connected to.
+    """
+    origin = Origin(b"https", b"example.com", 443)
+    network_backend = AsyncMockBackend([])
+    async with AsyncHTTPConnection(origin=origin, network_backend=network_backend) as conn:
+        url = RawURL(b"https", b"other.com", 443, b"/")
+        request = AsyncRawRequest(b"GET", url, [(b"Host", b"other.com")])
+        with pytest.raises(RuntimeError):
+            await conn.handle_async_request(request)

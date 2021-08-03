@@ -15,7 +15,7 @@ class ConnectionInterface:
     def info(self) -> str:
         raise NotImplementedError()  # pragma: nocover
 
-    def get_origin(self) -> Origin:
+    def can_handle_request(self, origin: Origin) -> bool:
         raise NotImplementedError()  # pragma: nocover
 
     def is_available(self) -> bool:

@@ -46,6 +46,9 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
         self._h11_state = h11.Connection(our_role=h11.CLIENT)
 
     async def handle_async_request(self, request: AsyncRawRequest) -> AsyncRawResponse:
+        if not self.can_handle_request(request.url.origin):
+            raise RuntimeError(f"Attempted to send request to {request.url.origin} on connection to {self._origin}")
+
         async with self._state_lock:
             if self._state in (HTTPConnectionState.NEW, HTTPConnectionState.IDLE):
                 self._request_count += 1
@@ -79,6 +82,9 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
         except BaseException as exc:
             await self.aclose()
             raise exc
+
+    def can_handle_request(self, origin: Origin) -> bool:
+        return origin == self._origin
 
     # Sending the request...
 
@@ -162,9 +168,6 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
     # The AsyncConnectionInterface methods provide information about the state of
     # the connection, allowing for a connection pooling implementation to
     # determine when to reuse and when to close the connection...
-
-    def get_origin(self) -> Origin:
-        return self._origin
 
     def is_available(self) -> bool:
         # Note that HTTP/1.1 connections in the "NEW" state are not treated as

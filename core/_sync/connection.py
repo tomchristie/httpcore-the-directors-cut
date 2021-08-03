@@ -27,6 +27,9 @@ class HTTPConnection(ConnectionInterface):
         self._request_lock = Lock()
 
     def handle_request(self, request: RawRequest) -> RawResponse:
+        if not self.can_handle_request(request.url.origin):
+            raise RuntimeError(f"Attempted to send request to {request.url.origin} on connection to {self._origin}")
+
         with self._request_lock:
             if self._connection is None:
                 origin = self._origin
@@ -41,6 +44,9 @@ class HTTPConnection(ConnectionInterface):
 
         return self._connection.handle_request(request)
 
+    def can_handle_request(self, origin: Origin) -> bool:
+        return origin == self._origin
+
     def attempt_aclose(self) -> bool:
         closed = False
         if self._connection is not None:
@@ -50,9 +56,6 @@ class HTTPConnection(ConnectionInterface):
     def close(self) -> None:
         if self._connection is not None:
             self._connection.close()
-
-    def get_origin(self) -> Origin:
-        return self._origin
 
     def is_available(self) -> bool:
         if self._connection is None:

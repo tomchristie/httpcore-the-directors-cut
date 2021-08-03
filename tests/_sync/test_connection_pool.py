@@ -4,6 +4,7 @@ from core import (
     RawURL,
     RawRequest,
     ByteStream,
+    UnsupportedProtocol
 )
 from core.backends.mock import MockBackend
 from typing import List
@@ -267,3 +268,19 @@ def test_connection_pool_concurrency():
                 "<HTTPConnection ['http://d.com:80', HTTP/1.1, ACTIVE, Request Count: 1]>",
                 "<HTTPConnection ['http://e.com:80', HTTP/1.1, ACTIVE, Request Count: 1]>",
             ]
+
+
+
+def test_unsupported_protocol():
+    with ConnectionPool(max_connections=10) as pool:
+        url = RawURL(b"ftp", b"www.example.com", None, b"/")
+        headers = [(b"Host", b"ftp://www.example.com")]
+        request = RawRequest(b"GET", url, headers)
+        with pytest.raises(UnsupportedProtocol):
+            pool.handle_request(request)
+
+        url = RawURL(b"", b"www.example.com", None, b"/")
+        headers = [(b"Host", b"://www.example.com")]
+        request = RawRequest(b"GET", url, headers)
+        with pytest.raises(UnsupportedProtocol):
+            pool.handle_request(request)

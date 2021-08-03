@@ -15,8 +15,7 @@ def merge_headers(
     override_headers: List[Tuple[bytes, bytes]] = None
 ) -> List[Tuple[bytes, bytes]]:
     """
-    Append default_headers and override_headers,
-    de-duplicating if a key exists in both cases.
+    Append default_headers and override_headers, de-duplicating if a key exists in both cases.
     """
     default_headers = [] if default_headers is None else default_headers
     override_headers = [] if override_headers is None else override_headers
@@ -34,6 +33,7 @@ class AsyncHTTPProxy(AsyncConnectionPool):
         self,
         proxy_origin: Origin,
         proxy_headers: List[Tuple[bytes, bytes]] = None,
+        proxy_mode: str = "DEFAULT",
         ssl_context: ssl.SSLContext = None,
         max_connections: int = 10,
         max_keepalive_connections: int = None,
@@ -50,25 +50,36 @@ class AsyncHTTPProxy(AsyncConnectionPool):
         self._ssl_context = ssl_context
         self._proxy_origin = proxy_origin
         self._proxy_headers = proxy_headers
-
-    def get_origin(self, request: AsyncRawRequest) -> Origin:
-        if request.url.scheme == b'http':
-            return self._proxy_origin
-        return request.url.origin
+        self._forward_schemes = {
+            "DEFAULT": (b'http',),
+            "FORWARD_ONLY": (b'http', b'https'),
+            "TUNNEL_ONLY": (),
+        }[proxy_mode]
+        self._tunnel_schemes = {
+            "DEFAULT": (b'https',),
+            "FORWARD_ONLY": (),
+            "TUNNEL_ONLY": (b'http', b'https'),
+        }[proxy_mode]
 
     def create_connection(self, origin: Origin) -> AsyncConnectionInterface:
-        if origin.scheme == b'http':
+        if origin.scheme in self._forward_schemes:
             return AsyncForwardHTTPConnection(
                 proxy_origin=self._proxy_origin,
+                supported_schemes=self._forward_schemes,
                 keepalive_expiry=self._keepalive_expiry,
                 network_backend=self._network_backend,
             )
-        return AsyncTunnelHTTPConnection(
-            proxy_origin=self._proxy_origin,
-            remote_origin=origin,
-            ssl_context=self._ssl_context,
-            keepalive_expiry=self._keepalive_expiry,
-            network_backend=self._network_backend,
+        elif origin.scheme in self._tunnel_schemes:
+            return AsyncTunnelHTTPConnection(
+                proxy_origin=self._proxy_origin,
+                remote_origin=origin,
+                ssl_context=self._ssl_context,
+                supported_schemes=self._tunnel_schemes,
+                keepalive_expiry=self._keepalive_expiry,
+                network_backend=self._network_backend,
+            )
+        raise UnsupportedProtocol(
+            f"The request has an unsupported protocol '{origin.scheme}://'."
         )
 
 
@@ -77,6 +88,7 @@ class AsyncForwardHTTPConnection(AsyncConnectionInterface):
         self,
         proxy_origin: Origin,
         proxy_headers: List[Tuple[bytes, bytes]] = None,
+        supported_schemes: Tuple[bytes] = (b"http",),
         keepalive_expiry: float = None,
         network_backend: AsyncNetworkBackend = None,
     ) -> None:
@@ -113,6 +125,9 @@ class AsyncForwardHTTPConnection(AsyncConnectionInterface):
         )
         return await self._connection.handle_async_request(proxy_request)
 
+    def can_handle_request(self, origin: Origin) -> bool:
+        return origin.scheme in self._supported_schemes
+
     async def aclose(self):
         await self._connection.aclose()
 
@@ -121,9 +136,6 @@ class AsyncForwardHTTPConnection(AsyncConnectionInterface):
 
     def info(self) -> str:
         return self._connection.info()
-
-    def get_origin(self) -> Origin:
-        return self._proxy_origin
 
     def is_available(self) -> bool:
         return self._connection.is_available()
@@ -148,6 +160,7 @@ class AsyncTunnelHTTPConnection(AsyncConnectionInterface):
         remote_origin: Origin,
         ssl_context: ssl.SSLContext,
         proxy_headers: List[Tuple[bytes, bytes]] = None,
+        supported_schemes: Tuple[bytes] = (b"https",),
         keepalive_expiry: float = None,
         network_backend: AsyncNetworkBackend = None,
     ) -> None:
@@ -195,6 +208,9 @@ class AsyncTunnelHTTPConnection(AsyncConnectionInterface):
                 self._connected = True
         return await self._connection.handle_async_request(request)
 
+    def can_handle_request(self, origin: Origin) -> bool:
+        return origin.scheme == self._remote_origin
+
     async def aclose(self):
         await self._connection.aclose()
 
@@ -203,9 +219,6 @@ class AsyncTunnelHTTPConnection(AsyncConnectionInterface):
 
     def info(self) -> str:
         return self._connection.info()
-
-    def get_origin(self) -> Origin:
-        return self._remote_origin
 
     def is_available(self) -> bool:
         return self._connection.is_available()

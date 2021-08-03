@@ -41,9 +41,6 @@ class AsyncConnectionPool:
             else network_backend
         )
 
-    def get_origin(self, request: AsyncRawRequest) -> Origin:
-        return request.url.origin
-
     def create_connection(self, origin: Origin) -> AsyncConnectionInterface:
         return AsyncHTTPConnection(
             origin=origin,
@@ -74,7 +71,7 @@ class AsyncConnectionPool:
         """
         async with self._pool_lock:
             for idx, connection in enumerate(self._pool):
-                if connection.get_origin() == origin and connection.is_available():
+                if connection.can_handle_request(origin) and connection.is_available():
                     self._pool.pop(idx)
                     self._pool.insert(0, connection)
                     return connection
@@ -137,10 +134,8 @@ class AsyncConnectionPool:
                 f"The request to '{request.url}' has an unsupported protocol '{scheme}://'."
             )
 
-        origin = self.get_origin(request)
-
         while True:
-            existing_connection = await self._get_from_pool(origin)
+            existing_connection = await self._get_from_pool(request.url.origin)
 
             if existing_connection is not None:
                 # An existing connection was available. This could be:
@@ -172,7 +167,7 @@ class AsyncConnectionPool:
                         break
 
                 # Create a new connection and add it to the pool.
-                connection = self.create_connection(origin)
+                connection = self.create_connection(request.url.origin)
                 await self._add_to_pool(connection)
 
             try:

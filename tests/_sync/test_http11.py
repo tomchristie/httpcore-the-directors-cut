@@ -32,7 +32,6 @@ def test_http11_connection():
             assert response.status == 200
             assert content == b"Hello, world!"
 
-        assert conn.get_origin() == origin
         assert conn.is_idle()
         assert not conn.is_closed()
         assert conn.is_available()
@@ -64,7 +63,6 @@ def test_http11_connection_unread_response():
         with conn.handle_request(request) as response:
             assert response.status == 200
 
-        assert conn.get_origin() == origin
         assert not conn.is_idle()
         assert conn.is_closed()
         assert not conn.is_available()
@@ -88,7 +86,6 @@ def test_http11_connection_with_network_error():
         with pytest.raises(Exception):
             conn.handle_request(request)
 
-        assert conn.get_origin() == origin
         assert not conn.is_idle()
         assert conn.is_closed()
         assert not conn.is_available()
@@ -148,3 +145,17 @@ def test_http11_connection_attempt_close():
             assert content == b"Hello, world!"
             assert not conn.attempt_aclose()
         assert conn.attempt_aclose()
+
+
+
+def test_request_to_incorrect_origin():
+    """
+    A connection can only send requests whichever origin it is connected to.
+    """
+    origin = Origin(b"https", b"example.com", 443)
+    stream = MockStream([])
+    with HTTP11Connection(origin=origin, stream=stream) as conn:
+        url = RawURL(b"https", b"other.com", 443, b"/")
+        request = RawRequest(b"GET", url, [(b"Host", b"other.com")])
+        with pytest.raises(RuntimeError):
+            conn.handle_request(request)

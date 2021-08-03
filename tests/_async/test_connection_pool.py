@@ -4,6 +4,7 @@ from core import (
     RawURL,
     AsyncRawRequest,
     AsyncByteStream,
+    UnsupportedProtocol
 )
 from core.backends.mock import AsyncMockBackend
 from typing import List
@@ -267,3 +268,19 @@ async def test_connection_pool_concurrency():
                 "<AsyncHTTPConnection ['http://d.com:80', HTTP/1.1, ACTIVE, Request Count: 1]>",
                 "<AsyncHTTPConnection ['http://e.com:80', HTTP/1.1, ACTIVE, Request Count: 1]>",
             ]
+
+
+@pytest.mark.trio
+async def test_unsupported_protocol():
+    async with AsyncConnectionPool(max_connections=10) as pool:
+        url = RawURL(b"ftp", b"www.example.com", None, b"/")
+        headers = [(b"Host", b"ftp://www.example.com")]
+        request = AsyncRawRequest(b"GET", url, headers)
+        with pytest.raises(UnsupportedProtocol):
+            await pool.handle_async_request(request)
+
+        url = RawURL(b"", b"www.example.com", None, b"/")
+        headers = [(b"Host", b"://www.example.com")]
+        request = AsyncRawRequest(b"GET", url, headers)
+        with pytest.raises(UnsupportedProtocol):
+            await pool.handle_async_request(request)

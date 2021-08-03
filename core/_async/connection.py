@@ -27,6 +27,9 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
         self._request_lock = AsyncLock()
 
     async def handle_async_request(self, request: AsyncRawRequest) -> AsyncRawResponse:
+        if not self.can_handle_request(request.url.origin):
+            raise RuntimeError(f"Attempted to send request to {request.url.origin} on connection to {self._origin}")
+
         async with self._request_lock:
             if self._connection is None:
                 origin = self._origin
@@ -41,6 +44,9 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
 
         return await self._connection.handle_async_request(request)
 
+    def can_handle_request(self, origin: Origin) -> bool:
+        return origin == self._origin
+
     async def attempt_aclose(self) -> bool:
         closed = False
         if self._connection is not None:
@@ -50,9 +56,6 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
     async def aclose(self) -> None:
         if self._connection is not None:
             await self._connection.aclose()
-
-    def get_origin(self) -> Origin:
-        return self._origin
 
     def is_available(self) -> bool:
         if self._connection is None:
