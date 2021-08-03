@@ -52,7 +52,7 @@ class AsyncMockStream(AsyncNetworkStream):
 
     async def start_tls(
         self, ssl_context: ssl.SSLContext, server_hostname: bytes = None
-    ) -> NetworkStream:
+    ) -> AsyncNetworkStream:
         return self
 
 

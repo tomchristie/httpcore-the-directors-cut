@@ -1,5 +1,7 @@
 from ..urls import Origin
 
+import ssl
+
 
 class NetworkStream:
     def read(self, max_bytes: int, timeout: float = None) -> bytes:
@@ -9,6 +11,11 @@ class NetworkStream:
         raise NotImplementedError()  # pragma: nocover
 
     def close(self) -> None:
+        raise NotImplementedError()  # pragma: nocover
+
+    def start_tls(
+        self, ssl_context: ssl.SSLContext, server_hostname: bytes = None
+    ) -> 'NetworkStream':
         raise NotImplementedError()  # pragma: nocover
 
 
@@ -25,6 +32,11 @@ class AsyncNetworkStream:
         raise NotImplementedError()  # pragma: nocover
 
     async def aclose(self) -> None:
+        raise NotImplementedError()  # pragma: nocover
+
+    def start_tls(
+        self, ssl_context: ssl.SSLContext, server_hostname: bytes = None
+    ) -> 'AsyncNetworkStream':
         raise NotImplementedError()  # pragma: nocover
 
 
