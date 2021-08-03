@@ -120,6 +120,10 @@ class ConnectionPool:
         with self._pool_lock:
             return [conn.info() for conn in self._pool]
 
+    @property
+    def connections(self) -> List[ConnectionInterface]:
+        return list(self._pool)
+
     def handle_request(self, request: RawRequest) -> RawResponse:
         """
         Send an HTTP request, and return an HTTP response.

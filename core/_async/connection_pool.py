@@ -107,18 +107,21 @@ class AsyncConnectionPool:
                         self._pool.pop(idx)
                         await self._pool_semaphore.release()
 
-    async def pool_info(self) -> List[str]:
+    @property
+    def connections(self) -> List[AsyncConnectionInterface]:
         """
-        Return a list of connection info for the connections currently in the pool.
+        Return a list of the connections currently in the pool.
 
+        For example:
+
+        >>> pool.connections
         [
-            "'https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 6",
-            "'https://example.com:443', HTTP/1.1, IDLE, Request Count: 9" ,
-            "'http://example.com:80', HTTP/1.1, IDLE, Request Count: 1",
+            <AsyncHTTPConnection ['https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 6]>,
+            <AsyncHTTPConnection ['https://example.com:443', HTTP/1.1, IDLE, Request Count: 9]> ,
+            <AsyncHTTPConnection ['http://example.com:80', HTTP/1.1, IDLE, Request Count: 1]>,
         ]
         """
-        async with self._pool_lock:
-            return [conn.info() for conn in self._pool]
+        return list(self._pool)
 
     async def handle_async_request(self, request: AsyncRawRequest) -> AsyncRawResponse:
         """

@@ -36,16 +36,18 @@ def test_proxy_forwarding():
 
         # Sending an intial request, which once complete will return to the pool, IDLE.
         with proxy.handle_request(request) as response:
-            info = proxy.pool_info()
+            info = [repr(c) for c in proxy.connections]
             assert info == [
-                "'http://localhost:8080', HTTP/1.1, ACTIVE, Request Count: 1"
+                "<ForwardHTTPConnection ['http://localhost:8080', HTTP/1.1, ACTIVE, Request Count: 1]>"
             ]
             body = response.stream.read()
 
         assert response.status == 200
         assert body == b"Hello, world!"
-        info = proxy.pool_info()
-        assert info == ["'http://localhost:8080', HTTP/1.1, IDLE, Request Count: 1"]
+        info = [repr(c) for c in proxy.connections]
+        assert info == [
+            "<ForwardHTTPConnection ['http://localhost:8080', HTTP/1.1, IDLE, Request Count: 1]>"
+        ]
 
 
 
@@ -75,13 +77,15 @@ def test_proxy_tunneling():
 
         # Sending an intial request, which once complete will return to the pool, IDLE.
         with proxy.handle_request(request) as response:
-            info = proxy.pool_info()
+            info = [repr(c) for c in proxy.connections]
             assert info == [
-                "'https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 1"
+                "<TunnelHTTPConnection ['https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 1]>"
             ]
             body = response.stream.read()
 
         assert response.status == 200
         assert body == b"Hello, world!"
-        info = proxy.pool_info()
-        assert info == ["'https://example.com:443', HTTP/1.1, IDLE, Request Count: 1"]
+        info = [repr(c) for c in proxy.connections]
+        assert info == [
+            "<TunnelHTTPConnection ['https://example.com:443', HTTP/1.1, IDLE, Request Count: 1]>"
+        ]

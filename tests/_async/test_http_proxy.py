@@ -36,16 +36,18 @@ async def test_proxy_forwarding():
 
         # Sending an intial request, which once complete will return to the pool, IDLE.
         async with await proxy.handle_async_request(request) as response:
-            info = await proxy.pool_info()
+            info = [repr(c) for c in proxy.connections]
             assert info == [
-                "'http://localhost:8080', HTTP/1.1, ACTIVE, Request Count: 1"
+                "<AsyncForwardHTTPConnection ['http://localhost:8080', HTTP/1.1, ACTIVE, Request Count: 1]>"
             ]
             body = await response.stream.aread()
 
         assert response.status == 200
         assert body == b"Hello, world!"
-        info = await proxy.pool_info()
-        assert info == ["'http://localhost:8080', HTTP/1.1, IDLE, Request Count: 1"]
+        info = [repr(c) for c in proxy.connections]
+        assert info == [
+            "<AsyncForwardHTTPConnection ['http://localhost:8080', HTTP/1.1, IDLE, Request Count: 1]>"
+        ]
 
 
 @pytest.mark.trio
@@ -75,13 +77,15 @@ async def test_proxy_tunneling():
 
         # Sending an intial request, which once complete will return to the pool, IDLE.
         async with await proxy.handle_async_request(request) as response:
-            info = await proxy.pool_info()
+            info = [repr(c) for c in proxy.connections]
             assert info == [
-                "'https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 1"
+                "<AsyncTunnelHTTPConnection ['https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 1]>"
             ]
             body = await response.stream.aread()
 
         assert response.status == 200
         assert body == b"Hello, world!"
-        info = await proxy.pool_info()
-        assert info == ["'https://example.com:443', HTTP/1.1, IDLE, Request Count: 1"]
+        info = [repr(c) for c in proxy.connections]
+        assert info == [
+            "<AsyncTunnelHTTPConnection ['https://example.com:443', HTTP/1.1, IDLE, Request Count: 1]>"
+        ]
