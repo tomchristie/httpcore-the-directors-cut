@@ -195,9 +195,10 @@ class HTTP11Connection(ConnectionInterface):
         return f"{origin!r}, HTTP/1.1, {self._state.name}, Request Count: {self._request_count}"
 
     def __repr__(self) -> str:
+        class_name = self.__class__.__name__
+        origin = str(self._origin)
         return (
-            f"<{self.__class__.__name__} [{self._state.name}, "
-            f"Request Count: {self._request_count}]>"
+            f"<{class_name} [{origin!r}, {self._state.name}, Request Count: {self._request_count}]>"
         )
 
     # These context managers are not used in the standard flow, but are

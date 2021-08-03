@@ -37,7 +37,7 @@ async def test_http11_connection():
         assert not conn.is_closed()
         assert conn.is_available()
         assert not conn.has_expired()
-        assert repr(conn) == "<AsyncHTTP11Connection [IDLE, Request Count: 1]>"
+        assert repr(conn) == "<AsyncHTTP11Connection ['https://example.com:443', IDLE, Request Count: 1]>"
 
 
 @pytest.mark.trio
@@ -69,7 +69,7 @@ async def test_http11_connection_unread_response():
         assert conn.is_closed()
         assert not conn.is_available()
         assert not conn.has_expired()
-        assert repr(conn) == "<AsyncHTTP11Connection [CLOSED, Request Count: 1]>"
+        assert repr(conn) == "<AsyncHTTP11Connection ['https://example.com:443', CLOSED, Request Count: 1]>"
 
 
 @pytest.mark.trio
@@ -93,7 +93,7 @@ async def test_http11_connection_with_network_error():
         assert conn.is_closed()
         assert not conn.is_available()
         assert not conn.has_expired()
-        assert repr(conn) == "<AsyncHTTP11Connection [CLOSED, Request Count: 1]>"
+        assert repr(conn) == "<AsyncHTTP11Connection ['https://example.com:443', CLOSED, Request Count: 1]>"
 
 
 @pytest.mark.trio

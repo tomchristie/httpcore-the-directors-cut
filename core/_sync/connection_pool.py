@@ -107,21 +107,20 @@ class ConnectionPool:
                         self._pool.pop(idx)
                         self._pool_semaphore.release()
 
-    def pool_info(self) -> List[str]:
-        """
-        Return a list of connection info for the connections currently in the pool.
-
-        [
-            "'https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 6",
-            "'https://example.com:443', HTTP/1.1, IDLE, Request Count: 9" ,
-            "'http://example.com:80', HTTP/1.1, IDLE, Request Count: 1",
-        ]
-        """
-        with self._pool_lock:
-            return [conn.info() for conn in self._pool]
-
     @property
     def connections(self) -> List[ConnectionInterface]:
+        """
+        Return a list of the connections currently in the pool.
+
+        For example:
+
+        >>> pool.connections
+        [
+            <HTTPConnection ['https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 6]>,
+            <HTTPConnection ['https://example.com:443', HTTP/1.1, IDLE, Request Count: 9]> ,
+            <HTTPConnection ['http://example.com:80', HTTP/1.1, IDLE, Request Count: 1]>,
+        ]
+        """
         return list(self._pool)
 
     def handle_request(self, request: RawRequest) -> RawResponse:
