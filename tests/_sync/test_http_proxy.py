@@ -1,8 +1,8 @@
 from core import (
     HTTPProxy,
     Origin,
-    RawURL,
-    RawRequest,
+    URL,
+    Request,
     ByteStream,
 )
 from core.backends.mock import MockBackend
@@ -31,8 +31,8 @@ def test_proxy_forwarding():
         max_connections=10,
         network_backend=network_backend,
     ) as proxy:
-        url = RawURL(b"http", b"example.com", 80, b"/")
-        request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
+        url = URL("http://example.com:80/")
+        request = Request("GET", url, headers=[("Host", "example.com")])
 
         # Sending an intial request, which once complete will return to the pool, IDLE.
         with proxy.handle_request(request) as response:
@@ -40,10 +40,10 @@ def test_proxy_forwarding():
             assert info == [
                 "<ForwardHTTPConnection ['http://localhost:8080', HTTP/1.1, ACTIVE, Request Count: 1]>"
             ]
-            body = response.stream.read()
+            response.read()
 
         assert response.status == 200
-        assert body == b"Hello, world!"
+        assert response.content == b"Hello, world!"
         info = [repr(c) for c in proxy.connections]
         assert info == [
             "<ForwardHTTPConnection ['http://localhost:8080', HTTP/1.1, IDLE, Request Count: 1]>"
@@ -57,8 +57,7 @@ def test_proxy_tunneling():
     """
     network_backend = MockBackend(
         [
-            b"HTTP/1.1 200 OK\r\n"
-            b"\r\n",
+            b"HTTP/1.1 200 OK\r\n" b"\r\n",
             b"HTTP/1.1 200 OK\r\n",
             b"Content-Type: plain/text\r\n",
             b"Content-Length: 13\r\n",
@@ -72,8 +71,8 @@ def test_proxy_tunneling():
         max_connections=10,
         network_backend=network_backend,
     ) as proxy:
-        url = RawURL(b"https", b"example.com", 443, b"/")
-        request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
+        url = URL("https://example.com:443/")
+        request = Request("GET", url, headers=[("Host", "example.com")])
 
         # Sending an intial request, which once complete will return to the pool, IDLE.
         with proxy.handle_request(request) as response:
@@ -81,10 +80,10 @@ def test_proxy_tunneling():
             assert info == [
                 "<TunnelHTTPConnection ['https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 1]>"
             ]
-            body = response.stream.read()
+            response.read()
 
         assert response.status == 200
-        assert body == b"Hello, world!"
+        assert response.content == b"Hello, world!"
         info = [repr(c) for c in proxy.connections]
         assert info == [
             "<TunnelHTTPConnection ['https://example.com:443', HTTP/1.1, IDLE, Request Count: 1]>"

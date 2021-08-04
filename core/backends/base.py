@@ -1,4 +1,4 @@
-from ..urls import Origin
+from .._models import Origin
 
 import ssl
 
@@ -15,7 +15,7 @@ class NetworkStream:
 
     def start_tls(
         self, ssl_context: ssl.SSLContext, server_hostname: bytes = None
-    ) -> 'NetworkStream':
+    ) -> "NetworkStream":
         raise NotImplementedError()  # pragma: nocover
 
 
@@ -36,7 +36,7 @@ class AsyncNetworkStream:
 
     def start_tls(
         self, ssl_context: ssl.SSLContext, server_hostname: bytes = None
-    ) -> 'AsyncNetworkStream':
+    ) -> "AsyncNetworkStream":
         raise NotImplementedError()  # pragma: nocover
 
 

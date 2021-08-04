@@ -5,12 +5,11 @@ from typing import AsyncIterator, Callable, List, Optional, Tuple, Type, Union
 
 import h11
 
+from .._models import AsyncByteStream, Origin, Request, Response
 from ..backends.base import AsyncNetworkStream
 from ..exceptions import ConnectionNotAvailable
 from ..synchronization import AsyncLock
-from ..urls import Origin
 from .interfaces import AsyncConnectionInterface
-from .models import AsyncByteStream, AsyncRawRequest, AsyncRawResponse
 
 H11Event = Union[
     h11.Request,
@@ -45,9 +44,11 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
         self._request_count = 0
         self._h11_state = h11.Connection(our_role=h11.CLIENT)
 
-    async def handle_async_request(self, request: AsyncRawRequest) -> AsyncRawResponse:
+    async def handle_async_request(self, request: Request) -> Response:
         if not self.can_handle_request(request.url.origin):
-            raise RuntimeError(f"Attempted to send request to {request.url.origin} on connection to {self._origin}")
+            raise RuntimeError(
+                f"Attempted to send request to {request.url.origin} on connection to {self._origin}"
+            )
 
         async with self._state_lock:
             if self._state in (HTTPConnectionState.NEW, HTTPConnectionState.IDLE):
@@ -66,7 +67,7 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
                 reason_phrase,
                 headers,
             ) = await self._receive_response_headers()
-            return AsyncRawResponse(
+            return Response(
                 status=status_code,
                 headers=headers,
                 stream=HTTPConnectionByteStream(
@@ -76,7 +77,7 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
                 extensions={
                     "http_version": http_version,
                     "reason_phrase": reason_phrase,
-                    "stream": self._network_stream
+                    "stream": self._network_stream,
                 },
             )
         except BaseException as exc:
@@ -88,13 +89,14 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
 
     # Sending the request...
 
-    async def _send_request_headers(self, request: AsyncRawRequest) -> None:
+    async def _send_request_headers(self, request: Request) -> None:
         event = h11.Request(
             method=request.method, target=request.url.target, headers=request.headers
         )
         await self._send_event(event)
 
-    async def _send_request_body(self, request: AsyncRawRequest) -> None:
+    async def _send_request_body(self, request: Request) -> None:
+        assert isinstance(request.stream, AsyncByteStream)
         async for chunk in request.stream:
             event = h11.Data(data=chunk)
             await self._send_event(event)
@@ -200,9 +202,7 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
     def __repr__(self) -> str:
         class_name = self.__class__.__name__
         origin = str(self._origin)
-        return (
-            f"<{class_name} [{origin!r}, {self._state.name}, Request Count: {self._request_count}]>"
-        )
+        return f"<{class_name} [{origin!r}, {self._state.name}, Request Count: {self._request_count}]>"
 
     # These context managers are not used in the standard flow, but are
     # useful for testing or working with connection instances directly.

@@ -1,8 +1,8 @@
 from core import (
     AsyncHTTP11Connection,
     Origin,
-    AsyncRawRequest,
-    RawURL,
+    Request,
+    URL,
     ConnectionNotAvailable,
 )
 from core.backends.mock import AsyncMockStream
@@ -25,18 +25,21 @@ async def test_http11_connection():
     async with AsyncHTTP11Connection(
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
-        url = RawURL(b"https", b"example.com", 443, b"/")
-        request = AsyncRawRequest(b"GET", url, [(b"Host", b"example.com")])
+        url = URL("https://example.com:443/")
+        request = Request("GET", url, headers=[("Host", "example.com")])
         async with await conn.handle_async_request(request) as response:
-            content = await response.stream.aread()
+            await response.aread()
             assert response.status == 200
-            assert content == b"Hello, world!"
+            assert response.content == b"Hello, world!"
 
         assert conn.is_idle()
         assert not conn.is_closed()
         assert conn.is_available()
         assert not conn.has_expired()
-        assert repr(conn) == "<AsyncHTTP11Connection ['https://example.com:443', IDLE, Request Count: 1]>"
+        assert (
+            repr(conn)
+            == "<AsyncHTTP11Connection ['https://example.com:443', IDLE, Request Count: 1]>"
+        )
 
 
 @pytest.mark.trio
@@ -58,8 +61,8 @@ async def test_http11_connection_unread_response():
     async with AsyncHTTP11Connection(
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
-        url = RawURL(b"https", b"example.com", 443, b"/")
-        request = AsyncRawRequest(b"GET", url, [(b"Host", b"example.com")])
+        url = URL("https://example.com:443/")
+        request = Request("GET", url, headers=[("Host", "example.com")])
         async with await conn.handle_async_request(request) as response:
             assert response.status == 200
 
@@ -67,7 +70,10 @@ async def test_http11_connection_unread_response():
         assert conn.is_closed()
         assert not conn.is_available()
         assert not conn.has_expired()
-        assert repr(conn) == "<AsyncHTTP11Connection ['https://example.com:443', CLOSED, Request Count: 1]>"
+        assert (
+            repr(conn)
+            == "<AsyncHTTP11Connection ['https://example.com:443', CLOSED, Request Count: 1]>"
+        )
 
 
 @pytest.mark.trio
@@ -81,8 +87,8 @@ async def test_http11_connection_with_network_error():
     async with AsyncHTTP11Connection(
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
-        url = RawURL(b"https", b"example.com", 443, b"/")
-        request = AsyncRawRequest(b"GET", url, [(b"Host", b"example.com")])
+        url = URL("https://example.com:443/")
+        request = Request("GET", url, headers=[("Host", "example.com")])
         with pytest.raises(Exception):
             await conn.handle_async_request(request)
 
@@ -90,7 +96,10 @@ async def test_http11_connection_with_network_error():
         assert conn.is_closed()
         assert not conn.is_available()
         assert not conn.has_expired()
-        assert repr(conn) == "<AsyncHTTP11Connection ['https://example.com:443', CLOSED, Request Count: 1]>"
+        assert (
+            repr(conn)
+            == "<AsyncHTTP11Connection ['https://example.com:443', CLOSED, Request Count: 1]>"
+        )
 
 
 @pytest.mark.trio
@@ -112,8 +121,8 @@ async def test_http11_connection_handles_one_active_request():
     async with AsyncHTTP11Connection(
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
-        url = RawURL(b"https", b"example.com", 443, b"/")
-        request = AsyncRawRequest(b"GET", url, [(b"Host", b"example.com")])
+        url = URL("https://example.com:443/")
+        request = Request("GET", url, headers=[("Host", "example.com")])
         async with await conn.handle_async_request(request) as response:
             with pytest.raises(ConnectionNotAvailable):
                 await conn.handle_async_request(request)
@@ -137,12 +146,12 @@ async def test_http11_connection_attempt_close():
     async with AsyncHTTP11Connection(
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
-        url = RawURL(b"https", b"example.com", 443, b"/")
-        request = AsyncRawRequest(b"GET", url, [(b"Host", b"example.com")])
+        url = URL("https://example.com:443/")
+        request = Request("GET", url, headers=[("Host", "example.com")])
         async with await conn.handle_async_request(request) as response:
-            content = await response.stream.aread()
+            await response.aread()
             assert response.status == 200
-            assert content == b"Hello, world!"
+            assert response.content == b"Hello, world!"
             assert not await conn.attempt_aclose()
         assert await conn.attempt_aclose()
 
@@ -155,7 +164,7 @@ async def test_request_to_incorrect_origin():
     origin = Origin(b"https", b"example.com", 443)
     stream = AsyncMockStream([])
     async with AsyncHTTP11Connection(origin=origin, stream=stream) as conn:
-        url = RawURL(b"https", b"other.com", 443, b"/")
-        request = AsyncRawRequest(b"GET", url, [(b"Host", b"other.com")])
+        url = URL("https://other.com:443/")
+        request = Request("GET", url, headers=[("Host", "other.com")])
         with pytest.raises(RuntimeError):
             await conn.handle_async_request(request)

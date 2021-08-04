@@ -1,8 +1,8 @@
 from core import (
     HTTPConnection,
     Origin,
-    RawRequest,
-    RawURL,
+    Request,
+    URL,
     ByteStream,
     ConnectionNotAvailable,
 )
@@ -33,16 +33,17 @@ def test_http_connection():
         assert not conn.has_expired()
         assert repr(conn) == "<HTTPConnection [CONNECTING]>"
 
-        url = RawURL(b"https", b"example.com", 443, b"/")
-        request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
+        url = URL("https://example.com:443/")
+        request = Request("GET", url, headers=[("Host", "example.com")])
         with conn.handle_request(request) as response:
             assert (
                 repr(conn)
                 == "<HTTPConnection ['https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 1]>"
             )
-            content = response.stream.read()
-            assert response.status == 200
-            assert content == b"Hello, world!"
+            response.read()
+
+        assert response.status == 200
+        assert response.content == b"Hello, world!"
 
         assert conn.is_idle()
         assert not conn.is_closed()
@@ -74,8 +75,8 @@ def test_concurrent_requests_not_available_on_http11_connections():
     with HTTPConnection(
         origin=origin, network_backend=network_backend, keepalive_expiry=5.0
     ) as conn:
-        url = RawURL(b"https", b"example.com", 443, b"/")
-        request = RawRequest(b"GET", url, [(b"Host", b"example.com")])
+        url = URL("https://example.com:443/")
+        request = Request("GET", url, headers=[("Host", "example.com")])
         with conn.handle_request(request) as response:
             with pytest.raises(ConnectionNotAvailable):
                 conn.handle_request(request)
@@ -88,8 +89,10 @@ def test_request_to_incorrect_origin():
     """
     origin = Origin(b"https", b"example.com", 443)
     network_backend = MockBackend([])
-    with HTTPConnection(origin=origin, network_backend=network_backend) as conn:
-        url = RawURL(b"https", b"other.com", 443, b"/")
-        request = RawRequest(b"GET", url, [(b"Host", b"other.com")])
+    with HTTPConnection(
+        origin=origin, network_backend=network_backend
+    ) as conn:
+        url = URL("https://other.com:443/")
+        request = Request("GET", url, headers=[("Host", "other.com")])
         with pytest.raises(RuntimeError):
             conn.handle_request(request)

@@ -1,14 +1,13 @@
 from types import TracebackType
 from typing import Optional, Type
 
+from .._models import Origin, Request, Response
 from ..backends.base import AsyncNetworkBackend
 from ..backends.trio import TrioBackend
 from ..exceptions import ConnectionNotAvailable
 from ..synchronization import AsyncLock
-from ..urls import Origin
 from .http11 import AsyncHTTP11Connection
 from .interfaces import AsyncConnectionInterface
-from .models import AsyncRawRequest, AsyncRawResponse
 
 
 class AsyncHTTPConnection(AsyncConnectionInterface):
@@ -26,9 +25,11 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
         self._connection: Optional[AsyncConnectionInterface] = None
         self._request_lock = AsyncLock()
 
-    async def handle_async_request(self, request: AsyncRawRequest) -> AsyncRawResponse:
+    async def handle_async_request(self, request: Request) -> Response:
         if not self.can_handle_request(request.url.origin):
-            raise RuntimeError(f"Attempted to send request to {request.url.origin} on connection to {self._origin}")
+            raise RuntimeError(
+                f"Attempted to send request to {request.url.origin} on connection to {self._origin}"
+            )
 
         async with self._request_lock:
             if self._connection is None:

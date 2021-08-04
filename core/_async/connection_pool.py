@@ -6,10 +6,9 @@ from ..backends.base import AsyncNetworkBackend
 from ..backends.trio import TrioBackend
 from ..exceptions import ConnectionNotAvailable, UnsupportedProtocol
 from ..synchronization import AsyncLock, AsyncSemaphore
-from ..urls import Origin
+from .._models import AsyncByteStream, Origin, Request, Response
 from .connection import AsyncHTTPConnection
 from .interfaces import AsyncConnectionInterface
-from .models import AsyncByteStream, AsyncRawRequest, AsyncRawResponse
 
 
 class AsyncConnectionPool:
@@ -120,7 +119,7 @@ class AsyncConnectionPool:
         """
         return list(self._pool)
 
-    async def handle_async_request(self, request: AsyncRawRequest) -> AsyncRawResponse:
+    async def handle_async_request(self, request: Request) -> Response:
         """
         Send an HTTP request, and return an HTTP response.
         """
@@ -195,12 +194,11 @@ class AsyncConnectionPool:
             # When we return the response, we wrap the stream in a special class
             # that handles notifying the connection pool once the response
             # has been released.
-            return AsyncRawResponse(
+            assert isinstance(response.stream, AsyncByteStream)
+            return Response(
                 status=response.status,
                 headers=response.headers,
-                stream=ConnectionPoolByteStream(
-                    response.stream, self, connection
-                ),
+                stream=ConnectionPoolByteStream(response.stream, self, connection),
                 extensions=response.extensions,
             )
 

@@ -1,18 +1,17 @@
+from .._models import Origin, Request, Response, URL
 from ..backends.base import NetworkBackend
 from ..synchronization import Lock
-from ..urls import Origin, RawURL
 from .connection_pool import ConnectionPool
 from .connection import HTTPConnection
 from .http11 import HTTP11Connection
 from .interfaces import ConnectionInterface
-from .models import RawRequest, RawResponse
 import ssl
 from typing import List, Tuple
 
 
 def merge_headers(
     default_headers: List[Tuple[bytes, bytes]] = None,
-    override_headers: List[Tuple[bytes, bytes]] = None
+    override_headers: List[Tuple[bytes, bytes]] = None,
 ) -> List[Tuple[bytes, bytes]]:
     """
     Append default_headers and override_headers, de-duplicating if a key exists in both cases.
@@ -45,20 +44,20 @@ class HTTPProxy(ConnectionPool):
             max_connections=max_connections,
             max_keepalive_connections=max_keepalive_connections,
             keepalive_expiry=keepalive_expiry,
-            network_backend=network_backend
+            network_backend=network_backend,
         )
         self._ssl_context = ssl_context
         self._proxy_origin = proxy_origin
         self._proxy_headers = proxy_headers
         self._forward_schemes = {
-            "DEFAULT": (b'http',),
-            "FORWARD_ONLY": (b'http', b'https'),
+            "DEFAULT": (b"http",),
+            "FORWARD_ONLY": (b"http", b"https"),
             "TUNNEL_ONLY": (),
         }[proxy_mode]
         self._tunnel_schemes = {
-            "DEFAULT": (b'https',),
+            "DEFAULT": (b"https",),
             "FORWARD_ONLY": (),
-            "TUNNEL_ONLY": (b'http', b'https'),
+            "TUNNEL_ONLY": (b"http", b"https"),
         }[proxy_mode]
 
     def create_connection(self, origin: Origin) -> ConnectionInterface:
@@ -95,33 +94,25 @@ class ForwardHTTPConnection(ConnectionInterface):
         self._connection = HTTPConnection(
             origin=proxy_origin,
             keepalive_expiry=keepalive_expiry,
-            network_backend=network_backend
+            network_backend=network_backend,
         )
         self._proxy_origin = proxy_origin
         self._proxy_headers = [] if proxy_headers is None else proxy_headers
 
-    def handle_request(self, request: RawRequest) -> RawResponse:
-        target = b''.join([
-            request.url.scheme,
-            b'://',
-            request.url.host,
-            b':',
-            str(request.url.port).encode('ascii'),
-            request.url.target
-        ])
+    def handle_request(self, request: Request) -> Response:
         headers = merge_headers(self._proxy_headers, request.headers)
-        url = RawURL(
+        url = URL(
             scheme=self._proxy_origin.scheme,
             host=self._proxy_origin.host,
             port=self._proxy_origin.port,
-            target=target
+            target=bytes(request.url),
         )
-        proxy_request = RawRequest(
+        proxy_request = Request(
             method=request.method,
             url=url,
             headers=headers,
             stream=request.stream,
-            extensions=request.extensions
+            extensions=request.extensions,
         )
         return self._connection.handle_request(proxy_request)
 
@@ -167,7 +158,7 @@ class TunnelHTTPConnection(ConnectionInterface):
         self._connection = HTTPConnection(
             origin=proxy_origin,
             keepalive_expiry=keepalive_expiry,
-            network_backend=network_backend
+            network_backend=network_backend,
         )
         self._proxy_origin = proxy_origin
         self._remote_origin = remote_origin
@@ -177,28 +168,26 @@ class TunnelHTTPConnection(ConnectionInterface):
         self._connect_lock = Lock()
         self._connected = False
 
-    def handle_request(self, request: RawRequest) -> RawResponse:
+    def handle_request(self, request: Request) -> Response:
         with self._connect_lock:
             if not self._connected:
                 target = b"%b:%d" % (self._remote_origin.host, self._remote_origin.port)
 
-                connect_url = RawURL(
+                connect_url = URL(
                     scheme=self._proxy_origin.scheme,
                     host=self._proxy_origin.host,
                     port=self._proxy_origin.port,
-                    target=target
+                    target=target,
                 )
                 connect_headers = [(b"Host", target), (b"Accept", b"*/*")]
-                connect_request = RawRequest(
-                    method=b"CONNECT",
-                    url=connect_url,
-                    headers=connect_headers
+                connect_request = Request(
+                    method=b"CONNECT", url=connect_url, headers=connect_headers
                 )
                 response = self._connection.handle_request(connect_request)
                 stream = response.extensions["stream"]
                 stream = stream.start_tls(
                     ssl_context=self._ssl_context,
-                    server_hostname=self._remote_origin.host
+                    server_hostname=self._remote_origin.host,
                 )
                 self._connection = HTTP11Connection(
                     origin=self._remote_origin,

@@ -3,26 +3,26 @@ import ssl
 import urllib
 from core import (
     AsyncConnectionPool,
-    AsyncRawRequest,
-    RawURL,
+    Request,
+    URL,
 )
 
 
-def parse(url_string: str) -> RawURL:
+def parse(url_string: str) -> URL:
     parsed = urllib.parse.urlparse(url_string)
     scheme = parsed.scheme.encode("ascii")
     host = parsed.hostname.encode("ascii")
     port = parsed.port
     path = parsed.path or "/"
     target = f"{path}?{parsed.query}".rstrip("?").encode("ascii")
-    return RawURL(scheme, host, port, target)
+    return URL(scheme=scheme, host=host, port=port, target=target)
 
 
 @pytest.mark.trio
 async def test_request(httpbin):
     async with AsyncConnectionPool() as pool:
         url = parse(httpbin.url)
-        request = AsyncRawRequest(b"GET", url, [(b"Host", url.host)])
+        request = Request("GET", url, headers=[("Host", url.host)])
         async with await pool.handle_async_request(request) as response:
             assert response.status == 200
 
@@ -34,6 +34,6 @@ async def test_request(httpbin_secure):
     ssl_context.verify_mode = ssl.CERT_NONE
     async with AsyncConnectionPool(ssl_context=ssl_context) as pool:
         url = parse(httpbin_secure.url)
-        request = AsyncRawRequest(b"GET", url, [(b"Host", url.host)])
+        request = Request("GET", url, headers=[("Host", url.host)])
         async with await pool.handle_async_request(request) as response:
             assert response.status == 200

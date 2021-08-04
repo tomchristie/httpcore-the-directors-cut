@@ -1,14 +1,13 @@
 from types import TracebackType
 from typing import Optional, Type
 
+from .._models import Origin, Request, Response
 from ..backends.base import NetworkBackend
 from ..backends.sync import SyncBackend
 from ..exceptions import ConnectionNotAvailable
 from ..synchronization import Lock
-from ..urls import Origin
 from .http11 import HTTP11Connection
 from .interfaces import ConnectionInterface
-from .models import RawRequest, RawResponse
 
 
 class HTTPConnection(ConnectionInterface):
@@ -26,9 +25,11 @@ class HTTPConnection(ConnectionInterface):
         self._connection: Optional[ConnectionInterface] = None
         self._request_lock = Lock()
 
-    def handle_request(self, request: RawRequest) -> RawResponse:
+    def handle_request(self, request: Request) -> Response:
         if not self.can_handle_request(request.url.origin):
-            raise RuntimeError(f"Attempted to send request to {request.url.origin} on connection to {self._origin}")
+            raise RuntimeError(
+                f"Attempted to send request to {request.url.origin} on connection to {self._origin}"
+            )
 
         with self._request_lock:
             if self._connection is None:

@@ -1,9 +1,8 @@
-from ..urls import Origin
-from .models import RawRequest, RawResponse
+from .._models import Origin, Request, Response
 
 
 class ConnectionInterface:
-    def handle_request(self, request: RawRequest) -> RawResponse:
+    def handle_request(self, request: Request) -> Response:
         raise NotImplementedError()  # pragma: nocover
 
     def attempt_aclose(self) -> bool:

@@ -1,7 +1,4 @@
-__all__ = [
-    'ConnectionNotAvailable',
-    'UnsupportedProtocol'
-]
+__all__ = ["ConnectionNotAvailable", "UnsupportedProtocol"]
 
 
 class UnsupportedProtocol(Exception):

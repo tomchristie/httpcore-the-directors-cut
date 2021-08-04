@@ -1,9 +1,8 @@
-from ..urls import Origin
-from .models import AsyncRawRequest, AsyncRawResponse
+from .._models import Origin, Request, Response
 
 
 class AsyncConnectionInterface:
-    async def handle_async_request(self, request: AsyncRawRequest) -> AsyncRawResponse:
+    async def handle_async_request(self, request: Request) -> Response:
         raise NotImplementedError()  # pragma: nocover
 
     async def attempt_aclose(self) -> bool:

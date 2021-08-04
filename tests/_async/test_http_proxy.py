@@ -1,8 +1,8 @@
 from core import (
     AsyncHTTPProxy,
     Origin,
-    RawURL,
-    AsyncRawRequest,
+    URL,
+    Request,
     AsyncByteStream,
 )
 from core.backends.mock import AsyncMockBackend
@@ -31,8 +31,8 @@ async def test_proxy_forwarding():
         max_connections=10,
         network_backend=network_backend,
     ) as proxy:
-        url = RawURL(b"http", b"example.com", 80, b"/")
-        request = AsyncRawRequest(b"GET", url, [(b"Host", b"example.com")])
+        url = URL("http://example.com:80/")
+        request = Request("GET", url, headers=[("Host", "example.com")])
 
         # Sending an intial request, which once complete will return to the pool, IDLE.
         async with await proxy.handle_async_request(request) as response:
@@ -40,10 +40,10 @@ async def test_proxy_forwarding():
             assert info == [
                 "<AsyncForwardHTTPConnection ['http://localhost:8080', HTTP/1.1, ACTIVE, Request Count: 1]>"
             ]
-            body = await response.stream.aread()
+            await response.aread()
 
         assert response.status == 200
-        assert body == b"Hello, world!"
+        assert response.content == b"Hello, world!"
         info = [repr(c) for c in proxy.connections]
         assert info == [
             "<AsyncForwardHTTPConnection ['http://localhost:8080', HTTP/1.1, IDLE, Request Count: 1]>"
@@ -57,8 +57,7 @@ async def test_proxy_tunneling():
     """
     network_backend = AsyncMockBackend(
         [
-            b"HTTP/1.1 200 OK\r\n"
-            b"\r\n",
+            b"HTTP/1.1 200 OK\r\n" b"\r\n",
             b"HTTP/1.1 200 OK\r\n",
             b"Content-Type: plain/text\r\n",
             b"Content-Length: 13\r\n",
@@ -72,8 +71,8 @@ async def test_proxy_tunneling():
         max_connections=10,
         network_backend=network_backend,
     ) as proxy:
-        url = RawURL(b"https", b"example.com", 443, b"/")
-        request = AsyncRawRequest(b"GET", url, [(b"Host", b"example.com")])
+        url = URL("https://example.com:443/")
+        request = Request("GET", url, headers=[("Host", "example.com")])
 
         # Sending an intial request, which once complete will return to the pool, IDLE.
         async with await proxy.handle_async_request(request) as response:
@@ -81,10 +80,10 @@ async def test_proxy_tunneling():
             assert info == [
                 "<AsyncTunnelHTTPConnection ['https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 1]>"
             ]
-            body = await response.stream.aread()
+            await response.aread()
 
         assert response.status == 200
-        assert body == b"Hello, world!"
+        assert response.content == b"Hello, world!"
         info = [repr(c) for c in proxy.connections]
         assert info == [
             "<AsyncTunnelHTTPConnection ['https://example.com:443', HTTP/1.1, IDLE, Request Count: 1]>"

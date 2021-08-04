@@ -1,10 +1,10 @@
 from core import (
     AsyncConnectionPool,
     Origin,
-    RawURL,
-    AsyncRawRequest,
+    URL,
+    Request,
     AsyncByteStream,
-    UnsupportedProtocol
+    UnsupportedProtocol,
 )
 from core.backends.mock import AsyncMockBackend
 from typing import List
@@ -31,8 +31,8 @@ async def test_connection_pool_with_keepalive():
         max_connections=10,
         network_backend=network_backend,
     ) as pool:
-        url = RawURL(b"https", b"example.com", 443, b"/")
-        request = AsyncRawRequest(b"GET", url, [(b"Host", b"example.com")])
+        url = URL("https://example.com:443/")
+        request = Request("GET", url, headers=[("Host", "example.com")])
 
         # Sending an intial request, which once complete will return to the pool, IDLE.
         async with await pool.handle_async_request(request) as response:
@@ -40,10 +40,10 @@ async def test_connection_pool_with_keepalive():
             assert info == [
                 "<AsyncHTTPConnection ['https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 1]>"
             ]
-            body = await response.stream.aread()
+            await response.aread()
 
         assert response.status == 200
-        assert body == b"Hello, world!"
+        assert response.content == b"Hello, world!"
         info = [repr(c) for c in pool.connections]
         assert info == [
             "<AsyncHTTPConnection ['https://example.com:443', HTTP/1.1, IDLE, Request Count: 1]>"
@@ -55,18 +55,18 @@ async def test_connection_pool_with_keepalive():
             assert info == [
                 "<AsyncHTTPConnection ['https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 2]>"
             ]
-            body = await response.stream.aread()
+            await response.aread()
 
         assert response.status == 200
-        assert body == b"Hello, world!"
+        assert response.content == b"Hello, world!"
         info = [repr(c) for c in pool.connections]
         assert info == [
             "<AsyncHTTPConnection ['https://example.com:443', HTTP/1.1, IDLE, Request Count: 2]>"
         ]
 
         # Sending a request to a different origin will not reuse the existing IDLE connection.
-        url = RawURL(b"http", b"example.com", 80, b"/")
-        request = AsyncRawRequest(b"GET", url, [(b"Host", b"example.com")])
+        url = URL("http://example.com:80/")
+        request = Request("GET", url, headers=[(b"Host", b"example.com")])
 
         async with await pool.handle_async_request(request) as response:
             info = [repr(c) for c in pool.connections]
@@ -74,10 +74,10 @@ async def test_connection_pool_with_keepalive():
                 "<AsyncHTTPConnection ['http://example.com:80', HTTP/1.1, ACTIVE, Request Count: 1]>",
                 "<AsyncHTTPConnection ['https://example.com:443', HTTP/1.1, IDLE, Request Count: 2]>",
             ]
-            body = await response.stream.aread()
+            await response.aread()
 
         assert response.status == 200
-        assert body == b"Hello, world!"
+        assert response.content == b"Hello, world!"
         info = [repr(c) for c in pool.connections]
         assert info == [
             "<AsyncHTTPConnection ['http://example.com:80', HTTP/1.1, IDLE, Request Count: 1]>",
@@ -105,9 +105,9 @@ async def test_connection_pool_with_close():
         max_connections=10,
         network_backend=network_backend,
     ) as pool:
-        url = RawURL(b"https", b"example.com", 443, b"/")
-        headers = [(b"Host", b"example.com"), (b"Connection", b"close")]
-        request = AsyncRawRequest(b"GET", url, headers)
+        url = URL("https://example.com:443/")
+        headers = [("Host", "example.com"), ("Connection", "close")]
+        request = Request("GET", url, headers=headers)
 
         # Sending an intial request, which once complete will not return to the pool.
         async with await pool.handle_async_request(request) as response:
@@ -115,10 +115,10 @@ async def test_connection_pool_with_close():
             assert info == [
                 "<AsyncHTTPConnection ['https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 1]>"
             ]
-            body = await response.stream.aread()
+            await response.aread()
 
         assert response.status == 200
-        assert body == b"Hello, world!"
+        assert response.content == b"Hello, world!"
         info = [repr(c) for c in pool.connections]
         assert info == []
 
@@ -135,9 +135,9 @@ async def test_connection_pool_with_exception():
         max_connections=10,
         network_backend=network_backend,
     ) as pool:
-        url = RawURL(b"https", b"example.com", 443, b"/")
-        headers = [(b"Host", b"example.com")]
-        request = AsyncRawRequest(b"GET", url, headers)
+        url = URL("https://example.com:443/")
+        headers = [("Host", "example.com")]
+        request = Request("GET", url, headers=headers)
 
         # Sending an intial request, which once complete will not return to the pool.
         with pytest.raises(Exception):
@@ -169,9 +169,9 @@ async def test_connection_pool_with_immediate_expiry():
         keepalive_expiry=0.0,
         network_backend=network_backend,
     ) as pool:
-        url = RawURL(b"https", b"example.com", 443, b"/")
-        headers = [(b"Host", b"example.com")]
-        request = AsyncRawRequest(b"GET", url, headers)
+        url = URL("https://example.com:443/")
+        headers = [("Host", "example.com")]
+        request = Request("GET", url, headers=headers)
 
         # Sending an intial request, which once complete will not return to the pool.
         async with await pool.handle_async_request(request) as response:
@@ -179,10 +179,10 @@ async def test_connection_pool_with_immediate_expiry():
             assert info == [
                 "<AsyncHTTPConnection ['https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 1]>"
             ]
-            body = await response.stream.aread()
+            await response.aread()
 
         assert response.status == 200
-        assert body == b"Hello, world!"
+        assert response.content == b"Hello, world!"
         info = [repr(c) for c in pool.connections]
         assert info == []
 
@@ -206,9 +206,9 @@ async def test_connection_pool_with_no_keepalive_connections_allowed():
     async with AsyncConnectionPool(
         max_connections=10, max_keepalive_connections=0, network_backend=network_backend
     ) as pool:
-        url = RawURL(b"https", b"example.com", 443, b"/")
-        headers = [(b"Host", b"example.com")]
-        request = AsyncRawRequest(b"GET", url, headers)
+        url = URL("https://example.com:443/")
+        headers = [("Host", "example.com")]
+        request = Request("GET", url, headers=headers)
 
         # Sending an intial request, which once complete will not return to the pool.
         async with await pool.handle_async_request(request) as response:
@@ -216,10 +216,10 @@ async def test_connection_pool_with_no_keepalive_connections_allowed():
             assert info == [
                 "<AsyncHTTPConnection ['https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 1]>"
             ]
-            body = await response.stream.aread()
+            await response.aread()
 
         assert response.status == 200
-        assert body == b"Hello, world!"
+        assert response.content == b"Hello, world!"
         info = [repr(c) for c in pool.connections]
         assert info == []
 
@@ -241,13 +241,13 @@ async def test_connection_pool_concurrency():
     )
 
     async def fetch(pool, domain, info_list):
-        url = RawURL(b"http", domain, 80, b"/")
-        headers = [(b"Host", domain)]
-        request = AsyncRawRequest(b"GET", url, headers)
+        url = URL(scheme="http", host=domain, port=80, target="/")
+        headers = [("Host", domain)]
+        request = Request("GET", url, headers=headers)
         async with await pool.handle_async_request(request) as response:
             info = [repr(c) for c in pool.connections]
             info_list.append(info)
-            body = await response.stream.aread()
+            await response.aread()
 
     async with AsyncConnectionPool(
         max_connections=1, network_backend=network_backend
@@ -273,14 +273,12 @@ async def test_connection_pool_concurrency():
 @pytest.mark.trio
 async def test_unsupported_protocol():
     async with AsyncConnectionPool(max_connections=10) as pool:
-        url = RawURL(b"ftp", b"www.example.com", None, b"/")
-        headers = [(b"Host", b"ftp://www.example.com")]
-        request = AsyncRawRequest(b"GET", url, headers)
+        url = URL("ftp://www.example.com/")
+        request = Request("GET", url, headers=[("Host", "www.example.com")])
         with pytest.raises(UnsupportedProtocol):
             await pool.handle_async_request(request)
 
-        url = RawURL(b"", b"www.example.com", None, b"/")
-        headers = [(b"Host", b"://www.example.com")]
-        request = AsyncRawRequest(b"GET", url, headers)
+        url = URL("://www.example.com/")
+        request = Request("GET", url, headers=[("Host", "www.example.com")])
         with pytest.raises(UnsupportedProtocol):
             await pool.handle_async_request(request)

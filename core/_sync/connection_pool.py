@@ -6,10 +6,9 @@ from ..backends.base import NetworkBackend
 from ..backends.sync import SyncBackend
 from ..exceptions import ConnectionNotAvailable, UnsupportedProtocol
 from ..synchronization import Lock, Semaphore
-from ..urls import Origin
+from .._models import ByteStream, Origin, Request, Response
 from .connection import HTTPConnection
 from .interfaces import ConnectionInterface
-from .models import ByteStream, RawRequest, RawResponse
 
 
 class ConnectionPool:
@@ -120,7 +119,7 @@ class ConnectionPool:
         """
         return list(self._pool)
 
-    def handle_request(self, request: RawRequest) -> RawResponse:
+    def handle_request(self, request: Request) -> Response:
         """
         Send an HTTP request, and return an HTTP response.
         """
@@ -195,12 +194,11 @@ class ConnectionPool:
             # When we return the response, we wrap the stream in a special class
             # that handles notifying the connection pool once the response
             # has been released.
-            return RawResponse(
+            assert isinstance(response.stream, ByteStream)
+            return Response(
                 status=response.status,
                 headers=response.headers,
-                stream=ConnectionPoolByteStream(
-                    response.stream, self, connection
-                ),
+                stream=ConnectionPoolByteStream(response.stream, self, connection),
                 extensions=response.extensions,
             )
 

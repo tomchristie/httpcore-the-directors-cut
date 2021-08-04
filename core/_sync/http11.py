@@ -5,12 +5,11 @@ from typing import Iterator, Callable, List, Optional, Tuple, Type, Union
 
 import h11
 
+from .._models import ByteStream, Origin, Request, Response
 from ..backends.base import NetworkStream
 from ..exceptions import ConnectionNotAvailable
 from ..synchronization import Lock
-from ..urls import Origin
 from .interfaces import ConnectionInterface
-from .models import ByteStream, RawRequest, RawResponse
 
 H11Event = Union[
     h11.Request,
@@ -45,9 +44,11 @@ class HTTP11Connection(ConnectionInterface):
         self._request_count = 0
         self._h11_state = h11.Connection(our_role=h11.CLIENT)
 
-    def handle_request(self, request: RawRequest) -> RawResponse:
+    def handle_request(self, request: Request) -> Response:
         if not self.can_handle_request(request.url.origin):
-            raise RuntimeError(f"Attempted to send request to {request.url.origin} on connection to {self._origin}")
+            raise RuntimeError(
+                f"Attempted to send request to {request.url.origin} on connection to {self._origin}"
+            )
 
         with self._state_lock:
             if self._state in (HTTPConnectionState.NEW, HTTPConnectionState.IDLE):
@@ -66,7 +67,7 @@ class HTTP11Connection(ConnectionInterface):
                 reason_phrase,
                 headers,
             ) = self._receive_response_headers()
-            return RawResponse(
+            return Response(
                 status=status_code,
                 headers=headers,
                 stream=HTTPConnectionByteStream(
@@ -76,7 +77,7 @@ class HTTP11Connection(ConnectionInterface):
                 extensions={
                     "http_version": http_version,
                     "reason_phrase": reason_phrase,
-                    "stream": self._network_stream
+                    "stream": self._network_stream,
                 },
             )
         except BaseException as exc:
@@ -88,13 +89,14 @@ class HTTP11Connection(ConnectionInterface):
 
     # Sending the request...
 
-    def _send_request_headers(self, request: RawRequest) -> None:
+    def _send_request_headers(self, request: Request) -> None:
         event = h11.Request(
             method=request.method, target=request.url.target, headers=request.headers
         )
         self._send_event(event)
 
-    def _send_request_body(self, request: RawRequest) -> None:
+    def _send_request_body(self, request: Request) -> None:
+        assert isinstance(request.stream, ByteStream)
         for chunk in request.stream:
             event = h11.Data(data=chunk)
             self._send_event(event)
@@ -200,9 +202,7 @@ class HTTP11Connection(ConnectionInterface):
     def __repr__(self) -> str:
         class_name = self.__class__.__name__
         origin = str(self._origin)
-        return (
-            f"<{class_name} [{origin!r}, {self._state.name}, Request Count: {self._request_count}]>"
-        )
+        return f"<{class_name} [{origin!r}, {self._state.name}, Request Count: {self._request_count}]>"
 
     # These context managers are not used in the standard flow, but are
     # useful for testing or working with connection instances directly.

@@ -1,5 +1,5 @@
 from .base import AsyncNetworkStream, AsyncNetworkBackend, NetworkStream, NetworkBackend
-from ..urls import Origin
+from .._models import Origin
 from typing import List
 import ssl
 

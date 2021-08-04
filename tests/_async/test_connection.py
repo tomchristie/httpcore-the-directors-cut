@@ -1,8 +1,8 @@
 from core import (
     AsyncHTTPConnection,
     Origin,
-    AsyncRawRequest,
-    RawURL,
+    Request,
+    URL,
     AsyncByteStream,
     ConnectionNotAvailable,
 )
@@ -33,16 +33,17 @@ async def test_http_connection():
         assert not conn.has_expired()
         assert repr(conn) == "<AsyncHTTPConnection [CONNECTING]>"
 
-        url = RawURL(b"https", b"example.com", 443, b"/")
-        request = AsyncRawRequest(b"GET", url, [(b"Host", b"example.com")])
+        url = URL("https://example.com:443/")
+        request = Request("GET", url, headers=[("Host", "example.com")])
         async with await conn.handle_async_request(request) as response:
             assert (
                 repr(conn)
                 == "<AsyncHTTPConnection ['https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 1]>"
             )
-            content = await response.stream.aread()
-            assert response.status == 200
-            assert content == b"Hello, world!"
+            await response.aread()
+
+        assert response.status == 200
+        assert response.content == b"Hello, world!"
 
         assert conn.is_idle()
         assert not conn.is_closed()
@@ -74,8 +75,8 @@ async def test_concurrent_requests_not_available_on_http11_connections():
     async with AsyncHTTPConnection(
         origin=origin, network_backend=network_backend, keepalive_expiry=5.0
     ) as conn:
-        url = RawURL(b"https", b"example.com", 443, b"/")
-        request = AsyncRawRequest(b"GET", url, [(b"Host", b"example.com")])
+        url = URL("https://example.com:443/")
+        request = Request("GET", url, headers=[("Host", "example.com")])
         async with await conn.handle_async_request(request) as response:
             with pytest.raises(ConnectionNotAvailable):
                 await conn.handle_async_request(request)
@@ -88,8 +89,10 @@ async def test_request_to_incorrect_origin():
     """
     origin = Origin(b"https", b"example.com", 443)
     network_backend = AsyncMockBackend([])
-    async with AsyncHTTPConnection(origin=origin, network_backend=network_backend) as conn:
-        url = RawURL(b"https", b"other.com", 443, b"/")
-        request = AsyncRawRequest(b"GET", url, [(b"Host", b"other.com")])
+    async with AsyncHTTPConnection(
+        origin=origin, network_backend=network_backend
+    ) as conn:
+        url = URL("https://other.com:443/")
+        request = Request("GET", url, headers=[("Host", "other.com")])
         with pytest.raises(RuntimeError):
             await conn.handle_async_request(request)
