@@ -1,4 +1,4 @@
-from core import (
+from httpcore import (
     AsyncHTTPConnection,
     Origin,
     Request,
@@ -6,7 +6,7 @@ from core import (
     AsyncByteStream,
     ConnectionNotAvailable,
 )
-from core.backends.mock import AsyncMockBackend
+from httpcore.backends.mock import AsyncMockBackend
 import pytest
 from typing import List
 

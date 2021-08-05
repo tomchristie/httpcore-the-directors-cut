@@ -1,10 +1,11 @@
 import pytest
 import ssl
-from core import (
+from httpcore import (
     ConnectionPool,
     Request,
     URL,
 )
+
 
 
 def test_request(httpbin):
@@ -12,6 +13,7 @@ def test_request(httpbin):
         request = Request("GET", httpbin.url)
         with pool.handle_request(request) as response:
             assert response.status == 200
+
 
 
 def test_request(httpbin_secure):

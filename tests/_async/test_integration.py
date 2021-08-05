@@ -1,6 +1,6 @@
 import pytest
 import ssl
-from core import (
+from httpcore import (
     AsyncConnectionPool,
     Request,
     URL,

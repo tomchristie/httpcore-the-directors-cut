@@ -1,4 +1,4 @@
-import core._models as httpcore
+import httpcore
 import pytest
 from typing import AsyncIterator, Iterator, List
 

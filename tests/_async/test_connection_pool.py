@@ -1,4 +1,4 @@
-from core import (
+from httpcore import (
     AsyncConnectionPool,
     Origin,
     URL,
@@ -6,7 +6,7 @@ from core import (
     AsyncByteStream,
     UnsupportedProtocol,
 )
-from core.backends.mock import AsyncMockBackend
+from httpcore.backends.mock import AsyncMockBackend
 from typing import List
 import pytest
 import trio as concurrency

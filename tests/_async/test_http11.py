@@ -1,11 +1,11 @@
-from core import (
+from httpcore import (
     AsyncHTTP11Connection,
     Origin,
     Request,
     URL,
     ConnectionNotAvailable,
 )
-from core.backends.mock import AsyncMockStream
+from httpcore.backends.mock import AsyncMockStream
 import pytest
 from typing import List
 

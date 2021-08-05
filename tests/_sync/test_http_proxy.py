@@ -1,14 +1,15 @@
-from core import (
+from httpcore import (
     HTTPProxy,
     Origin,
     URL,
     Request,
     ByteStream,
 )
-from core.backends.mock import MockBackend
+from httpcore.backends.mock import MockBackend
 from typing import List
 import pytest
 from tests import concurrency
+
 
 
 def test_proxy_forwarding():
@@ -46,6 +47,7 @@ def test_proxy_forwarding():
         assert info == [
             "<ForwardHTTPConnection ['http://localhost:8080', HTTP/1.1, IDLE, Request Count: 1]>"
         ]
+
 
 
 def test_proxy_tunneling():
