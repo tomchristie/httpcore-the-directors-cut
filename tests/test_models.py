@@ -5,6 +5,7 @@ from typing import AsyncIterator, Iterator, List
 
 # URL
 
+
 def test_url():
     url = httpcore.URL("https://www.example.com/")
     assert url == httpcore.URL(
@@ -40,6 +41,7 @@ def test_url_cannot_include_unicode_strings():
 
 
 # Request
+
 
 def test_request():
     request = httpcore.Request("GET", "https://www.example.com/")
@@ -81,6 +83,7 @@ def test_request_host_header_with_non_default_port():
 
 # Response
 
+
 def test_response():
     response = httpcore.Response(200)
     assert response.status == 200
@@ -91,6 +94,7 @@ def test_response():
 
 
 # Tests for reading and streaming sync byte streams...
+
 
 class MockSyncByteStream(httpcore.SyncByteStream):
     def __init__(self, chunks: List[bytes]) -> None:
@@ -125,6 +129,7 @@ def test_response_sync_streaming():
 
 
 # Tests for reading and streaming async byte streams...
+
 
 class MockAsyncByteStream(httpcore.AsyncByteStream):
     def __init__(self, chunks: List[bytes]) -> None:

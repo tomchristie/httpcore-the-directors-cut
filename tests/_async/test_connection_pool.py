@@ -28,11 +28,9 @@ async def test_connection_pool_with_keepalive():
     )
 
     async with AsyncConnectionPool(
-        max_connections=10,
         network_backend=network_backend,
     ) as pool:
-        url = URL("https://example.com:443/")
-        request = Request("GET", url, headers=[("Host", "example.com")])
+        request = Request("GET", "https://example.com:443/")
 
         # Sending an intial request, which once complete will return to the pool, IDLE.
         async with await pool.handle_async_request(request) as response:
@@ -65,8 +63,7 @@ async def test_connection_pool_with_keepalive():
         ]
 
         # Sending a request to a different origin will not reuse the existing IDLE connection.
-        url = URL("http://example.com:80/")
-        request = Request("GET", url, headers=[(b"Host", b"example.com")])
+        request = Request("GET", "http://example.com:80/")
 
         async with await pool.handle_async_request(request) as response:
             info = [repr(c) for c in pool.connections]
@@ -101,13 +98,9 @@ async def test_connection_pool_with_close():
         ]
     )
 
-    async with AsyncConnectionPool(
-        max_connections=10,
-        network_backend=network_backend,
-    ) as pool:
-        url = URL("https://example.com:443/")
-        headers = [("Host", "example.com"), ("Connection", "close")]
-        request = Request("GET", url, headers=headers)
+    async with AsyncConnectionPool(network_backend=network_backend) as pool:
+        headers = [("Connection", "close")]
+        request = Request("GET", "https://example.com:443/", headers=headers)
 
         # Sending an intial request, which once complete will not return to the pool.
         async with await pool.handle_async_request(request) as response:
@@ -131,13 +124,8 @@ async def test_connection_pool_with_exception():
     """
     network_backend = AsyncMockBackend([b"Wait, this isn't valid HTTP!"])
 
-    async with AsyncConnectionPool(
-        max_connections=10,
-        network_backend=network_backend,
-    ) as pool:
-        url = URL("https://example.com:443/")
-        headers = [("Host", "example.com")]
-        request = Request("GET", url, headers=headers)
+    async with AsyncConnectionPool(network_backend=network_backend) as pool:
+        request = Request("GET", "https://example.com:443/")
 
         # Sending an intial request, which once complete will not return to the pool.
         with pytest.raises(Exception):
@@ -165,13 +153,10 @@ async def test_connection_pool_with_immediate_expiry():
     )
 
     async with AsyncConnectionPool(
-        max_connections=10,
         keepalive_expiry=0.0,
         network_backend=network_backend,
     ) as pool:
-        url = URL("https://example.com:443/")
-        headers = [("Host", "example.com")]
-        request = Request("GET", url, headers=headers)
+        request = Request("GET", "https://example.com:443/")
 
         # Sending an intial request, which once complete will not return to the pool.
         async with await pool.handle_async_request(request) as response:
@@ -204,11 +189,9 @@ async def test_connection_pool_with_no_keepalive_connections_allowed():
     )
 
     async with AsyncConnectionPool(
-        max_connections=10, max_keepalive_connections=0, network_backend=network_backend
+        max_keepalive_connections=0, network_backend=network_backend
     ) as pool:
-        url = URL("https://example.com:443/")
-        headers = [("Host", "example.com")]
-        request = Request("GET", url, headers=headers)
+        request = Request("GET", "https://example.com:443/")
 
         # Sending an intial request, which once complete will not return to the pool.
         async with await pool.handle_async_request(request) as response:
@@ -241,9 +224,7 @@ async def test_connection_pool_concurrency():
     )
 
     async def fetch(pool, domain, info_list):
-        url = URL(scheme="http", host=domain, port=80, target="/")
-        headers = [("Host", domain)]
-        request = Request("GET", url, headers=headers)
+        request = Request("GET", f"http://{domain}/")
         async with await pool.handle_async_request(request) as response:
             info = [repr(c) for c in pool.connections]
             info_list.append(info)
@@ -254,7 +235,7 @@ async def test_connection_pool_concurrency():
     ) as pool:
         info_list = []
         async with concurrency.open_nursery() as nursery:
-            for domain in [b"a.com", b"b.com", b"c.com", b"d.com", b"e.com"]:
+            for domain in ["a.com", "b.com", "c.com", "d.com", "e.com"]:
                 nursery.start_soon(fetch, pool, domain, info_list)
 
         # Check that each time we inspect the connection pool, only a
@@ -272,13 +253,11 @@ async def test_connection_pool_concurrency():
 
 @pytest.mark.trio
 async def test_unsupported_protocol():
-    async with AsyncConnectionPool(max_connections=10) as pool:
-        url = URL("ftp://www.example.com/")
-        request = Request("GET", url, headers=[("Host", "www.example.com")])
+    async with AsyncConnectionPool() as pool:
+        request = Request("GET", "ftp://www.example.com/")
         with pytest.raises(UnsupportedProtocol):
             await pool.handle_async_request(request)
 
-        url = URL("://www.example.com/")
-        request = Request("GET", url, headers=[("Host", "www.example.com")])
+        request = Request("GET", "://www.example.com/")
         with pytest.raises(UnsupportedProtocol):
             await pool.handle_async_request(request)
