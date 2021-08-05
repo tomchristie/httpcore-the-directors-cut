@@ -1,5 +1,15 @@
 from types import TracebackType
-from typing import Any, AsyncIterator, Iterator, List, Optional, Tuple, Type, Union
+from typing import (
+    Any,
+    AsyncIterator,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
 from urllib.parse import urlparse
 
 __all__ = [
@@ -12,6 +22,9 @@ __all__ = [
     "Response",
 ]
 
+
+HeadersAsList = List[Tuple[Union[bytes, str], Union[bytes, str]]]
+HeadersAsDict = Dict[Union[bytes, str], Union[bytes, str]]
 
 # Functions for typechecking...
 
@@ -51,7 +64,7 @@ def enforce_url(value: Union["URL", bytes, str], *, name: str) -> "URL":
 
 
 def enforce_headers(
-    value: List[Tuple[Union[bytes, str], Union[bytes, str]]] = None, *, name: str
+    value: Union[HeadersAsList, HeadersAsDict] = None, *, name: str
 ) -> List[Tuple[bytes, bytes]]:
     """
     Convienence function that ensure all items in request or response headers
@@ -66,6 +79,14 @@ def enforce_headers(
                 enforce_bytes(v, name="header value"),
             )
             for k, v in value
+        ]
+    elif isinstance(value, dict):
+        return [
+            (
+                enforce_bytes(k, name="header name"),
+                enforce_bytes(v, name="header value"),
+            )
+            for k, v in value.items()
         ]
 
     seen_type = type(value).__name__
@@ -242,6 +263,9 @@ class URL:
             return b"%b://%b%b" % (self.scheme, self.host, self.target)
         return b"%b://%b:%d%b" % (self.scheme, self.host, self.port, self.target)
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}(scheme={self.scheme!r}, host={self.host!r}, port={self.port!r}, target={self.target!r})"
+
 
 class Request:
     def __init__(
@@ -249,7 +273,7 @@ class Request:
         method: Union[bytes, str],
         url: Union[URL, bytes, str],
         *,
-        headers: List[Tuple[Union[bytes, str], Union[bytes, str]]] = None,
+        headers: Union[HeadersAsList, HeadersAsDict] = None,
         stream: Union[SyncByteStream, AsyncByteStream] = None,
         extensions: dict = None,
     ) -> None:
@@ -269,7 +293,7 @@ class Response:
         self,
         status: int,
         *,
-        headers: List[Tuple[Union[bytes, str], Union[bytes, str]]] = None,
+        headers: Union[HeadersAsList, HeadersAsDict] = None,
         stream: Union[SyncByteStream, AsyncByteStream] = None,
         extensions: dict = None,
     ) -> None:

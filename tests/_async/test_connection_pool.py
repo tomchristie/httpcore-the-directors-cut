@@ -99,8 +99,7 @@ async def test_connection_pool_with_close():
     )
 
     async with AsyncConnectionPool(network_backend=network_backend) as pool:
-        headers = [("Connection", "close")]
-        request = Request("GET", "https://example.com/", headers=headers)
+        request = Request("GET", "https://example.com/", headers={"Connection": "close"})
 
         # Sending an intial request, which once complete will not return to the pool.
         async with await pool.handle_async_request(request) as response:
