@@ -1,3 +1,5 @@
+## Quickstart
+
 Installation:
 
 ```shell
@@ -56,7 +58,7 @@ for index in range(5):
 # Request 4: 0.112 seconds.
 ```
 
-## Working with requests, responses, and URLs
+## Requests, responses, and URLs
 
 Request instances in `httpcore` are deliberately simple, and only include the essential information required to represent an HTTP request.
 
