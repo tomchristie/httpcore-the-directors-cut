@@ -11,7 +11,6 @@ import pytest
 from tests import concurrency
 
 
-
 def test_proxy_forwarding():
     """
     Send an HTTP request via a proxy.
@@ -47,7 +46,6 @@ def test_proxy_forwarding():
         assert info == [
             "<ForwardHTTPConnection ['http://localhost:8080', HTTP/1.1, IDLE, Request Count: 1]>"
         ]
-
 
 
 def test_proxy_tunneling():

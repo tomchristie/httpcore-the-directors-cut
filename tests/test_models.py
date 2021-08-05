@@ -50,7 +50,10 @@ def test_request():
     assert request.headers == [(b"Host", b"www.example.com")]
     assert request.extensions == {}
     assert repr(request) == "<Request [b'GET']>"
-    assert repr(request.url) == "URL(scheme=b'https', host=b'www.example.com', port=None, target=b'/')"
+    assert (
+        repr(request.url)
+        == "URL(scheme=b'https', host=b'www.example.com', port=None, target=b'/')"
+    )
     assert repr(request.stream) == "<ByteStream [0 bytes]>"
 
 

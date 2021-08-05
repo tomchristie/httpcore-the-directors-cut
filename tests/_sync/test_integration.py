@@ -7,13 +7,11 @@ from core import (
 )
 
 
-
 def test_request(httpbin):
     with ConnectionPool() as pool:
         request = Request("GET", httpbin.url)
         with pool.handle_request(request) as response:
             assert response.status == 200
-
 
 
 def test_request(httpbin_secure):

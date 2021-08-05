@@ -12,7 +12,6 @@ import pytest
 from tests import concurrency
 
 
-
 def test_connection_pool_with_keepalive():
     """
     By default HTTP/1.1 requests should be returned to the connection pool.
@@ -82,7 +81,6 @@ def test_connection_pool_with_keepalive():
         ]
 
 
-
 def test_connection_pool_with_close():
     """
     HTTP/1.1 requests that include a 'Connection: Close' header should
@@ -99,7 +97,9 @@ def test_connection_pool_with_close():
     )
 
     with ConnectionPool(network_backend=network_backend) as pool:
-        request = Request("GET", "https://example.com/", headers={"Connection": "close"})
+        request = Request(
+            "GET", "https://example.com/", headers={"Connection": "close"}
+        )
 
         # Sending an intial request, which once complete will not return to the pool.
         with pool.handle_request(request) as response:
@@ -113,7 +113,6 @@ def test_connection_pool_with_close():
         assert response.content == b"Hello, world!"
         info = [repr(c) for c in pool.connections]
         assert info == []
-
 
 
 def test_connection_pool_with_exception():
@@ -133,7 +132,6 @@ def test_connection_pool_with_exception():
 
         info = [repr(c) for c in pool.connections]
         assert info == []
-
 
 
 def test_connection_pool_with_immediate_expiry():
@@ -171,7 +169,6 @@ def test_connection_pool_with_immediate_expiry():
         assert info == []
 
 
-
 def test_connection_pool_with_no_keepalive_connections_allowed():
     """
     When 'max_keepalive_connections=0' is used, IDLE connections should not
@@ -206,7 +203,6 @@ def test_connection_pool_with_no_keepalive_connections_allowed():
         assert info == []
 
 
-
 def test_connection_pool_concurrency():
     """
     HTTP/1.1 requests made in concurrency must not ever exceed the maximum number
@@ -229,9 +225,7 @@ def test_connection_pool_concurrency():
             info_list.append(info)
             response.read()
 
-    with ConnectionPool(
-        max_connections=1, network_backend=network_backend
-    ) as pool:
+    with ConnectionPool(max_connections=1, network_backend=network_backend) as pool:
         info_list = []
         with concurrency.open_nursery() as nursery:
             for domain in ["a.com", "b.com", "c.com", "d.com", "e.com"]:
@@ -248,7 +242,6 @@ def test_connection_pool_concurrency():
                 "<HTTPConnection ['http://d.com:80', HTTP/1.1, ACTIVE, Request Count: 1]>",
                 "<HTTPConnection ['http://e.com:80', HTTP/1.1, ACTIVE, Request Count: 1]>",
             ]
-
 
 
 def test_unsupported_protocol():

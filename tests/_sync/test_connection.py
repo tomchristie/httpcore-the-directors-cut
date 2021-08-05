@@ -11,7 +11,6 @@ import pytest
 from typing import List
 
 
-
 def test_http_connection():
     origin = Origin(b"https", b"example.com", 443)
     network_backend = MockBackend(
@@ -54,7 +53,6 @@ def test_http_connection():
         )
 
 
-
 def test_concurrent_requests_not_available_on_http11_connections():
     """
     Attempting to issue a request against an already active HTTP/1.1 connection
@@ -80,16 +78,13 @@ def test_concurrent_requests_not_available_on_http11_connections():
                 conn.handle_request(request)
 
 
-
 def test_request_to_incorrect_origin():
     """
     A connection can only send requests whichever origin it is connected to.
     """
     origin = Origin(b"https", b"example.com", 443)
     network_backend = MockBackend([])
-    with HTTPConnection(
-        origin=origin, network_backend=network_backend
-    ) as conn:
+    with HTTPConnection(origin=origin, network_backend=network_backend) as conn:
         request = Request("GET", "https://other.com/")
         with pytest.raises(RuntimeError):
             conn.handle_request(request)
