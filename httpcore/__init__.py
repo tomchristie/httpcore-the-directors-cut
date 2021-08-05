@@ -9,3 +9,5 @@ __all__ += _async.__all__
 __all__ += _sync.__all__
 __all__ += _models.__all__
 __all__ += exceptions.__all__
+
+__version__ = "0.14.0"
