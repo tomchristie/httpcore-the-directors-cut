@@ -13,7 +13,9 @@ __all__ = [
 ]
 
 
-def enforce_bytes(bytes_or_str: Union[bytes, str], *, name: str) -> bytes:
+# Functions for typechecking...
+
+def enforce_bytes(value: Union[bytes, str], *, name: str) -> bytes:
     """
     Any arguments that are ultimately represented as bytes can be specified
     either as bytes or as strings.
@@ -22,31 +24,54 @@ def enforce_bytes(bytes_or_str: Union[bytes, str], *, name: str) -> bytes:
     the plain ASCII range. chr(0)...chr(127). If you need to use characters
     outside that range then be precise, and use a byte-wise argument.
     """
-    if isinstance(bytes_or_str, str):
+    if isinstance(value, str):
         try:
-            return bytes_or_str.encode("ascii")
+            return value.encode("ascii")
         except UnicodeEncodeError:
-            raise RuntimeError(
-                f"{name} must either be a plain ascii string, or specified as bytes."
-            )
-    return bytes_or_str
+            raise TypeError(f"{name} strings may not include unicode characters.")
+    elif isinstance(value, bytes):
+        return value
+
+    seen_type = type(value).__name__
+    raise TypeError(f"{name} must be bytes or str, but got {seen_type}.")
 
 
-def enforce_headers_as_bytes(
-    headers: List[Tuple[Union[bytes, str], Union[bytes, str]]]
+def enforce_url(value: Union["URL", bytes, str], *, name: str) -> "URL":
+    """
+    Type check for URL parameters.
+    """
+    if isinstance(value, (bytes, str)):
+        return URL(value)
+    elif isinstance(value, URL):
+        return value
+
+    seen_type = type(value).__name__
+    raise TypeError(f"{name} must be a URL, bytes, or str, but got {seen_type}.")
+
+
+def enforce_headers(
+    value: List[Tuple[Union[bytes, str], Union[bytes, str]]] = None, *, name: str
 ) -> List[Tuple[bytes, bytes]]:
     """
     Convienence function that ensure all items in request or response headers
     are either bytes or strings in the plain ASCII range.
     """
-    return [
-        (
-            enforce_bytes(k, name="header name"),
-            enforce_bytes(v, name="header value"),
-        )
-        for k, v in headers
-    ]
+    if value is None:
+        return []
+    elif isinstance(value, (list, tuple)):
+        return [
+            (
+                enforce_bytes(k, name="header name"),
+                enforce_bytes(v, name="header value"),
+            )
+            for k, v in value
+        ]
 
+    seen_type = type(value).__name__
+    raise TypeError(f"{name} must be a list, but got {seen_type}.")
+
+
+# Interfaces for byte streams...
 
 class SyncByteStream:
     def __iter__(self) -> Iterator[bytes]:  # pragma: nocover
@@ -129,18 +154,18 @@ class URL:
         scheme=b'http',
         host=b'localhost',
         port=8080,
-        target=b'http://www.example.com/'
+        target=b'https://www.example.com/'
     )
     >>> request = httpcore.Request(
         method="GET",
         url=url
     )
 
-    GET http://www.example.com/ HTTP/1.1
+    GET https://www.example.com/ HTTP/1.1
 
     Another example is constructing an 'OPTIONS *' request...
 
-    >>> url = httpcore.URL(scheme=b'http', host=b'www.example.com', target=b'*')
+    >>> url = httpcore.URL(scheme=b'https', host=b'www.example.com', target=b'*')
     >>> request = httpcore.Request(method="OPTIONS", url=url)
 
     OPTIONS * HTTP/1.1
@@ -192,15 +217,15 @@ class Request:
     def __init__(
         self,
         method: Union[bytes, str],
-        url: URL,
+        url: Union[URL, bytes, str],
         *,
         headers: List[Tuple[Union[bytes, str], Union[bytes, str]]] = None,
         stream: Union[SyncByteStream, AsyncByteStream] = None,
         extensions: dict = None,
     ) -> None:
         self.method = enforce_bytes(method, name="method")
-        self.url = url
-        self.headers = [] if headers is None else enforce_headers_as_bytes(headers)
+        self.url = enforce_url(url, name="url")
+        self.headers = enforce_headers(headers, name="headers")
         self.stream = ByteStream(b"") if stream is None else stream
         self.extensions = {} if extensions is None else extensions
 
@@ -218,7 +243,7 @@ class Response:
         extensions: dict = None,
     ) -> None:
         self.status = status
-        self.headers = [] if headers is None else enforce_headers_as_bytes(headers)
+        self.headers = enforce_headers(headers, name="headers")
         self.stream = ByteStream(b"") if stream is None else stream
         self.extensions = {} if extensions is None else extensions
 
@@ -253,23 +278,29 @@ class Response:
         exc_value: BaseException = None,
         traceback: TracebackType = None,
     ) -> None:
-        assert isinstance(
-            self.stream, SyncByteStream
-        ), "Attempted to close an asynchronous response using 'with ... as response'. You should use 'async with ... as response' instead."
+        if not isinstance(self.stream, SyncByteStream):  # pragma: nocover
+            raise RuntimeError(
+                "Attempted to close an asynchronous response using 'with ... as response'. "
+                "You should use 'async with ... as response' instead."
+            )
         self.close()
 
     def read(self) -> bytes:
-        assert isinstance(
-            self.stream, SyncByteStream
-        ), "Attempted to read an asynchronous response using 'response.read()'. You should use 'await response.aread()' instead."
+        if not isinstance(self.stream, SyncByteStream):  # pragma: nocover
+            raise RuntimeError(
+                "Attempted to read an asynchronous response using 'response.read()'. "
+                "You should use 'await response.aread()' instead."
+            )
         if not hasattr(self, "_content"):
             self._content = b"".join([part for part in self.iter_stream()])
         return self._content
 
     def iter_stream(self) -> Iterator[bytes]:
-        assert isinstance(
-            self.stream, SyncByteStream
-        ), "Attempted to stream an asynchronous response using 'for ... in response.iter_stream()'. You should use 'async for ... in response.aiter_stream()' instead."
+        if not isinstance(self.stream, SyncByteStream):  # pragma: nocover
+            raise RuntimeError(
+                "Attempted to stream an asynchronous response using 'for ... in response.iter_stream()'. "
+                "You should use 'async for ... in response.aiter_stream()' instead."
+            )
         if self._stream_consumed:
             raise RuntimeError(
                 "Attempted to call 'for ... in response.iter_stream()' more than once."
@@ -279,9 +310,11 @@ class Response:
             yield chunk
 
     def close(self) -> None:
-        assert isinstance(
-            self.stream, SyncByteStream
-        ), "Attempted to close an asynchronous response using 'response.close()'. You should use 'await response.aclose()' instead."
+        if not isinstance(self.stream, SyncByteStream):  # pragma: nocover
+            raise RuntimeError(
+                "Attempted to close an asynchronous response using 'response.close()'. "
+                "You should use 'await response.aclose()' instead."
+            )
         self.stream.close()
 
     # Async interface...
@@ -295,23 +328,29 @@ class Response:
         exc_value: BaseException = None,
         traceback: TracebackType = None,
     ) -> None:
-        assert isinstance(
-            self.stream, AsyncByteStream
-        ), "Attempted to close a synchronous response using 'async with ... as response'. You should use 'with ... as response' instead."
+        if not isinstance(self.stream, AsyncByteStream):  # pragma: nocover
+            raise RuntimeError(
+                "Attempted to close a synchronous response using 'async with ... as response'. "
+                "You should use 'with ... as response' instead."
+            )
         await self.aclose()
 
     async def aread(self) -> bytes:
-        assert isinstance(
-            self.stream, AsyncByteStream
-        ), "Attempted to read an synchronous response using 'await response.aread()'. You should use 'response.read()' instead."
+        if not isinstance(self.stream, AsyncByteStream):  # pragma: nocover
+            raise RuntimeError(
+                "Attempted to read an synchronous response using 'await response.aread()'. "
+                "You should use 'response.read()' instead."
+            )
         if not hasattr(self, "_content"):
             self._content = b"".join([part async for part in self.aiter_stream()])
         return self._content
 
     async def aiter_stream(self) -> Iterator[bytes]:
-        assert isinstance(
-            self.stream, AsyncByteStream
-        ), "Attempted to stream an synchronous response using 'async for ... in response.aiter_stream()'. You should use 'for ... in response.iter_stream()' instead."
+        if not isinstance(self.stream, AsyncByteStream):  # pragma: nocover
+            raise RuntimeError(
+                "Attempted to stream an synchronous response using 'async for ... in response.aiter_stream()'. "
+                "You should use 'for ... in response.iter_stream()' instead."
+            )
         if self._stream_consumed:
             raise RuntimeError(
                 "Attempted to call 'async for ... in response.aiter_stream()' more than once."
@@ -321,7 +360,9 @@ class Response:
             yield chunk
 
     async def aclose(self) -> None:
-        assert isinstance(
-            self.stream, AsyncByteStream
-        ), "Attempted to close a synchronous response using 'await response.aclose()'. You should use 'response.close()' instead."
+        if not isinstance(self.stream, AsyncByteStream):  # pragma: nocover
+            raise RuntimeError(
+                "Attempted to close a synchronous response using 'await response.aclose()'. "
+                "You should use 'response.close()' instead."
+            )
         await self.stream.aclose()

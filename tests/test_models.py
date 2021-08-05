@@ -3,6 +3,8 @@ import pytest
 from typing import AsyncIterator, Iterator, List
 
 
+# URL
+
 def test_url():
     url = httpcore.URL("https://www.example.com/")
     assert url == httpcore.URL(
@@ -19,26 +21,54 @@ def test_url_with_port():
     assert bytes(url) == b"https://www.example.com:443/"
 
 
+def test_url_with_invalid_argument():
+    with pytest.raises(TypeError) as exc_info:
+        httpcore.URL(123)
+    assert str(exc_info.value) == "url must be bytes or str, but got int."
+
+
 def test_url_cannot_include_unicode_strings():
     """
     URLs instantiated with strings outside of the plain ASCII range are disallowed,
-    but the explicit for allows for these ambiguous cases to be precisely expressed.
+    but the explicit style allows for these ambiguous cases to be precisely expressed.
     """
-    with pytest.raises(RuntimeError):
+    with pytest.raises(TypeError) as exc_info:
         httpcore.URL("https://www.example.com/☺")
+    assert str(exc_info.value) == "url strings may not include unicode characters."
 
     httpcore.URL(scheme=b"https", host=b"www.example.com", target="/☺".encode("utf-8"))
 
 
+# Request
+
 def test_request():
-    url = httpcore.URL("https://www.example.com/")
-    request = httpcore.Request("GET", url)
+    request = httpcore.Request("GET", "https://www.example.com/")
     assert request.method == b"GET"
-    assert request.url == url
+    assert request.url == httpcore.URL("https://www.example.com/")
     assert request.extensions == {}
     assert repr(request) == "<Request [b'GET']>"
     assert repr(request.stream) == "<ByteStream [0 bytes]>"
 
+
+def test_request_with_invalid_method():
+    with pytest.raises(TypeError) as exc_info:
+        httpcore.Request(123, "https://www.example.com/")
+    assert str(exc_info.value) == "method must be bytes or str, but got int."
+
+
+def test_request_with_invalid_url():
+    with pytest.raises(TypeError) as exc_info:
+        httpcore.Request("GET", 123)
+    assert str(exc_info.value) == "url must be a URL, bytes, or str, but got int."
+
+
+def test_request_with_invalid_headers():
+    with pytest.raises(TypeError) as exc_info:
+        httpcore.Request("GET", "https://www.example.com/", headers=123)
+    assert str(exc_info.value) == "headers must be a list, but got int."
+
+
+# Response
 
 def test_response():
     response = httpcore.Response(200)
@@ -50,7 +80,6 @@ def test_response():
 
 
 # Tests for reading and streaming sync byte streams...
-
 
 class MockSyncByteStream(httpcore.SyncByteStream):
     def __init__(self, chunks: List[bytes]) -> None:
@@ -85,7 +114,6 @@ def test_response_sync_streaming():
 
 
 # Tests for reading and streaming async byte streams...
-
 
 class MockAsyncByteStream(httpcore.AsyncByteStream):
     def __init__(self, chunks: List[bytes]) -> None:
