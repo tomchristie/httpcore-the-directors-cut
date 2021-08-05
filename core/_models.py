@@ -71,6 +71,30 @@ def enforce_headers(
     raise TypeError(f"{name} must be a list, but got {seen_type}.")
 
 
+# * https://tools.ietf.org/html/rfc3986#section-3.2.3
+# * https://url.spec.whatwg.org/#url-miscellaneous
+# * https://url.spec.whatwg.org/#scheme-state
+DEFAULT_PORTS = {
+    b"ftp": 21,
+    b"http": 80,
+    b"https": 443,
+    b"ws": 80,
+    b"wss": 443,
+}
+
+def include_host_header(url: 'URL', headers: List[Tuple[bytes, bytes]]):
+    if any([k.lower() == b'host' for k, v in headers]):
+        return headers
+
+    default_port = DEFAULT_PORTS.get(url.scheme)
+    if url.port is None or url.port == default_port:
+        header_value = url.host
+    else:
+        header_value = b'%b:%d' % (url.host, url.port)
+
+    return [(b'Host', header_value)] + headers
+
+
 # Interfaces for byte streams...
 
 class SyncByteStream:
@@ -196,7 +220,8 @@ class URL:
 
     @property
     def origin(self) -> Origin:
-        return Origin(scheme=self.scheme, host=self.host, port=self.port)
+        default_port = {b"http": 80, b"https": 443}[self.scheme]
+        return Origin(scheme=self.scheme, host=self.host, port=self.port or default_port)
 
     def __eq__(self, other: Any) -> bool:
         return (
@@ -226,6 +251,7 @@ class Request:
         self.method = enforce_bytes(method, name="method")
         self.url = enforce_url(url, name="url")
         self.headers = enforce_headers(headers, name="headers")
+        self.headers = include_host_header(self.url, self.headers)
         self.stream = ByteStream(b"") if stream is None else stream
         self.extensions = {} if extensions is None else extensions
 

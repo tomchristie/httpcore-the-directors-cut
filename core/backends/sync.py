@@ -1,5 +1,6 @@
 from .base import NetworkStream, NetworkBackend
 from .._models import Origin
+from .._ssl import default_ssl_context
 import socket
 import ssl
 
@@ -30,9 +31,7 @@ class SyncStream(NetworkStream):
 
 class SyncBackend(NetworkBackend):
     def __init__(self, ssl_context: ssl.SSLContext = None) -> None:
-        self._ssl_context = (
-            ssl.create_default_context() if ssl_context is None else ssl_context
-        )
+        self._ssl_context = default_ssl_context() if ssl_context is None else ssl_context
 
     def connect(self, origin: Origin) -> SyncStream:
         address = (origin.host.decode("ascii"), origin.port)

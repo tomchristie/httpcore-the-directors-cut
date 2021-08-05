@@ -45,6 +45,7 @@ def test_request():
     request = httpcore.Request("GET", "https://www.example.com/")
     assert request.method == b"GET"
     assert request.url == httpcore.URL("https://www.example.com/")
+    assert request.headers == [(b"Host", b"www.example.com")]
     assert request.extensions == {}
     assert repr(request) == "<Request [b'GET']>"
     assert repr(request.stream) == "<ByteStream [0 bytes]>"
@@ -66,6 +67,16 @@ def test_request_with_invalid_headers():
     with pytest.raises(TypeError) as exc_info:
         httpcore.Request("GET", "https://www.example.com/", headers=123)
     assert str(exc_info.value) == "headers must be a list, but got int."
+
+
+def test_request_host_header_with_default_port():
+    request = httpcore.Request("GET", "https://www.example.com:443/")
+    assert request.headers == [(b"Host", b"www.example.com")]
+
+
+def test_request_host_header_with_non_default_port():
+    request = httpcore.Request("GET", "https://www.example.com:1234/")
+    assert request.headers == [(b"Host", b"www.example.com:1234")]
 
 
 # Response

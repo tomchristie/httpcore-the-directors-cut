@@ -1,6 +1,7 @@
 import ssl
 import trio
 from .base import AsyncNetworkStream, AsyncNetworkBackend
+from .._ssl import default_ssl_context
 from .._models import Origin
 
 
@@ -29,9 +30,7 @@ class TrioStream(AsyncNetworkStream):
 
 class TrioBackend(AsyncNetworkBackend):
     def __init__(self, ssl_context: ssl.SSLContext = None) -> None:
-        self._ssl_context = (
-            ssl.create_default_context() if ssl_context is None else ssl_context
-        )
+        self._ssl_context = default_ssl_context() if ssl_context is None else ssl_context
 
     async def connect(self, origin: Origin) -> AsyncNetworkStream:
         trio_stream: trio.abc.Stream = await trio.open_tcp_stream(
