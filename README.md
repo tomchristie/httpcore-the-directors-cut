@@ -1,3 +1,11 @@
+Installation:
+
+```shell
+$ pip install git+https://github.com/tomchristie/httpcore-the-directors-cut
+```
+
+Usage:
+
 ```python
 import httpcore
 
