@@ -1,10 +1,37 @@
-from .._models import Origin, Request, Response
+from .._models import ByteStream, Origin, Request, Response, URL
+from typing import Dict, List, Tuple, Union
 
 
-class ConnectionInterface:
+HeadersAsList = List[Tuple[Union[bytes, str], Union[bytes, str]]]
+HeadersAsDict = Dict[Union[bytes, str], Union[bytes, str]]
+
+
+class RequestInterface:
+    def request(
+        self,
+        method: Union[bytes, str],
+        url: Union[URL, bytes, str],
+        *,
+        headers: Union[HeadersAsList, HeadersAsDict] = None,
+        stream: ByteStream = None,
+        extensions: dict = None
+    ):
+        request = Request(
+            method=method,
+            url=url,
+            headers=headers,
+            stream=stream,
+            extensions=extensions,
+        )
+        with self.handle_request(request) as response:
+            response.read()
+        return response
+
     def handle_request(self, request: Request) -> Response:
         raise NotImplementedError()  # pragma: nocover
 
+
+class ConnectionInterface(RequestInterface):
     def attempt_aclose(self) -> bool:
         raise NotImplementedError()  # pragma: nocover
 

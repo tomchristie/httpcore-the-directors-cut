@@ -1,10 +1,37 @@
-from .._models import Origin, Request, Response
+from .._models import AsyncByteStream, Origin, Request, Response, URL
+from typing import Dict, List, Tuple, Union
 
 
-class AsyncConnectionInterface:
+HeadersAsList = List[Tuple[Union[bytes, str], Union[bytes, str]]]
+HeadersAsDict = Dict[Union[bytes, str], Union[bytes, str]]
+
+
+class AsyncRequestInterface:
+    async def request(
+        self,
+        method: Union[bytes, str],
+        url: Union[URL, bytes, str],
+        *,
+        headers: Union[HeadersAsList, HeadersAsDict] = None,
+        stream: AsyncByteStream = None,
+        extensions: dict = None
+    ):
+        request = Request(
+            method=method,
+            url=url,
+            headers=headers,
+            stream=stream,
+            extensions=extensions,
+        )
+        async with await self.handle_async_request(request) as response:
+            await response.aread()
+        return response
+
     async def handle_async_request(self, request: Request) -> Response:
         raise NotImplementedError()  # pragma: nocover
 
+
+class AsyncConnectionInterface(AsyncRequestInterface):
     async def attempt_aclose(self) -> bool:
         raise NotImplementedError()  # pragma: nocover
 

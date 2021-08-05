@@ -8,10 +8,10 @@ from ..exceptions import ConnectionNotAvailable, UnsupportedProtocol
 from ..synchronization import AsyncLock, AsyncSemaphore
 from .._models import AsyncByteStream, Origin, Request, Response
 from .connection import AsyncHTTPConnection
-from .interfaces import AsyncConnectionInterface
+from .interfaces import AsyncConnectionInterface, AsyncRequestInterface
 
 
-class AsyncConnectionPool:
+class AsyncConnectionPool(AsyncRequestInterface):
     def __init__(
         self,
         ssl_context: ssl.SSLContext = None,

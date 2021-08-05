@@ -8,10 +8,10 @@ from ..exceptions import ConnectionNotAvailable, UnsupportedProtocol
 from ..synchronization import Lock, Semaphore
 from .._models import ByteStream, Origin, Request, Response
 from .connection import HTTPConnection
-from .interfaces import ConnectionInterface
+from .interfaces import ConnectionInterface, RequestInterface
 
 
-class ConnectionPool:
+class ConnectionPool(RequestInterface):
     def __init__(
         self,
         ssl_context: ssl.SSLContext = None,
@@ -61,7 +61,9 @@ class ConnectionPool:
         with self._pool_lock:
             self._pool.remove(connection)
 
-    def _get_from_pool(self, origin: Origin) -> Optional[ConnectionInterface]:
+    def _get_from_pool(
+        self, origin: Origin
+    ) -> Optional[ConnectionInterface]:
         """
         Return an available HTTP connection for the given origin,
         if one currently exists in the pool.
