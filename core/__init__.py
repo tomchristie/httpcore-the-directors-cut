@@ -4,7 +4,7 @@ from ._models import *
 from ._ssl import default_ssl_context
 from .exceptions import *
 
-__all__ = ['default_ssl_context']
+__all__ = ["default_ssl_context"]
 __all__ += _async.__all__
 __all__ += _sync.__all__
 __all__ += _models.__all__

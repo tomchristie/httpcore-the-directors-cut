@@ -15,6 +15,7 @@ __all__ = [
 
 # Functions for typechecking...
 
+
 def enforce_bytes(value: Union[bytes, str], *, name: str) -> bytes:
     """
     Any arguments that are ultimately represented as bytes can be specified
@@ -82,20 +83,22 @@ DEFAULT_PORTS = {
     b"wss": 443,
 }
 
-def include_host_header(url: 'URL', headers: List[Tuple[bytes, bytes]]):
-    if any([k.lower() == b'host' for k, v in headers]):
+
+def include_host_header(url: "URL", headers: List[Tuple[bytes, bytes]]):
+    if any([k.lower() == b"host" for k, v in headers]):
         return headers
 
     default_port = DEFAULT_PORTS.get(url.scheme)
     if url.port is None or url.port == default_port:
         header_value = url.host
     else:
-        header_value = b'%b:%d' % (url.host, url.port)
+        header_value = b"%b:%d" % (url.host, url.port)
 
-    return [(b'Host', header_value)] + headers
+    return [(b"Host", header_value)] + headers
 
 
 # Interfaces for byte streams...
+
 
 class SyncByteStream:
     def __iter__(self) -> Iterator[bytes]:  # pragma: nocover
@@ -221,7 +224,9 @@ class URL:
     @property
     def origin(self) -> Origin:
         default_port = {b"http": 80, b"https": 443}[self.scheme]
-        return Origin(scheme=self.scheme, host=self.host, port=self.port or default_port)
+        return Origin(
+            scheme=self.scheme, host=self.host, port=self.port or default_port
+        )
 
     def __eq__(self, other: Any) -> bool:
         return (

@@ -61,7 +61,9 @@ class ConnectionPool:
         with self._pool_lock:
             self._pool.remove(connection)
 
-    def _get_from_pool(self, origin: Origin) -> Optional[ConnectionInterface]:
+    def _get_from_pool(
+        self, origin: Origin
+    ) -> Optional[ConnectionInterface]:
         """
         Return an available HTTP connection for the given origin,
         if one currently exists in the pool.
