@@ -30,7 +30,7 @@ async def test_connection_pool_with_keepalive():
     async with AsyncConnectionPool(
         network_backend=network_backend,
     ) as pool:
-        request = Request("GET", "https://example.com:443/")
+        request = Request("GET", "https://example.com/")
 
         # Sending an intial request, which once complete will return to the pool, IDLE.
         async with await pool.handle_async_request(request) as response:
@@ -63,7 +63,7 @@ async def test_connection_pool_with_keepalive():
         ]
 
         # Sending a request to a different origin will not reuse the existing IDLE connection.
-        request = Request("GET", "http://example.com:80/")
+        request = Request("GET", "http://example.com/")
 
         async with await pool.handle_async_request(request) as response:
             info = [repr(c) for c in pool.connections]
@@ -100,7 +100,7 @@ async def test_connection_pool_with_close():
 
     async with AsyncConnectionPool(network_backend=network_backend) as pool:
         headers = [("Connection", "close")]
-        request = Request("GET", "https://example.com:443/", headers=headers)
+        request = Request("GET", "https://example.com/", headers=headers)
 
         # Sending an intial request, which once complete will not return to the pool.
         async with await pool.handle_async_request(request) as response:
@@ -125,7 +125,7 @@ async def test_connection_pool_with_exception():
     network_backend = AsyncMockBackend([b"Wait, this isn't valid HTTP!"])
 
     async with AsyncConnectionPool(network_backend=network_backend) as pool:
-        request = Request("GET", "https://example.com:443/")
+        request = Request("GET", "https://example.com/")
 
         # Sending an intial request, which once complete will not return to the pool.
         with pytest.raises(Exception):
@@ -156,7 +156,7 @@ async def test_connection_pool_with_immediate_expiry():
         keepalive_expiry=0.0,
         network_backend=network_backend,
     ) as pool:
-        request = Request("GET", "https://example.com:443/")
+        request = Request("GET", "https://example.com/")
 
         # Sending an intial request, which once complete will not return to the pool.
         async with await pool.handle_async_request(request) as response:
@@ -191,7 +191,7 @@ async def test_connection_pool_with_no_keepalive_connections_allowed():
     async with AsyncConnectionPool(
         max_keepalive_connections=0, network_backend=network_backend
     ) as pool:
-        request = Request("GET", "https://example.com:443/")
+        request = Request("GET", "https://example.com/")
 
         # Sending an intial request, which once complete will not return to the pool.
         async with await pool.handle_async_request(request) as response:

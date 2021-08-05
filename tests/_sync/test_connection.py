@@ -33,7 +33,7 @@ def test_http_connection():
         assert not conn.has_expired()
         assert repr(conn) == "<HTTPConnection [CONNECTING]>"
 
-        request = Request("GET", "https://example.com:443/")
+        request = Request("GET", "https://example.com/")
         with conn.handle_request(request) as response:
             assert (
                 repr(conn)
@@ -74,7 +74,7 @@ def test_concurrent_requests_not_available_on_http11_connections():
     with HTTPConnection(
         origin=origin, network_backend=network_backend, keepalive_expiry=5.0
     ) as conn:
-        request = Request("GET", "https://example.com:443/")
+        request = Request("GET", "https://example.com/")
         with conn.handle_request(request) as response:
             with pytest.raises(ConnectionNotAvailable):
                 conn.handle_request(request)
@@ -90,6 +90,6 @@ def test_request_to_incorrect_origin():
     with HTTPConnection(
         origin=origin, network_backend=network_backend
     ) as conn:
-        request = Request("GET", "https://other.com:443/")
+        request = Request("GET", "https://other.com/")
         with pytest.raises(RuntimeError):
             conn.handle_request(request)

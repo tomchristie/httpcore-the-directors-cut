@@ -31,8 +31,7 @@ def test_proxy_forwarding():
         max_connections=10,
         network_backend=network_backend,
     ) as proxy:
-        url = URL("http://example.com:80/")
-        request = Request("GET", url, headers=[("Host", "example.com")])
+        request = Request("GET", "http://example.com/")
 
         # Sending an intial request, which once complete will return to the pool, IDLE.
         with proxy.handle_request(request) as response:
@@ -71,8 +70,7 @@ def test_proxy_tunneling():
         max_connections=10,
         network_backend=network_backend,
     ) as proxy:
-        url = URL("https://example.com:443/")
-        request = Request("GET", url, headers=[("Host", "example.com")])
+        request = Request("GET", "https://example.com/")
 
         # Sending an intial request, which once complete will return to the pool, IDLE.
         with proxy.handle_request(request) as response:
