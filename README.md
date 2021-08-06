@@ -31,7 +31,7 @@ The top-level `httpcore.request()` function is provided for convenience. In prac
 import httpcore
 
 pool = httpcore.ConnectionPool()
-response = httpcore.request("GET", "https://www.example.com/")
+response = pool.request("GET", "https://www.example.com/")
 ```
 
 The huge benefit that connection pools provide is that once you've sent an initial request, the connection to the host can usually be reused by subsequent requests.
