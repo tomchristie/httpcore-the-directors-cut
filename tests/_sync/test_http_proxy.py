@@ -31,10 +31,8 @@ def test_proxy_forwarding():
         max_connections=10,
         network_backend=network_backend,
     ) as proxy:
-        request = Request("GET", "http://example.com/")
-
         # Sending an intial request, which once complete will return to the pool, IDLE.
-        with proxy.handle_request(request) as response:
+        with proxy.stream("GET", "http://example.com/") as response:
             info = [repr(c) for c in proxy.connections]
             assert info == [
                 "<ForwardHTTPConnection ['http://localhost:8080', HTTP/1.1, ACTIVE, Request Count: 1]>"
@@ -70,10 +68,8 @@ def test_proxy_tunneling():
         max_connections=10,
         network_backend=network_backend,
     ) as proxy:
-        request = Request("GET", "https://example.com/")
-
         # Sending an intial request, which once complete will return to the pool, IDLE.
-        with proxy.handle_request(request) as response:
+        with proxy.stream("GET", "https://example.com/") as response:
             info = [repr(c) for c in proxy.connections]
             assert info == [
                 "<TunnelHTTPConnection ['https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 1]>"

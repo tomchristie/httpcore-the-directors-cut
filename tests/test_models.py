@@ -118,8 +118,8 @@ def test_response_sync_read():
 
 def test_response_sync_streaming():
     stream = MockSyncByteStream([b"Hello, ", b"world!"])
-    with httpcore.Response(200, stream=stream) as response:
-        content = b"".join([chunk for chunk in response.iter_stream()])
+    response = httpcore.Response(200, stream=stream)
+    content = b"".join([chunk for chunk in response.iter_stream()])
     assert content == b"Hello, world!"
 
     # We streamed the response rather than reading it, so .content is not available.
@@ -155,8 +155,8 @@ async def test_response_async_read():
 @pytest.mark.trio
 async def test_response_async_streaming():
     stream = MockAsyncByteStream([b"Hello, ", b"world!"])
-    async with httpcore.Response(200, stream=stream) as response:
-        content = b"".join([chunk async for chunk in response.aiter_stream()])
+    response = httpcore.Response(200, stream=stream)
+    content = b"".join([chunk async for chunk in response.aiter_stream()])
     assert content == b"Hello, world!"
 
     # We streamed the response rather than reading it, so .content is not available.

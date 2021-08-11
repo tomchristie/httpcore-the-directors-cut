@@ -25,11 +25,9 @@ def test_http11_connection():
     with HTTP11Connection(
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
-        request = Request("GET", "https://example.com/")
-        with conn.handle_request(request) as response:
-            response.read()
-            assert response.status == 200
-            assert response.content == b"Hello, world!"
+        response = conn.request("GET", "https://example.com/")
+        assert response.status == 200
+        assert response.content == b"Hello, world!"
 
         assert conn.is_idle()
         assert not conn.is_closed()
@@ -60,8 +58,7 @@ def test_http11_connection_unread_response():
     with HTTP11Connection(
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
-        request = Request("GET", "https://example.com/")
-        with conn.handle_request(request) as response:
+        with conn.stream("GET", "https://example.com/") as response:
             assert response.status == 200
 
         assert not conn.is_idle()
@@ -85,9 +82,8 @@ def test_http11_connection_with_network_error():
     with HTTP11Connection(
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
-        request = Request("GET", "https://example.com/")
         with pytest.raises(Exception):
-            conn.handle_request(request)
+            conn.request("GET", "https://example.com/")
 
         assert not conn.is_idle()
         assert conn.is_closed()
@@ -118,10 +114,9 @@ def test_http11_connection_handles_one_active_request():
     with HTTP11Connection(
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
-        request = Request("GET", "https://example.com/")
-        with conn.handle_request(request) as response:
+        with conn.stream("GET", "https://example.com/"):
             with pytest.raises(ConnectionNotAvailable):
-                conn.handle_request(request)
+                conn.request("GET", "https://example.com/")
 
 
 
@@ -142,8 +137,7 @@ def test_http11_connection_attempt_close():
     with HTTP11Connection(
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
-        request = Request("GET", "https://example.com/")
-        with conn.handle_request(request) as response:
+        with conn.stream("GET", "https://example.com/") as response:
             response.read()
             assert response.status == 200
             assert response.content == b"Hello, world!"
@@ -159,6 +153,5 @@ def test_request_to_incorrect_origin():
     origin = Origin(b"https", b"example.com", 443)
     stream = MockStream([])
     with HTTP11Connection(origin=origin, stream=stream) as conn:
-        request = Request("GET", "https://other.com/")
         with pytest.raises(RuntimeError):
-            conn.handle_request(request)
+            conn.request("GET", "https://other.com/")

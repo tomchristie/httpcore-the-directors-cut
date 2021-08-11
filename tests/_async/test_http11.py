@@ -25,11 +25,9 @@ async def test_http11_connection():
     async with AsyncHTTP11Connection(
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
-        request = Request("GET", "https://example.com/")
-        async with await conn.handle_async_request(request) as response:
-            await response.aread()
-            assert response.status == 200
-            assert response.content == b"Hello, world!"
+        response = await conn.request("GET", "https://example.com/")
+        assert response.status == 200
+        assert response.content == b"Hello, world!"
 
         assert conn.is_idle()
         assert not conn.is_closed()
@@ -60,8 +58,7 @@ async def test_http11_connection_unread_response():
     async with AsyncHTTP11Connection(
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
-        request = Request("GET", "https://example.com/")
-        async with await conn.handle_async_request(request) as response:
+        async with conn.stream("GET", "https://example.com/") as response:
             assert response.status == 200
 
         assert not conn.is_idle()
@@ -85,9 +82,8 @@ async def test_http11_connection_with_network_error():
     async with AsyncHTTP11Connection(
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
-        request = Request("GET", "https://example.com/")
         with pytest.raises(Exception):
-            await conn.handle_async_request(request)
+            await conn.request("GET", "https://example.com/")
 
         assert not conn.is_idle()
         assert conn.is_closed()
@@ -118,10 +114,9 @@ async def test_http11_connection_handles_one_active_request():
     async with AsyncHTTP11Connection(
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
-        request = Request("GET", "https://example.com/")
-        async with await conn.handle_async_request(request) as response:
+        async with conn.stream("GET", "https://example.com/"):
             with pytest.raises(ConnectionNotAvailable):
-                await conn.handle_async_request(request)
+                await conn.request("GET", "https://example.com/")
 
 
 @pytest.mark.trio
@@ -142,8 +137,7 @@ async def test_http11_connection_attempt_close():
     async with AsyncHTTP11Connection(
         origin=origin, stream=stream, keepalive_expiry=5.0
     ) as conn:
-        request = Request("GET", "https://example.com/")
-        async with await conn.handle_async_request(request) as response:
+        async with conn.stream("GET", "https://example.com/") as response:
             await response.aread()
             assert response.status == 200
             assert response.content == b"Hello, world!"
@@ -159,6 +153,5 @@ async def test_request_to_incorrect_origin():
     origin = Origin(b"https", b"example.com", 443)
     stream = AsyncMockStream([])
     async with AsyncHTTP11Connection(origin=origin, stream=stream) as conn:
-        request = Request("GET", "https://other.com/")
         with pytest.raises(RuntimeError):
-            await conn.handle_async_request(request)
+            await conn.request("GET", "https://other.com/")

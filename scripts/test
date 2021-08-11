@@ -1,5 +1,5 @@
 export PYTHONPATH=.
 
 venv/bin/coverage run -m pytest
-venv/bin/coverage report --include 'httpcore/*' --omit 'httpcore/_sync/*' --show-missing
-venv/bin/coverage html --include 'httpcore/*' --omit 'httpcore/_sync/*'
+venv/bin/coverage report --include 'httpcore/*' --omit 'httpcore/_sync/*,httpcore/_compat.py' --show-missing
+venv/bin/coverage html --include 'httpcore/*' --omit 'httpcore/_sync/*,httpcore/_compat.py'

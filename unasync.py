@@ -4,6 +4,9 @@ import os
 import sys
 
 SUBS = [
+    ('from .._compat import asynccontextmanager', 'from contextlib import contextmanager'),
+    ('from ..backends.trio import TrioBackend', 'from ..backends.sync import SyncBackend'),
+    ('import trio as concurrency', 'from tests import concurrency'),
     ('AsyncIteratorByteStream', 'IteratorByteStream'),
     ('AsyncIterator', 'Iterator'),
     ('AutoBackend', 'SyncBackend'),
@@ -17,12 +20,11 @@ SUBS = [
     ('aclose_func', 'close_func'),
     ('aiterator', 'iterator'),
     ('aread', 'read'),
+    ('asynccontextmanager', 'contextmanager'),
     ('__aenter__', '__enter__'),
     ('__aexit__', '__exit__'),
     ('__aiter__', '__iter__'),
     ('@pytest.mark.trio', ''),
-    ('import trio as concurrency', 'from tests import concurrency'),
-    ('from ..backends.trio import TrioBackend', 'from ..backends.sync import SyncBackend'),
     ('TrioBackend', 'SyncBackend'),
 ]
 COMPILED_SUBS = [

@@ -324,22 +324,6 @@ class Response:
 
     # Sync interface...
 
-    def __enter__(self) -> "Response":
-        return self
-
-    def __exit__(
-        self,
-        exc_type: Type[BaseException] = None,
-        exc_value: BaseException = None,
-        traceback: TracebackType = None,
-    ) -> None:
-        if not isinstance(self.stream, SyncByteStream):  # pragma: nocover
-            raise RuntimeError(
-                "Attempted to close an asynchronous response using 'with ... as response'. "
-                "You should use 'async with ... as response' instead."
-            )
-        self.close()
-
     def read(self) -> bytes:
         if not isinstance(self.stream, SyncByteStream):  # pragma: nocover
             raise RuntimeError(
@@ -373,22 +357,6 @@ class Response:
         self.stream.close()
 
     # Async interface...
-
-    async def __aenter__(self) -> "Response":
-        return self
-
-    async def __aexit__(
-        self,
-        exc_type: Type[BaseException] = None,
-        exc_value: BaseException = None,
-        traceback: TracebackType = None,
-    ) -> None:
-        if not isinstance(self.stream, AsyncByteStream):  # pragma: nocover
-            raise RuntimeError(
-                "Attempted to close a synchronous response using 'async with ... as response'. "
-                "You should use 'with ... as response' instead."
-            )
-        await self.aclose()
 
     async def aread(self) -> bytes:
         if not isinstance(self.stream, AsyncByteStream):  # pragma: nocover

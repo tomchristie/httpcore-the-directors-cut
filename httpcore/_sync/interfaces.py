@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from .._models import ByteStream, Origin, Request, Response, URL
 from typing import Dict, List, Tuple, Union
 
@@ -23,9 +24,35 @@ class RequestInterface:
             stream=stream,
             extensions=extensions,
         )
-        with self.handle_request(request) as response:
+        response = self.handle_request(request)
+        try:
             response.read()
+        finally:
+            response.close()
         return response
+
+    @contextmanager
+    def stream(
+        self,
+        method: Union[bytes, str],
+        url: Union[URL, bytes, str],
+        *,
+        headers: Union[HeadersAsList, HeadersAsDict] = None,
+        stream: ByteStream = None,
+        extensions: dict = None
+    ):
+        request = Request(
+            method=method,
+            url=url,
+            headers=headers,
+            stream=stream,
+            extensions=extensions,
+        )
+        response = self.handle_request(request)
+        try:
+            yield response
+        finally:
+            response.close()
 
     def handle_request(self, request: Request) -> Response:
         raise NotImplementedError()  # pragma: nocover

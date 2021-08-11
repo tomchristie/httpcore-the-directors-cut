@@ -33,8 +33,7 @@ async def test_http_connection():
         assert not conn.has_expired()
         assert repr(conn) == "<AsyncHTTPConnection [CONNECTING]>"
 
-        request = Request("GET", "https://example.com/")
-        async with await conn.handle_async_request(request) as response:
+        async with conn.stream("GET", "https://example.com/") as response:
             assert (
                 repr(conn)
                 == "<AsyncHTTPConnection ['https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 1]>"
@@ -74,10 +73,9 @@ async def test_concurrent_requests_not_available_on_http11_connections():
     async with AsyncHTTPConnection(
         origin=origin, network_backend=network_backend, keepalive_expiry=5.0
     ) as conn:
-        request = Request("GET", "https://example.com/")
-        async with await conn.handle_async_request(request) as response:
+        async with conn.stream("GET", "https://example.com/"):
             with pytest.raises(ConnectionNotAvailable):
-                await conn.handle_async_request(request)
+                await conn.request("GET", "https://example.com/")
 
 
 @pytest.mark.trio
@@ -90,6 +88,5 @@ async def test_request_to_incorrect_origin():
     async with AsyncHTTPConnection(
         origin=origin, network_backend=network_backend
     ) as conn:
-        request = Request("GET", "https://other.com/")
         with pytest.raises(RuntimeError):
-            await conn.handle_async_request(request)
+            await conn.request("GET", "https://other.com/")

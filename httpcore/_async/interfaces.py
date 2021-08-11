@@ -1,3 +1,4 @@
+from .._compat import asynccontextmanager
 from .._models import AsyncByteStream, Origin, Request, Response, URL
 from typing import Dict, List, Tuple, Union
 
@@ -23,9 +24,35 @@ class AsyncRequestInterface:
             stream=stream,
             extensions=extensions,
         )
-        async with await self.handle_async_request(request) as response:
+        response = await self.handle_async_request(request)
+        try:
             await response.aread()
+        finally:
+            await response.aclose()
         return response
+
+    @asynccontextmanager
+    async def stream(
+        self,
+        method: Union[bytes, str],
+        url: Union[URL, bytes, str],
+        *,
+        headers: Union[HeadersAsList, HeadersAsDict] = None,
+        stream: AsyncByteStream = None,
+        extensions: dict = None
+    ):
+        request = Request(
+            method=method,
+            url=url,
+            headers=headers,
+            stream=stream,
+            extensions=extensions,
+        )
+        response = await self.handle_async_request(request)
+        try:
+            yield response
+        finally:
+            await response.aclose()
 
     async def handle_async_request(self, request: Request) -> Response:
         raise NotImplementedError()  # pragma: nocover
