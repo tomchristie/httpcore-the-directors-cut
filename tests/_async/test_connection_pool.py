@@ -1,6 +1,5 @@
 from httpcore import (
     AsyncConnectionPool,
-    AsyncByteStream,
     UnsupportedProtocol,
 )
 from httpcore.backends.mock import AsyncMockBackend

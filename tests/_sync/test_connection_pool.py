@@ -1,6 +1,5 @@
 from httpcore import (
     ConnectionPool,
-    ByteStream,
     UnsupportedProtocol,
 )
 from httpcore.backends.mock import MockBackend
