@@ -1,8 +1,6 @@
 from httpcore import (
     HTTPProxy,
     Origin,
-    URL,
-    Request,
     ByteStream,
 )
 from httpcore.backends.mock import MockBackend

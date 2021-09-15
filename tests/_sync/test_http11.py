@@ -1,8 +1,6 @@
 from httpcore import (
     HTTP11Connection,
     Origin,
-    Request,
-    URL,
     ConnectionNotAvailable,
     RemoteProtocolError,
     LocalProtocolError

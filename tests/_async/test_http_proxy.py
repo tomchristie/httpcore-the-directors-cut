@@ -1,8 +1,6 @@
 from httpcore import (
     AsyncHTTPProxy,
     Origin,
-    URL,
-    Request,
     AsyncByteStream,
 )
 from httpcore.backends.mock import AsyncMockBackend

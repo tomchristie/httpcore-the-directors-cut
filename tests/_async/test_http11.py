@@ -1,8 +1,6 @@
 from httpcore import (
     AsyncHTTP11Connection,
     Origin,
-    Request,
-    URL,
     ConnectionNotAvailable,
     RemoteProtocolError,
     LocalProtocolError
