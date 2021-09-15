@@ -3,7 +3,7 @@ from httpcore import (
     Origin,
     ConnectionNotAvailable,
     RemoteProtocolError,
-    LocalProtocolError
+    LocalProtocolError,
 )
 from httpcore.backends.mock import MockStream
 import pytest
@@ -79,9 +79,7 @@ def test_http11_connection_with_remote_protocol_error():
     """
     origin = Origin(b"https", b"example.com", 443)
     stream = MockStream([b"Wait, this isn't valid HTTP!"])
-    with HTTP11Connection(
-        origin=origin, stream=stream
-    ) as conn:
+    with HTTP11Connection(origin=origin, stream=stream) as conn:
         with pytest.raises(RemoteProtocolError) as exc_info:
             conn.request("GET", "https://example.com/")
 
@@ -111,9 +109,7 @@ def test_http11_connection_with_local_protocol_error():
             b"Hello, world!",
         ]
     )
-    with HTTP11Connection(
-        origin=origin, stream=stream
-    ) as conn:
+    with HTTP11Connection(origin=origin, stream=stream) as conn:
         with pytest.raises(LocalProtocolError) as exc_info:
             conn.request("GET", "https://example.com/", headers={"Host": "\0"})
 

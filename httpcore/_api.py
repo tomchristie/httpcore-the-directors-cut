@@ -21,5 +21,5 @@ def request(
             url=url,
             headers=headers,
             stream=stream,
-            extensions=extensions
+            extensions=extensions,
         )

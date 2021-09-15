@@ -48,10 +48,18 @@ async def test_proxy_forwarding():
         assert not proxy.connections[0].is_closed()
 
         # A connection on a forwarding proxy can handle HTTP requests to any host.
-        assert proxy.connections[0].can_handle_request(Origin(b"http", b"example.com", 80))
-        assert proxy.connections[0].can_handle_request(Origin(b"http", b"other.com", 80))
-        assert not proxy.connections[0].can_handle_request(Origin(b"https", b"example.com", 443))
-        assert not proxy.connections[0].can_handle_request(Origin(b"https", b"other.com", 443))
+        assert proxy.connections[0].can_handle_request(
+            Origin(b"http", b"example.com", 80)
+        )
+        assert proxy.connections[0].can_handle_request(
+            Origin(b"http", b"other.com", 80)
+        )
+        assert not proxy.connections[0].can_handle_request(
+            Origin(b"https", b"example.com", 443)
+        )
+        assert not proxy.connections[0].can_handle_request(
+            Origin(b"https", b"other.com", 443)
+        )
 
 
 @pytest.mark.trio
@@ -94,7 +102,15 @@ async def test_proxy_tunneling():
         assert not proxy.connections[0].is_closed()
 
         # A connection on a tunneled proxy can only handle HTTPS requests to the same origin.
-        assert not proxy.connections[0].can_handle_request(Origin(b"http", b"example.com", 80))
-        assert not proxy.connections[0].can_handle_request(Origin(b"http", b"other.com", 80))
-        assert proxy.connections[0].can_handle_request(Origin(b"https", b"example.com", 443))
-        assert not proxy.connections[0].can_handle_request(Origin(b"https", b"other.com", 443))
+        assert not proxy.connections[0].can_handle_request(
+            Origin(b"http", b"example.com", 80)
+        )
+        assert not proxy.connections[0].can_handle_request(
+            Origin(b"http", b"other.com", 80)
+        )
+        assert proxy.connections[0].can_handle_request(
+            Origin(b"https", b"example.com", 443)
+        )
+        assert not proxy.connections[0].can_handle_request(
+            Origin(b"https", b"other.com", 443)
+        )

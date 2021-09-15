@@ -92,7 +92,9 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
     async def _send_request_headers(self, request: Request) -> None:
         try:
             event = h11.Request(
-                method=request.method, target=request.url.target, headers=request.headers
+                method=request.method,
+                target=request.url.target,
+                headers=request.headers,
             )
         except h11.LocalProtocolError as exc:
             raise LocalProtocolError(exc) from None

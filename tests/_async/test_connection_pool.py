@@ -92,7 +92,9 @@ async def test_connection_pool_with_close():
 
     async with AsyncConnectionPool(network_backend=network_backend) as pool:
         # Sending an intial request, which once complete will not return to the pool.
-        async with pool.stream("GET", "https://example.com/", headers={"Connection": "close"}) as response:
+        async with pool.stream(
+            "GET", "https://example.com/", headers={"Connection": "close"}
+        ) as response:
             info = [repr(c) for c in pool.connections]
             assert info == [
                 "<AsyncHTTPConnection ['https://example.com:443', HTTP/1.1, ACTIVE, Request Count: 1]>"

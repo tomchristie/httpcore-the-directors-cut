@@ -1,6 +1,9 @@
 __all__ = [
-    "ConnectionNotAvailable", "ProtocolError", "LocalProtocolError",
-    "RemoteProtocolError", "UnsupportedProtocol"
+    "ConnectionNotAvailable",
+    "ProtocolError",
+    "LocalProtocolError",
+    "RemoteProtocolError",
+    "UnsupportedProtocol",
 ]
 
 
