@@ -1,8 +1,5 @@
 from httpcore import (
     AsyncConnectionPool,
-    Origin,
-    URL,
-    Request,
     AsyncByteStream,
     UnsupportedProtocol,
 )
@@ -118,7 +115,7 @@ async def test_connection_pool_with_exception():
     network_backend = AsyncMockBackend([b"Wait, this isn't valid HTTP!"])
 
     async with AsyncConnectionPool(network_backend=network_backend) as pool:
-        # Sending an intial request, which once complete will not return to the pool.
+        # Sending an initial request, which once complete will not return to the pool.
         with pytest.raises(Exception):
             await pool.request("GET", "https://example.com/")
 

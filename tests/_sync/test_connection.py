@@ -1,8 +1,6 @@
 from httpcore import (
     HTTPConnection,
     Origin,
-    Request,
-    URL,
     ByteStream,
     ConnectionNotAvailable,
 )

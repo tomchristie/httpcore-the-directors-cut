@@ -1,8 +1,6 @@
 from httpcore import (
     AsyncHTTPConnection,
     Origin,
-    Request,
-    URL,
     AsyncByteStream,
     ConnectionNotAvailable,
 )

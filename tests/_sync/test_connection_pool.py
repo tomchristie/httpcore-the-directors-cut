@@ -1,8 +1,5 @@
 from httpcore import (
     ConnectionPool,
-    Origin,
-    URL,
-    Request,
     ByteStream,
     UnsupportedProtocol,
 )
@@ -118,7 +115,7 @@ def test_connection_pool_with_exception():
     network_backend = MockBackend([b"Wait, this isn't valid HTTP!"])
 
     with ConnectionPool(network_backend=network_backend) as pool:
-        # Sending an intial request, which once complete will not return to the pool.
+        # Sending an initial request, which once complete will not return to the pool.
         with pytest.raises(Exception):
             pool.request("GET", "https://example.com/")
 
