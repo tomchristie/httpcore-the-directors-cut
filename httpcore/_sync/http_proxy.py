@@ -96,6 +96,7 @@ class ForwardHTTPConnection(ConnectionInterface):
             keepalive_expiry=keepalive_expiry,
             network_backend=network_backend,
         )
+        self._supported_schemes = supported_schemes
         self._proxy_origin = proxy_origin
         self._proxy_headers = [] if proxy_headers is None else proxy_headers
 
@@ -198,7 +199,7 @@ class TunnelHTTPConnection(ConnectionInterface):
         return self._connection.handle_request(request)
 
     def can_handle_request(self, origin: Origin) -> bool:
-        return origin.scheme == self._remote_origin
+        return origin == self._remote_origin
 
     def close(self):
         self._connection.close()
