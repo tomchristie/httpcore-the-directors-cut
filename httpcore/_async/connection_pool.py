@@ -24,7 +24,7 @@ class AsyncConnectionPool(AsyncRequestInterface):
             max_keepalive_connections = max_connections - 1
 
         # We always close off keep-alives to allow at least one slot
-        # in the connection pool. There are more nifty stratagies that we
+        # in the connection pool. There are more nifty strategies that we
         # could use, but this keeps things nice and simple.
         self._max_keepalive_connections = min(
             max_keepalive_connections, max_connections - 1

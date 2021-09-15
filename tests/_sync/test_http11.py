@@ -4,6 +4,8 @@ from httpcore import (
     Request,
     URL,
     ConnectionNotAvailable,
+    RemoteProtocolError,
+    LocalProtocolError
 )
 from httpcore.backends.mock import MockStream
 import pytest
@@ -72,18 +74,52 @@ def test_http11_connection_unread_response():
 
 
 
-def test_http11_connection_with_network_error():
+def test_http11_connection_with_remote_protocol_error():
     """
-    If a network error occurs, then no response will be returned, and the
-    connection will not be reusable.
+    If a remote protocol error occurs, then no response will be returned,
+    and the connection will not be reusable.
     """
     origin = Origin(b"https", b"example.com", 443)
     stream = MockStream([b"Wait, this isn't valid HTTP!"])
     with HTTP11Connection(
-        origin=origin, stream=stream, keepalive_expiry=5.0
+        origin=origin, stream=stream
     ) as conn:
-        with pytest.raises(Exception):
+        with pytest.raises(RemoteProtocolError) as exc_info:
             conn.request("GET", "https://example.com/")
+
+        assert not conn.is_idle()
+        assert conn.is_closed()
+        assert not conn.is_available()
+        assert not conn.has_expired()
+        assert (
+            repr(conn)
+            == "<HTTP11Connection ['https://example.com:443', CLOSED, Request Count: 1]>"
+        )
+
+
+
+def test_http11_connection_with_local_protocol_error():
+    """
+    If a local protocol error occurs, then no response will be returned,
+    and the connection will not be reusable.
+    """
+    origin = Origin(b"https", b"example.com", 443)
+    stream = MockStream(
+        [
+            b"HTTP/1.1 200 OK\r\n",
+            b"Content-Type: plain/text\r\n",
+            b"Content-Length: 13\r\n",
+            b"\r\n",
+            b"Hello, world!",
+        ]
+    )
+    with HTTP11Connection(
+        origin=origin, stream=stream
+    ) as conn:
+        with pytest.raises(LocalProtocolError) as exc_info:
+            conn.request("GET", "https://example.com/", headers={"Host": "\0"})
+
+        assert str(exc_info.value) == "Illegal header value b'\\x00'"
 
         assert not conn.is_idle()
         assert conn.is_closed()

@@ -7,7 +7,7 @@ import h11
 
 from .._models import AsyncByteStream, Origin, Request, Response
 from ..backends.base import AsyncNetworkStream
-from ..exceptions import ConnectionNotAvailable
+from ..exceptions import ConnectionNotAvailable, LocalProtocolError, RemoteProtocolError
 from ..synchronization import AsyncLock
 from .interfaces import AsyncConnectionInterface
 
@@ -90,9 +90,12 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
     # Sending the request...
 
     async def _send_request_headers(self, request: Request) -> None:
-        event = h11.Request(
-            method=request.method, target=request.url.target, headers=request.headers
-        )
+        try:
+            event = h11.Request(
+                method=request.method, target=request.url.target, headers=request.headers
+            )
+        except h11.LocalProtocolError as exc:
+            raise LocalProtocolError(exc) from None
         await self._send_event(event)
 
     async def _send_request_body(self, request: Request) -> None:
@@ -136,7 +139,10 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
 
     async def _receive_event(self) -> H11Event:
         while True:
-            event = self._h11_state.next_event()
+            try:
+                event = self._h11_state.next_event()
+            except h11.RemoteProtocolError as exc:
+                raise RemoteProtocolError(exc) from None
 
             if event is h11.NEED_DATA:
                 data = await self._network_stream.read(self.READ_NUM_BYTES)
