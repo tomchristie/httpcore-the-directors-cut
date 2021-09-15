@@ -184,7 +184,7 @@ async def test_http11_connection_attempt_close():
 @pytest.mark.trio
 async def test_request_to_incorrect_origin():
     """
-    A connection can only send requests whichever origin it is connected to.
+    A connection can only send requests to whichever origin it is connected to.
     """
     origin = Origin(b"https", b"example.com", 443)
     stream = AsyncMockStream([])
