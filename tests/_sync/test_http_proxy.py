@@ -2,6 +2,7 @@ from httpcore import (
     HTTPProxy,
     Origin,
     ByteStream,
+    ProxyError
 )
 from httpcore.backends.mock import MockBackend
 from typing import List
@@ -114,3 +115,25 @@ def test_proxy_tunneling():
         assert not proxy.connections[0].can_handle_request(
             Origin(b"https", b"other.com", 443)
         )
+
+
+
+def test_proxy_tunneling_with_403():
+    """
+    Send an HTTPS request via a proxy.
+    """
+    network_backend = MockBackend(
+        [
+            b"HTTP/1.1 403 Permission Denied\r\n" b"\r\n",
+        ]
+    )
+
+    with HTTPProxy(
+        proxy_origin=Origin(scheme=b"http", host=b"localhost", port=8080),
+        max_connections=10,
+        network_backend=network_backend,
+    ) as proxy:
+        with pytest.raises(ProxyError) as exc_info:
+            proxy.request("GET", "https://example.com/")
+        assert str(exc_info.value) == "403 Permission Denied"
+        assert not proxy.connections

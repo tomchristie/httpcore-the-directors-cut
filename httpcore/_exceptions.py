@@ -3,10 +3,20 @@ from typing import Dict, Iterator, Type
 
 __all__ = [
     "ConnectionNotAvailable",
+    "ProxyError",
     "ProtocolError",
     "LocalProtocolError",
     "RemoteProtocolError",
     "UnsupportedProtocol",
+    "TimeoutException",
+    "PoolTimeout",
+    "ConnectTimeout",
+    "ReadTimeout",
+    "WriteTimeout",
+    "NetworkError",
+    "ConnectError",
+    "ReadError",
+    "WriteError",
 ]
 
 
@@ -22,6 +32,10 @@ def map_exceptions(map: Dict[Type[Exception], Type[Exception]]) -> Iterator[None
 
 
 class ConnectionNotAvailable(Exception):
+    pass
+
+
+class ProxyError(Exception):
     pass
 
 

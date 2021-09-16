@@ -1,3 +1,4 @@
+from .._exceptions import ProxyError
 from .._models import Origin, Request, Response, URL
 from ..backends.base import AsyncNetworkBackend
 from .._synchronization import AsyncLock
@@ -167,8 +168,16 @@ class AsyncTunnelHTTPConnection(AsyncConnectionInterface):
                 connect_request = Request(
                     method=b"CONNECT", url=connect_url, headers=connect_headers
                 )
-                response = await self._connection.handle_async_request(connect_request)
-                stream = response.extensions["stream"]
+                connect_response = await self._connection.handle_async_request(connect_request)
+
+                if connect_response.status < 200 or connect_response.status > 299:
+                    reason_bytes = connect_response.extensions.get("reason_phrase", b"")
+                    reason_str = reason_bytes.decode("ascii", errors="ignore")
+                    msg = "%d %s" % (connect_response.status, reason_str)
+                    await self._connection.aclose()
+                    raise ProxyError(msg)
+
+                stream = connect_response.extensions["stream"]
                 stream = await stream.start_tls(
                     ssl_context=self._ssl_context,
                     server_hostname=self._remote_origin.host,
