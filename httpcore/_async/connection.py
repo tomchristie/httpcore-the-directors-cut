@@ -5,7 +5,7 @@ from .._models import Origin, Request, Response
 from ..backends.auto import AutoBackend
 from ..backends.base import AsyncNetworkBackend
 from .._exceptions import ConnectionNotAvailable
-from ..synchronization import AsyncLock
+from .._synchronization import AsyncLock
 from .http11 import AsyncHTTP11Connection
 from .interfaces import AsyncConnectionInterface
 

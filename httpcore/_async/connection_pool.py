@@ -5,7 +5,7 @@ from typing import AsyncIterator, List, Optional, Type
 from ..backends.auto import AutoBackend
 from ..backends.base import AsyncNetworkBackend
 from .._exceptions import ConnectionNotAvailable, UnsupportedProtocol
-from ..synchronization import AsyncLock, AsyncSemaphore
+from .._synchronization import AsyncLock, AsyncSemaphore
 from .._models import AsyncByteStream, Origin, Request, Response
 from .connection import AsyncHTTPConnection
 from .interfaces import AsyncConnectionInterface, AsyncRequestInterface

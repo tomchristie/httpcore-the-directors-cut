@@ -2,12 +2,12 @@ import threading
 from types import TracebackType
 from typing import Type
 
-import trio
+import anyio
 
 
 class AsyncLock:
     def __init__(self) -> None:
-        self._lock = trio.Lock()
+        self._lock = anyio.Lock()
 
     async def __aenter__(self) -> "AsyncLock":
         await self._lock.acquire()
@@ -24,12 +24,12 @@ class AsyncLock:
 
 class AsyncSemaphore:
     def __init__(self, bound: int) -> None:
-        self._semaphore = trio.Semaphore(initial_value=bound, max_value=bound)
+        self._semaphore = anyio.Semaphore(initial_value=bound, max_value=bound)
 
     async def acquire_noblock(self) -> bool:
         try:
             self._semaphore.acquire_nowait()
-        except trio.WouldBlock:
+        except anyio.WouldBlock:
             return False
         return True
 

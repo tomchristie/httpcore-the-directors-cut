@@ -1,6 +1,6 @@
 from .._models import Origin, Request, Response, URL
 from ..backends.base import NetworkBackend
-from ..synchronization import Lock
+from .._synchronization import Lock
 from .connection_pool import ConnectionPool
 from .connection import HTTPConnection
 from .http11 import HTTP11Connection

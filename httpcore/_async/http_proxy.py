@@ -1,6 +1,6 @@
 from .._models import Origin, Request, Response, URL
 from ..backends.base import AsyncNetworkBackend
-from ..synchronization import AsyncLock
+from .._synchronization import AsyncLock
 from .connection_pool import AsyncConnectionPool
 from .connection import AsyncHTTPConnection
 from .http11 import AsyncHTTP11Connection

@@ -5,7 +5,7 @@ from typing import Iterator, List, Optional, Type
 from ..backends.sync import SyncBackend
 from ..backends.base import NetworkBackend
 from .._exceptions import ConnectionNotAvailable, UnsupportedProtocol
-from ..synchronization import Lock, Semaphore
+from .._synchronization import Lock, Semaphore
 from .._models import ByteStream, Origin, Request, Response
 from .connection import HTTPConnection
 from .interfaces import ConnectionInterface, RequestInterface

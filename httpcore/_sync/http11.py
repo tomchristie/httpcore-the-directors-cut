@@ -12,7 +12,7 @@ from .._exceptions import (
     LocalProtocolError,
     RemoteProtocolError,
 )
-from ..synchronization import Lock
+from .._synchronization import Lock
 from .interfaces import ConnectionInterface
 
 H11Event = Union[
