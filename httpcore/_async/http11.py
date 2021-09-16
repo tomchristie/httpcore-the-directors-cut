@@ -7,7 +7,11 @@ import h11
 
 from .._models import AsyncByteStream, Origin, Request, Response
 from ..backends.base import AsyncNetworkStream
-from .._exceptions import ConnectionNotAvailable, LocalProtocolError, RemoteProtocolError
+from .._exceptions import (
+    ConnectionNotAvailable,
+    LocalProtocolError,
+    RemoteProtocolError,
+)
 from ..synchronization import AsyncLock
 from .interfaces import AsyncConnectionInterface
 
@@ -66,12 +70,12 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
                 status_code,
                 reason_phrase,
                 headers,
-            ) = await self._receive_response_headers()
+            ) = await self._receive_response_headers(request)
             return Response(
                 status=status_code,
                 headers=headers,
                 stream=HTTPConnectionByteStream(
-                    aiterator=self._receive_response_body(),
+                    aiterator=self._receive_response_body(request),
                     aclose_func=self._response_closed,
                 ),
                 extensions={
@@ -90,6 +94,9 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
     # Sending the request...
 
     async def _send_request_headers(self, request: Request) -> None:
+        timeouts = request.extensions.get("timeout", {})
+        timeout = timeouts.get("write", None)
+
         try:
             event = h11.Request(
                 method=request.method,
@@ -98,28 +105,34 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
             )
         except h11.LocalProtocolError as exc:
             raise LocalProtocolError(exc) from None
-        await self._send_event(event)
+        await self._send_event(event, timeout=timeout)
 
     async def _send_request_body(self, request: Request) -> None:
+        timeouts = request.extensions.get("timeout", {})
+        timeout = timeouts.get("write", None)
+
         assert isinstance(request.stream, AsyncByteStream)
         async for chunk in request.stream:
             event = h11.Data(data=chunk)
             await self._send_event(event)
 
         event = h11.EndOfMessage()
-        await self._send_event(event)
+        await self._send_event(event, timeout=timeout)
 
-    async def _send_event(self, event: H11Event) -> None:
+    async def _send_event(self, event: H11Event, timeout: float = None) -> None:
         bytes_to_send = self._h11_state.send(event)
-        await self._network_stream.write(bytes_to_send)
+        await self._network_stream.write(bytes_to_send, timeout=timeout)
 
     # Receiving the response...
 
     async def _receive_response_headers(
-        self,
+        self, request: Request
     ) -> Tuple[bytes, int, bytes, List[Tuple[bytes, bytes]]]:
+        timeouts = request.extensions.get("timeout", {})
+        timeout = timeouts.get("read", None)
+
         while True:
-            event = await self._receive_event()
+            event = await self._receive_event(timeout=timeout)
             if isinstance(event, h11.Response):
                 break
 
@@ -131,15 +144,18 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
 
         return http_version, event.status_code, event.reason, headers
 
-    async def _receive_response_body(self) -> AsyncIterator[bytes]:
+    async def _receive_response_body(self, request: Request) -> AsyncIterator[bytes]:
+        timeouts = request.extensions.get("timeout", {})
+        timeout = timeouts.get("read", None)
+
         while True:
-            event = await self._receive_event()
+            event = await self._receive_event(timeout=timeout)
             if isinstance(event, h11.Data):
                 yield bytes(event.data)
             elif isinstance(event, (h11.EndOfMessage, h11.PAUSED)):
                 break
 
-    async def _receive_event(self) -> H11Event:
+    async def _receive_event(self, timeout: float = None) -> H11Event:
         while True:
             try:
                 event = self._h11_state.next_event()
@@ -147,7 +163,9 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
                 raise RemoteProtocolError(exc) from None
 
             if event is h11.NEED_DATA:
-                data = await self._network_stream.read(self.READ_NUM_BYTES)
+                data = await self._network_stream.read(
+                    self.READ_NUM_BYTES, timeout=timeout
+                )
                 self._h11_state.receive_data(data)
             else:
                 return event

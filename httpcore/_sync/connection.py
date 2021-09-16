@@ -26,6 +26,9 @@ class HTTPConnection(ConnectionInterface):
         self._request_lock = Lock()
 
     def handle_request(self, request: Request) -> Response:
+        timeouts = request.extensions.get("timeout", {})
+        timeout = timeouts.get("connect", None)
+
         if not self.can_handle_request(request.url.origin):
             raise RuntimeError(
                 f"Attempted to send request to {request.url.origin} on connection to {self._origin}"
@@ -34,7 +37,9 @@ class HTTPConnection(ConnectionInterface):
         with self._request_lock:
             if self._connection is None:
                 origin = self._origin
-                stream = self._network_backend.connect(origin=origin)
+                stream = self._network_backend.connect(
+                    origin=origin, timeout=timeout
+                )
                 self._connection = HTTP11Connection(
                     origin=origin,
                     stream=stream,

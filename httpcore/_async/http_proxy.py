@@ -150,6 +150,9 @@ class AsyncTunnelHTTPConnection(AsyncConnectionInterface):
         self._connected = False
 
     async def handle_async_request(self, request: Request) -> Response:
+        timeouts = request.extensions.get("timeout", {})
+        timeout = timeouts.get("connect", None)
+
         async with self._connect_lock:
             if not self._connected:
                 target = b"%b:%d" % (self._remote_origin.host, self._remote_origin.port)
@@ -169,6 +172,7 @@ class AsyncTunnelHTTPConnection(AsyncConnectionInterface):
                 stream = await stream.start_tls(
                     ssl_context=self._ssl_context,
                     server_hostname=self._remote_origin.host,
+                    timeout=timeout,
                 )
                 self._connection = AsyncHTTP11Connection(
                     origin=self._remote_origin,

@@ -7,7 +7,11 @@ import h11
 
 from .._models import ByteStream, Origin, Request, Response
 from ..backends.base import NetworkStream
-from .._exceptions import ConnectionNotAvailable, LocalProtocolError, RemoteProtocolError
+from .._exceptions import (
+    ConnectionNotAvailable,
+    LocalProtocolError,
+    RemoteProtocolError,
+)
 from ..synchronization import Lock
 from .interfaces import ConnectionInterface
 
@@ -66,12 +70,12 @@ class HTTP11Connection(ConnectionInterface):
                 status_code,
                 reason_phrase,
                 headers,
-            ) = self._receive_response_headers()
+            ) = self._receive_response_headers(request)
             return Response(
                 status=status_code,
                 headers=headers,
                 stream=HTTPConnectionByteStream(
-                    iterator=self._receive_response_body(),
+                    iterator=self._receive_response_body(request),
                     close_func=self._response_closed,
                 ),
                 extensions={
@@ -90,6 +94,9 @@ class HTTP11Connection(ConnectionInterface):
     # Sending the request...
 
     def _send_request_headers(self, request: Request) -> None:
+        timeouts = request.extensions.get("timeout", {})
+        timeout = timeouts.get("write", None)
+
         try:
             event = h11.Request(
                 method=request.method,
@@ -98,28 +105,34 @@ class HTTP11Connection(ConnectionInterface):
             )
         except h11.LocalProtocolError as exc:
             raise LocalProtocolError(exc) from None
-        self._send_event(event)
+        self._send_event(event, timeout=timeout)
 
     def _send_request_body(self, request: Request) -> None:
+        timeouts = request.extensions.get("timeout", {})
+        timeout = timeouts.get("write", None)
+
         assert isinstance(request.stream, ByteStream)
         for chunk in request.stream:
             event = h11.Data(data=chunk)
             self._send_event(event)
 
         event = h11.EndOfMessage()
-        self._send_event(event)
+        self._send_event(event, timeout=timeout)
 
-    def _send_event(self, event: H11Event) -> None:
+    def _send_event(self, event: H11Event, timeout: float = None) -> None:
         bytes_to_send = self._h11_state.send(event)
-        self._network_stream.write(bytes_to_send)
+        self._network_stream.write(bytes_to_send, timeout=timeout)
 
     # Receiving the response...
 
     def _receive_response_headers(
-        self,
+        self, request: Request
     ) -> Tuple[bytes, int, bytes, List[Tuple[bytes, bytes]]]:
+        timeouts = request.extensions.get("timeout", {})
+        timeout = timeouts.get("read", None)
+
         while True:
-            event = self._receive_event()
+            event = self._receive_event(timeout=timeout)
             if isinstance(event, h11.Response):
                 break
 
@@ -131,15 +144,18 @@ class HTTP11Connection(ConnectionInterface):
 
         return http_version, event.status_code, event.reason, headers
 
-    def _receive_response_body(self) -> Iterator[bytes]:
+    def _receive_response_body(self, request: Request) -> Iterator[bytes]:
+        timeouts = request.extensions.get("timeout", {})
+        timeout = timeouts.get("read", None)
+
         while True:
-            event = self._receive_event()
+            event = self._receive_event(timeout=timeout)
             if isinstance(event, h11.Data):
                 yield bytes(event.data)
             elif isinstance(event, (h11.EndOfMessage, h11.PAUSED)):
                 break
 
-    def _receive_event(self) -> H11Event:
+    def _receive_event(self, timeout: float = None) -> H11Event:
         while True:
             try:
                 event = self._h11_state.next_event()
@@ -147,7 +163,9 @@ class HTTP11Connection(ConnectionInterface):
                 raise RemoteProtocolError(exc) from None
 
             if event is h11.NEED_DATA:
-                data = self._network_stream.read(self.READ_NUM_BYTES)
+                data = self._network_stream.read(
+                    self.READ_NUM_BYTES, timeout=timeout
+                )
                 self._h11_state.receive_data(data)
             else:
                 return event
