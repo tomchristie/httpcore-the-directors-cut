@@ -162,7 +162,9 @@ class ConnectionPool(RequestInterface):
                         # If we couldn't get a ticket from the semaphore,
                         # and there are no IDLE connections that we can close
                         # then we need a blocking wait on the semaphore.
-                        self._pool_semaphore.acquire()
+                        timeouts = request.extensions.get("timeout", {})
+                        timeout = timeouts.get("pool", None)
+                        self._pool_semaphore.acquire(timeout=timeout)
                         break
 
                 # Create a new connection and add it to the pool.

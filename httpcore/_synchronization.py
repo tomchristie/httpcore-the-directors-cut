@@ -1,6 +1,7 @@
 import threading
 from types import TracebackType
 from typing import Type
+from ._exceptions import PoolTimeout, map_exceptions
 
 import anyio
 
@@ -33,8 +34,11 @@ class AsyncSemaphore:
             return False
         return True
 
-    async def acquire(self) -> None:
-        await self._semaphore.acquire()
+    async def acquire(self, timeout: float = None) -> None:
+        exc_map = {TimeoutError: PoolTimeout}
+        with map_exceptions(exc_map):
+            with anyio.fail_after(timeout):
+                await self._semaphore.acquire()
 
     async def release(self) -> None:
         self._semaphore.release()
@@ -64,8 +68,9 @@ class Semaphore:
     def acquire_noblock(self) -> bool:
         return self._semaphore.acquire(blocking=False)
 
-    def acquire(self) -> None:
-        self._semaphore.acquire()  # pragma: nocover
+    def acquire(self, timeout: float = None) -> None:
+        if not self._semaphore.acquire(timeout=timeout):  # pragma: nocover
+            raise PoolTimeout()
 
     def release(self) -> None:
         self._semaphore.release()
