@@ -1,3 +1,5 @@
+import ssl
+
 from .base import AsyncNetworkStream, AsyncNetworkBackend
 from .._models import Origin
 
@@ -12,6 +14,6 @@ class AutoBackend(AsyncNetworkBackend):
 
             self._backend = TrioBackend(ssl_context=self._ssl_context)
 
-    async def connect(self, origin: Origin) -> AsyncNetworkStream:
+    async def connect(self, origin: Origin, timeout: float = None) -> AsyncNetworkStream:
         await self._init_backend()
-        return await self._backend.connect(origin)
+        return await self._backend.connect(origin, timeout=timeout)

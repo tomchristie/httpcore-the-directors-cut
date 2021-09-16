@@ -2,8 +2,8 @@ import ssl
 from types import TracebackType
 from typing import AsyncIterator, List, Optional, Type
 
+from ..backends.auto import AutoBackend
 from ..backends.base import AsyncNetworkBackend
-from ..backends.trio import TrioBackend
 from .._exceptions import ConnectionNotAvailable, UnsupportedProtocol
 from ..synchronization import AsyncLock, AsyncSemaphore
 from .._models import AsyncByteStream, Origin, Request, Response
@@ -35,7 +35,7 @@ class AsyncConnectionPool(AsyncRequestInterface):
         self._pool_lock = AsyncLock()
         self._pool_semaphore = AsyncSemaphore(bound=max_connections)
         self._network_backend = (
-            TrioBackend(ssl_context=ssl_context)
+            AutoBackend(ssl_context=ssl_context)
             if network_backend is None
             else network_backend
         )

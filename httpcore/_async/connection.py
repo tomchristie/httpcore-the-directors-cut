@@ -2,8 +2,8 @@ from types import TracebackType
 from typing import Optional, Type
 
 from .._models import Origin, Request, Response
+from ..backends.auto import AutoBackend
 from ..backends.base import AsyncNetworkBackend
-from ..backends.trio import TrioBackend
 from .._exceptions import ConnectionNotAvailable
 from ..synchronization import AsyncLock
 from .http11 import AsyncHTTP11Connection
@@ -20,7 +20,7 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
         self._origin = origin
         self._keepalive_expiry = keepalive_expiry
         self._network_backend: AsyncNetworkBackend = (
-            TrioBackend() if network_backend is None else network_backend
+            AutoBackend() if network_backend is None else network_backend
         )
         self._connection: Optional[AsyncConnectionInterface] = None
         self._request_lock = AsyncLock()

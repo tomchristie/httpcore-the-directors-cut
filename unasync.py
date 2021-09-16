@@ -5,7 +5,7 @@ import sys
 
 SUBS = [
     ('from .._compat import asynccontextmanager', 'from contextlib import contextmanager'),
-    ('from ..backends.trio import TrioBackend', 'from ..backends.sync import SyncBackend'),
+    ('from ..backends.auto import AutoBackend', 'from ..backends.sync import SyncBackend'),
     ('import trio as concurrency', 'from tests import concurrency'),
     ('AsyncIteratorByteStream', 'IteratorByteStream'),
     ('AsyncIterator', 'Iterator'),
@@ -25,7 +25,7 @@ SUBS = [
     ('__aexit__', '__exit__'),
     ('__aiter__', '__iter__'),
     ('@pytest.mark.trio', ''),
-    ('TrioBackend', 'SyncBackend'),
+    ('AutoBackend', 'SyncBackend'),
 ]
 COMPILED_SUBS = [
     (re.compile(r'(^|\b)' + regex + r'($|\b)'), repl)
