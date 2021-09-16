@@ -4,7 +4,7 @@ from typing import Optional, Type
 from .._models import Origin, Request, Response
 from ..backends.base import NetworkBackend
 from ..backends.sync import SyncBackend
-from ..exceptions import ConnectionNotAvailable
+from .._exceptions import ConnectionNotAvailable
 from ..synchronization import Lock
 from .http11 import HTTP11Connection
 from .interfaces import ConnectionInterface

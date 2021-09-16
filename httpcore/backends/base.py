@@ -14,13 +14,16 @@ class NetworkStream:
         raise NotImplementedError()  # pragma: nocover
 
     def start_tls(
-        self, ssl_context: ssl.SSLContext, server_hostname: bytes = None
+        self,
+        ssl_context: ssl.SSLContext,
+        server_hostname: bytes = None,
+        timeout: float = None,
     ) -> "NetworkStream":
         raise NotImplementedError()  # pragma: nocover
 
 
 class NetworkBackend:
-    def connect(self, origin: Origin) -> NetworkStream:
+    def connect(self, origin: Origin, timeout: float = None) -> NetworkStream:
         raise NotImplementedError()  # pragma: nocover
 
 
@@ -35,11 +38,14 @@ class AsyncNetworkStream:
         raise NotImplementedError()  # pragma: nocover
 
     def start_tls(
-        self, ssl_context: ssl.SSLContext, server_hostname: bytes = None
+        self,
+        ssl_context: ssl.SSLContext,
+        server_hostname: bytes = None,
+        timeout: float = None,
     ) -> "AsyncNetworkStream":
         raise NotImplementedError()  # pragma: nocover
 
 
 class AsyncNetworkBackend:
-    async def connect(self, origin: Origin) -> NetworkStream:
+    async def connect(self, origin: Origin, timeout: float = None) -> NetworkStream:
         raise NotImplementedError()  # pragma: nocover

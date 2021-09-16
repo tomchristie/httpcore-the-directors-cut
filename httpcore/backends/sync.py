@@ -1,4 +1,13 @@
 from .base import NetworkStream, NetworkBackend
+from .._exceptions import (
+    ConnectError,
+    ConnectTimeout,
+    ReadError,
+    ReadTimeout,
+    WriteError,
+    WriteTimeout,
+    map_exceptions,
+)
 from .._models import Origin
 from .._ssl import default_ssl_context
 import socket
@@ -10,22 +19,34 @@ class SyncStream(NetworkStream):
         self._sock = sock
 
     def read(self, max_bytes: int, timeout: float = None) -> bytes:
-        return self._sock.recv(max_bytes)
+        exc_map = {socket.timeout: ReadTimeout, socket.error: ReadError}
+        with map_exceptions(exc_map):
+            self._sock.settimeout(timeout)
+            return self._sock.recv(max_bytes)
 
     def write(self, buffer: bytes, timeout: float = None) -> None:
-        while buffer:
-            n = self._sock.send(buffer)
-            buffer = buffer[n:]
+        exc_map = {socket.timeout: WriteTimeout, socket.error: WriteError}
+        with map_exceptions(exc_map):
+            while buffer:
+                self._sock.settimeout(timeout)
+                n = self._sock.send(buffer)
+                buffer = buffer[n:]
 
     def close(self) -> None:
         self._sock.close()
 
     def start_tls(
-        self, ssl_context: ssl.SSLContext, server_hostname: bytes = None
+        self,
+        ssl_context: ssl.SSLContext,
+        server_hostname: bytes = None,
+        timeout: float = None,
     ) -> NetworkStream:
-        sock = ssl_context.wrap_socket(
-            self._sock, server_hostname=server_hostname.decode("ascii")
-        )
+        exc_map = {socket.timeout: ConnectTimeout, socket.error: ConnectError}
+        with map_exceptions(exc_map):
+            self._sock.settimeout(timeout)
+            sock = ssl_context.wrap_socket(
+                self._sock, server_hostname=server_hostname.decode("ascii")
+            )
         return SyncStream(sock)
 
 
@@ -35,9 +56,12 @@ class SyncBackend(NetworkBackend):
             default_ssl_context() if ssl_context is None else ssl_context
         )
 
-    def connect(self, origin: Origin) -> SyncStream:
+    def connect(self, origin: Origin, timeout: float = None) -> SyncStream:
         address = (origin.host.decode("ascii"), origin.port)
-        sock = socket.create_connection(address)
+        exc_map = {socket.timeout: ConnectTimeout, socket.error: ConnectError}
+        with map_exceptions(exc_map):
+            sock = socket.create_connection(address, timeout)
+
         stream = SyncStream(sock)
         if origin.scheme == b"https":
             stream = stream.start_tls(self._ssl_context, server_hostname=origin.host)

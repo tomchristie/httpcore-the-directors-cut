@@ -1,6 +1,15 @@
 import ssl
 import trio
 from .base import AsyncNetworkStream, AsyncNetworkBackend
+from .._exceptions import (
+    ConnectError,
+    ConnectTimeout,
+    ReadError,
+    ReadTimeout,
+    WriteError,
+    WriteTimeout,
+    map_exceptions,
+)
 from .._ssl import default_ssl_context
 from .._models import Origin
 
@@ -10,21 +19,42 @@ class TrioStream(AsyncNetworkStream):
         self._stream = stream
 
     async def read(self, max_bytes: int, timeout: float = None) -> bytes:
-        return await self._stream.receive_some(max_bytes=max_bytes)
+        timeout_or_inf = float("inf") if timeout is None else timeout
+        exc_map = {trio.TooSlowError: ReadTimeout, trio.BrokenResourceError: ReadError}
+        with map_exceptions(exc_map):
+            with trio.fail_after(timeout_or_inf):
+                return await self._stream.receive_some(max_bytes=max_bytes)
 
     async def write(self, buffer: bytes, timeout: float = None) -> None:
-        return await self._stream.send_all(data=buffer)
+        timeout_or_inf = float("inf") if timeout is None else timeout
+        exc_map = {
+            trio.TooSlowError: WriteTimeout,
+            trio.BrokenResourceError: WriteError,
+        }
+        with map_exceptions(exc_map):
+            with trio.fail_after(timeout_or_inf):
+                return await self._stream.send_all(data=buffer)
 
     async def aclose(self) -> None:
         await self._stream.aclose()
 
     async def start_tls(
-        self, ssl_context: ssl.SSLContext, server_hostname: bytes = None
+        self,
+        ssl_context: ssl.SSLContext,
+        server_hostname: bytes = None,
+        timeout: float = None,
     ) -> AsyncNetworkStream:
+        timeout_or_inf = float("inf") if timeout is None else timeout
+        exc_map = {
+            trio.TooSlowError: ConnectTimeout,
+            trio.BrokenResourceError: ConnectError,
+        }
         trio_ssl_stream = trio.SSLStream(
             self._stream, ssl_context, server_hostname=server_hostname.decode("ascii")
         )
-        await trio_ssl_stream.do_handshake()
+        with map_exceptions(exc_map):
+            with trio.fail_after(timeout_or_inf):
+                await trio_ssl_stream.do_handshake()
         return TrioStream(trio_ssl_stream)
 
 
@@ -34,10 +64,19 @@ class TrioBackend(AsyncNetworkBackend):
             default_ssl_context() if ssl_context is None else ssl_context
         )
 
-    async def connect(self, origin: Origin) -> AsyncNetworkStream:
-        trio_stream: trio.abc.Stream = await trio.open_tcp_stream(
-            host=origin.host, port=origin.port
-        )
+    async def connect(
+        self, origin: Origin, timeout: float = None
+    ) -> AsyncNetworkStream:
+        timeout_or_inf = float("inf") if timeout is None else timeout
+        exc_map = {
+            trio.TooSlowError: ConnectTimeout,
+            trio.BrokenResourceError: ConnectError,
+        }
+        with map_exceptions(exc_map):
+            with trio.fail_after(timeout_or_inf):
+                trio_stream: trio.abc.Stream = await trio.open_tcp_stream(
+                    host=origin.host, port=origin.port
+                )
         stream = TrioStream(trio_stream)
         if origin.scheme == b"https":
             stream = await stream.start_tls(

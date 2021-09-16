@@ -7,7 +7,7 @@ import h11
 
 from .._models import ByteStream, Origin, Request, Response
 from ..backends.base import NetworkStream
-from ..exceptions import ConnectionNotAvailable, LocalProtocolError, RemoteProtocolError
+from .._exceptions import ConnectionNotAvailable, LocalProtocolError, RemoteProtocolError
 from ..synchronization import Lock
 from .interfaces import ConnectionInterface
 

@@ -21,7 +21,10 @@ class MockStream(NetworkStream):
         pass
 
     def start_tls(
-        self, ssl_context: ssl.SSLContext, server_hostname: bytes = None
+        self,
+        ssl_context: ssl.SSLContext,
+        server_hostname: bytes = None,
+        timeout: float = None,
     ) -> NetworkStream:
         return self
 
@@ -30,7 +33,7 @@ class MockBackend(NetworkBackend):
     def __init__(self, buffer: List[bytes]) -> None:
         self._buffer = buffer
 
-    def connect(self, origin: Origin) -> NetworkStream:
+    def connect(self, origin: Origin, timeout: float = None) -> NetworkStream:
         return MockStream(self._buffer)
 
 
@@ -51,7 +54,10 @@ class AsyncMockStream(AsyncNetworkStream):
         pass
 
     async def start_tls(
-        self, ssl_context: ssl.SSLContext, server_hostname: bytes = None
+        self,
+        ssl_context: ssl.SSLContext,
+        server_hostname: bytes = None,
+        timeout: float = None,
     ) -> AsyncNetworkStream:
         return self
 
@@ -60,5 +66,7 @@ class AsyncMockBackend(AsyncNetworkBackend):
     def __init__(self, buffer: List[bytes]) -> None:
         self._buffer = buffer
 
-    async def connect(self, origin: Origin) -> AsyncNetworkStream:
+    async def connect(
+        self, origin: Origin, timeout: float = None
+    ) -> AsyncNetworkStream:
         return AsyncMockStream(self._buffer)

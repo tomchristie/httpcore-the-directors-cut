@@ -7,7 +7,7 @@ import h11
 
 from .._models import AsyncByteStream, Origin, Request, Response
 from ..backends.base import AsyncNetworkStream
-from ..exceptions import ConnectionNotAvailable, LocalProtocolError, RemoteProtocolError
+from .._exceptions import ConnectionNotAvailable, LocalProtocolError, RemoteProtocolError
 from ..synchronization import AsyncLock
 from .interfaces import AsyncConnectionInterface
 
