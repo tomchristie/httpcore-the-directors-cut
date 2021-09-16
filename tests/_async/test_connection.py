@@ -9,7 +9,7 @@ import pytest
 from typing import List
 
 
-@pytest.mark.trio
+@pytest.mark.anyio
 async def test_http_connection():
     origin = Origin(b"https", b"example.com", 443)
     network_backend = AsyncMockBackend(
@@ -51,7 +51,7 @@ async def test_http_connection():
         )
 
 
-@pytest.mark.trio
+@pytest.mark.anyio
 async def test_concurrent_requests_not_available_on_http11_connections():
     """
     Attempting to issue a request against an already active HTTP/1.1 connection
@@ -76,7 +76,7 @@ async def test_concurrent_requests_not_available_on_http11_connections():
                 await conn.request("GET", "https://example.com/")
 
 
-@pytest.mark.trio
+@pytest.mark.anyio
 async def test_request_to_incorrect_origin():
     """
     A connection can only send requests whichever origin it is connected to.

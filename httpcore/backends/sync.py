@@ -25,6 +25,9 @@ class SyncStream(NetworkStream):
             return self._sock.recv(max_bytes)
 
     def write(self, buffer: bytes, timeout: float = None) -> None:
+        if not buffer:
+            return
+
         exc_map = {socket.timeout: WriteTimeout, socket.error: WriteError}
         with map_exceptions(exc_map):
             while buffer:

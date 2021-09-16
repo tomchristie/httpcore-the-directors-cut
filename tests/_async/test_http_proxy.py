@@ -9,7 +9,7 @@ import pytest
 import trio as concurrency
 
 
-@pytest.mark.trio
+@pytest.mark.anyio
 async def test_proxy_forwarding():
     """
     Send an HTTP request via a proxy.
@@ -62,7 +62,7 @@ async def test_proxy_forwarding():
         )
 
 
-@pytest.mark.trio
+@pytest.mark.anyio
 async def test_proxy_tunneling():
     """
     Send an HTTPS request via a proxy.

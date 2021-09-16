@@ -8,7 +8,7 @@ import pytest
 import trio as concurrency
 
 
-@pytest.mark.trio
+@pytest.mark.anyio
 async def test_connection_pool_with_keepalive():
     """
     By default HTTP/1.1 requests should be returned to the connection pool.
@@ -74,7 +74,7 @@ async def test_connection_pool_with_keepalive():
         ]
 
 
-@pytest.mark.trio
+@pytest.mark.anyio
 async def test_connection_pool_with_close():
     """
     HTTP/1.1 requests that include a 'Connection: Close' header should
@@ -107,7 +107,7 @@ async def test_connection_pool_with_close():
         assert info == []
 
 
-@pytest.mark.trio
+@pytest.mark.anyio
 async def test_connection_pool_with_exception():
     """
     HTTP/1.1 requests that result in an exception should not be returned to the
@@ -124,7 +124,7 @@ async def test_connection_pool_with_exception():
         assert info == []
 
 
-@pytest.mark.trio
+@pytest.mark.anyio
 async def test_connection_pool_with_immediate_expiry():
     """
     Connection pools with keepalive_expiry=0.0 should immediately expire
@@ -158,7 +158,7 @@ async def test_connection_pool_with_immediate_expiry():
         assert info == []
 
 
-@pytest.mark.trio
+@pytest.mark.anyio
 async def test_connection_pool_with_no_keepalive_connections_allowed():
     """
     When 'max_keepalive_connections=0' is used, IDLE connections should not
@@ -234,7 +234,7 @@ async def test_connection_pool_concurrency():
             ]
 
 
-@pytest.mark.trio
+@pytest.mark.anyio
 async def test_unsupported_protocol():
     async with AsyncConnectionPool() as pool:
         with pytest.raises(UnsupportedProtocol):

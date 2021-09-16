@@ -15,7 +15,7 @@ def test_request(httpbin):
 
 
 
-def test_request(httpbin_secure):
+def test_ssl_request(httpbin_secure):
     ssl_context = ssl.create_default_context()
     ssl_context.check_hostname = False
     ssl_context.verify_mode = ssl.CERT_NONE

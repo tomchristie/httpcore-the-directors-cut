@@ -10,7 +10,7 @@ import pytest
 from typing import List
 
 
-@pytest.mark.trio
+@pytest.mark.anyio
 async def test_http11_connection():
     origin = Origin(b"https", b"example.com", 443)
     stream = AsyncMockStream(
@@ -39,7 +39,7 @@ async def test_http11_connection():
         )
 
 
-@pytest.mark.trio
+@pytest.mark.anyio
 async def test_http11_connection_unread_response():
     """
     If the client releases the response without reading it to termination,
@@ -71,7 +71,7 @@ async def test_http11_connection_unread_response():
         )
 
 
-@pytest.mark.trio
+@pytest.mark.anyio
 async def test_http11_connection_with_remote_protocol_error():
     """
     If a remote protocol error occurs, then no response will be returned,
@@ -93,7 +93,7 @@ async def test_http11_connection_with_remote_protocol_error():
         )
 
 
-@pytest.mark.trio
+@pytest.mark.anyio
 async def test_http11_connection_with_local_protocol_error():
     """
     If a local protocol error occurs, then no response will be returned,
@@ -125,7 +125,7 @@ async def test_http11_connection_with_local_protocol_error():
         )
 
 
-@pytest.mark.trio
+@pytest.mark.anyio
 async def test_http11_connection_handles_one_active_request():
     """
     Attempting to send a request while one is already in-flight will raise
@@ -149,7 +149,7 @@ async def test_http11_connection_handles_one_active_request():
                 await conn.request("GET", "https://example.com/")
 
 
-@pytest.mark.trio
+@pytest.mark.anyio
 async def test_http11_connection_attempt_close():
     """
     A connection can only be closed when it is idle.
@@ -175,7 +175,7 @@ async def test_http11_connection_attempt_close():
         assert await conn.attempt_aclose()
 
 
-@pytest.mark.trio
+@pytest.mark.anyio
 async def test_request_to_incorrect_origin():
     """
     A connection can only send requests to whichever origin it is connected to.
