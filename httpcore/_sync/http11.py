@@ -8,6 +8,7 @@ import h11
 from .._models import ByteStream, Origin, Request, Response
 from ..backends.base import NetworkStream
 from .._exceptions import (
+    map_exceptions,
     ConnectionNotAvailable,
     LocalProtocolError,
     RemoteProtocolError,
@@ -97,14 +98,12 @@ class HTTP11Connection(ConnectionInterface):
         timeouts = request.extensions.get("timeout", {})
         timeout = timeouts.get("write", None)
 
-        try:
+        with map_exceptions({h11.LocalProtocolError: LocalProtocolError}):
             event = h11.Request(
                 method=request.method,
                 target=request.url.target,
                 headers=request.headers,
             )
-        except h11.LocalProtocolError as exc:
-            raise LocalProtocolError(exc) from None
         self._send_event(event, timeout=timeout)
 
     def _send_request_body(self, request: Request) -> None:
@@ -157,10 +156,8 @@ class HTTP11Connection(ConnectionInterface):
 
     def _receive_event(self, timeout: float = None) -> H11Event:
         while True:
-            try:
+            with map_exceptions({h11.RemoteProtocolError: RemoteProtocolError}):
                 event = self._h11_state.next_event()
-            except h11.RemoteProtocolError as exc:
-                raise RemoteProtocolError(exc) from None
 
             if event is h11.NEED_DATA:
                 data = self._network_stream.read(

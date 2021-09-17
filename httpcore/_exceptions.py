@@ -28,7 +28,7 @@ def map_exceptions(map: Dict[Type[Exception], Type[Exception]]) -> Iterator[None
         for from_exc, to_exc in map.items():
             if isinstance(exc, from_exc):
                 raise to_exc(exc) from None
-        raise
+        raise  # pragma: nocover
 
 
 class ConnectionNotAvailable(Exception):
