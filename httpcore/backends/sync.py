@@ -12,6 +12,7 @@ from .._models import Origin
 from .._ssl import default_ssl_context
 import socket
 import ssl
+import typing
 
 
 class SyncStream(NetworkStream):
@@ -51,6 +52,11 @@ class SyncStream(NetworkStream):
                 self._sock, server_hostname=server_hostname.decode("ascii")
             )
         return SyncStream(sock)
+
+    def get_extra_info(self, info: str) -> typing.Any:
+        if info == "ssl_object" and isinstance(self._sock, ssl.SSLSocket):
+            return self._sock
+        return None
 
 
 class SyncBackend(NetworkBackend):

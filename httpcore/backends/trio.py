@@ -1,5 +1,6 @@
 import ssl
 import trio
+import typing
 from .base import AsyncNetworkStream, AsyncNetworkBackend
 from .._exceptions import (
     ConnectError,
@@ -63,6 +64,11 @@ class TrioStream(AsyncNetworkStream):
             with trio.fail_after(timeout_or_inf):
                 await ssl_stream.do_handshake()
         return TrioStream(ssl_stream)
+
+    def get_extra_info(self, info: str) -> typing.Any:
+        if info == "ssl_object" and isinstance(self._stream, trio.SSLStream):
+            return self._stream
+        return None
 
 
 class TrioBackend(AsyncNetworkBackend):

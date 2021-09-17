@@ -1,5 +1,6 @@
 import anyio
 import ssl
+import typing
 from .base import AsyncNetworkStream, AsyncNetworkBackend
 from .._exceptions import (
     ConnectError,
@@ -62,6 +63,11 @@ class AsyncIOStream(AsyncNetworkStream):
                     server_side=False,
                 )
         return AsyncIOStream(ssl_stream)
+
+    def get_extra_info(self, info: str) -> typing.Any:
+        if info == "ssl_object":
+            return self._stream.extra(anyio.streams.tls.TLSAttribute.ssl_object, None)
+        return None
 
 
 class AsyncIOBackend(AsyncNetworkBackend):

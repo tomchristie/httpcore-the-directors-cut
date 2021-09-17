@@ -7,6 +7,7 @@ from ..backends.base import NetworkBackend
 from .._exceptions import ConnectionNotAvailable
 from .._synchronization import Lock
 from .http11 import HTTP11Connection
+from .http2 import HTTP2Connection
 from .interfaces import ConnectionInterface
 
 
@@ -40,11 +41,19 @@ class HTTPConnection(ConnectionInterface):
                 stream = self._network_backend.connect(
                     origin=origin, timeout=timeout
                 )
-                self._connection = HTTP11Connection(
-                    origin=origin,
-                    stream=stream,
-                    keepalive_expiry=self._keepalive_expiry,
-                )
+                ssl_object = stream.get_extra_info("ssl_object")
+                if ssl_object is not None and ssl_object.selected_alpn_protocol() == "h2":
+                    self._connection = HTTP2Connection(
+                        origin=origin,
+                        stream=stream,
+                        keepalive_expiry=self._keepalive_expiry,
+                    )
+                else:
+                    self._connection = HTTP11Connection(
+                        origin=origin,
+                        stream=stream,
+                        keepalive_expiry=self._keepalive_expiry,
+                    )
             elif not self._connection.is_available():
                 raise ConnectionNotAvailable()
 
