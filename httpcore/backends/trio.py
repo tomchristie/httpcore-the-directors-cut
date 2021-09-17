@@ -67,8 +67,19 @@ class TrioStream(AsyncNetworkStream):
 
     def get_extra_info(self, info: str) -> typing.Any:
         if info == "ssl_object" and isinstance(self._stream, trio.SSLStream):
-            return self._stream
+            return self._stream._ssl_object
+        if info == "local_addr":
+            return self._get_socket_stream().socket.getsockname()
+        if info == "remote_addr":
+            return self._get_socket_stream().socket.getpeername()
         return None
+
+    def _get_socket_stream(self) -> trio.SocketStream:
+        stream = self._stream
+        while isinstance(stream, trio.SSLStream):
+            stream = stream.transport_stream
+        assert isinstance(stream, trio.SocketStream)
+        return stream
 
 
 class TrioBackend(AsyncNetworkBackend):

@@ -55,7 +55,11 @@ class SyncStream(NetworkStream):
 
     def get_extra_info(self, info: str) -> typing.Any:
         if info == "ssl_object" and isinstance(self._sock, ssl.SSLSocket):
-            return self._sock
+            return self._sock._sslobj
+        if info == "local_addr":
+            return self._sock.getsockname()
+        if info == "remote_addr":
+            return self._sock.getpeername()
         return None
 
 
