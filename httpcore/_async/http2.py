@@ -1,9 +1,9 @@
 from .._models import ByteStream, Request, Response
-from .interfaces import ConnectionInterface
+from .interfaces import AsyncConnectionInterface
 
 
-class HTTP2Connection(ConnectionInterface):
-    def handle_request(self, request: Request) -> Response:
+class AsyncHTTP2Connection(AsyncConnectionInterface):
+    async def handle_async_request(self, request: Request) -> Response:
         return Response(
             status=200,
             headers=[(b"Content-Length", b"13")],

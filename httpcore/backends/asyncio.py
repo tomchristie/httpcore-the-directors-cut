@@ -11,7 +11,6 @@ from .._exceptions import (
     WriteTimeout,
     map_exceptions,
 )
-from .._ssl import default_ssl_context
 from .._models import Origin
 
 
@@ -75,11 +74,6 @@ class AsyncIOStream(AsyncNetworkStream):
 
 
 class AsyncIOBackend(AsyncNetworkBackend):
-    def __init__(self, ssl_context: ssl.SSLContext = None) -> None:
-        self._ssl_context = (
-            default_ssl_context() if ssl_context is None else ssl_context
-        )
-
     async def connect(
         self, origin: Origin, timeout: float = None
     ) -> AsyncNetworkStream:
@@ -92,9 +86,4 @@ class AsyncIOBackend(AsyncNetworkBackend):
                 anyio_stream: anyio.abc.ByteStream = await anyio.connect_tcp(
                     remote_host=origin.host.decode("ascii"), remote_port=origin.port
                 )
-        stream = AsyncIOStream(anyio_stream)
-        if origin.scheme == b"https":
-            stream = await stream.start_tls(
-                self._ssl_context, server_hostname=origin.host, timeout=timeout
-            )
-        return stream
+        return AsyncIOStream(anyio_stream)

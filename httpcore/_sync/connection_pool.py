@@ -23,6 +23,8 @@ class ConnectionPool(RequestInterface):
         if max_keepalive_connections is None:
             max_keepalive_connections = max_connections - 1
 
+        self._ssl_context = ssl_context
+
         # We always close off keep-alives to allow at least one slot
         # in the connection pool. There are more nifty strategies that we
         # could use, but this keeps things nice and simple.
@@ -35,7 +37,7 @@ class ConnectionPool(RequestInterface):
         self._pool_lock = Lock()
         self._pool_semaphore = Semaphore(bound=max_connections)
         self._network_backend = (
-            SyncBackend(ssl_context=ssl_context)
+            SyncBackend()
             if network_backend is None
             else network_backend
         )
@@ -43,6 +45,7 @@ class ConnectionPool(RequestInterface):
     def create_connection(self, origin: Origin) -> ConnectionInterface:
         return HTTPConnection(
             origin=origin,
+            ssl_context=self._ssl_context,
             keepalive_expiry=self._keepalive_expiry,
             network_backend=self._network_backend,
         )

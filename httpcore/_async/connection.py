@@ -1,3 +1,4 @@
+import ssl
 from types import TracebackType
 from typing import Optional, Type
 
@@ -5,6 +6,7 @@ from .._models import Origin, Request, Response
 from ..backends.auto import AutoBackend
 from ..backends.base import AsyncNetworkBackend
 from .._exceptions import ConnectionNotAvailable
+from .._ssl import default_ssl_context
 from .._synchronization import AsyncLock
 from .http11 import AsyncHTTP11Connection
 from .interfaces import AsyncConnectionInterface
@@ -14,10 +16,12 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
     def __init__(
         self,
         origin: Origin,
+        ssl_context: ssl.SSLContext = None,
         keepalive_expiry: float = None,
         network_backend: AsyncNetworkBackend = None,
     ) -> None:
         self._origin = origin
+        self._ssl_context = default_ssl_context() if ssl_context is None else ssl_context
         self._keepalive_expiry = keepalive_expiry
         self._network_backend: AsyncNetworkBackend = (
             AutoBackend() if network_backend is None else network_backend
@@ -40,6 +44,12 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
                 stream = await self._network_backend.connect(
                     origin=origin, timeout=timeout
                 )
+                if origin.scheme == b"https":
+                    stream = await stream.start_tls(
+                        ssl_context=self._ssl_context,
+                        server_hostname=origin.host,
+                        timeout=timeout
+                    )
                 self._connection = AsyncHTTP11Connection(
                     origin=origin,
                     stream=stream,

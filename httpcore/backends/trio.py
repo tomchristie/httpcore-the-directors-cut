@@ -11,7 +11,6 @@ from .._exceptions import (
     WriteTimeout,
     map_exceptions,
 )
-from .._ssl import default_ssl_context
 from .._models import Origin
 
 
@@ -83,11 +82,6 @@ class TrioStream(AsyncNetworkStream):
 
 
 class TrioBackend(AsyncNetworkBackend):
-    def __init__(self, ssl_context: ssl.SSLContext = None) -> None:
-        self._ssl_context = (
-            default_ssl_context() if ssl_context is None else ssl_context
-        )
-
     async def connect(
         self, origin: Origin, timeout: float = None
     ) -> AsyncNetworkStream:
@@ -101,9 +95,4 @@ class TrioBackend(AsyncNetworkBackend):
                 trio_stream: trio.abc.Stream = await trio.open_tcp_stream(
                     host=origin.host, port=origin.port
                 )
-        stream = TrioStream(trio_stream)
-        if origin.scheme == b"https":
-            stream = await stream.start_tls(
-                self._ssl_context, server_hostname=origin.host, timeout=timeout
-            )
-        return stream
+        return TrioStream(trio_stream)

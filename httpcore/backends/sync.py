@@ -9,7 +9,6 @@ from .._exceptions import (
     map_exceptions,
 )
 from .._models import Origin
-from .._ssl import default_ssl_context
 import socket
 import ssl
 import typing
@@ -64,18 +63,9 @@ class SyncStream(NetworkStream):
 
 
 class SyncBackend(NetworkBackend):
-    def __init__(self, ssl_context: ssl.SSLContext = None) -> None:
-        self._ssl_context = (
-            default_ssl_context() if ssl_context is None else ssl_context
-        )
-
     def connect(self, origin: Origin, timeout: float = None) -> SyncStream:
         address = (origin.host.decode("ascii"), origin.port)
         exc_map = {socket.timeout: ConnectTimeout, socket.error: ConnectError}
         with map_exceptions(exc_map):
             sock = socket.create_connection(address, timeout)
-
-        stream = SyncStream(sock)
-        if origin.scheme == b"https":
-            stream = stream.start_tls(self._ssl_context, server_hostname=origin.host)
-        return stream
+        return SyncStream(sock)
