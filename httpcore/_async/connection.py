@@ -18,11 +18,17 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
         origin: Origin,
         ssl_context: ssl.SSLContext = None,
         keepalive_expiry: float = None,
+        http2: bool = False,
         network_backend: AsyncNetworkBackend = None,
     ) -> None:
+        ssl_context = default_ssl_context() if ssl_context is None else ssl_context
+        alpn_protocols = ["http/1.1", "h2"] if http2 else ["http/1.1"]
+        ssl_context.set_alpn_protocols(alpn_protocols)
+
         self._origin = origin
-        self._ssl_context = default_ssl_context() if ssl_context is None else ssl_context
+        self._ssl_context = ssl_context
         self._keepalive_expiry = keepalive_expiry
+        self._http2 = http2
         self._network_backend: AsyncNetworkBackend = (
             AutoBackend() if network_backend is None else network_backend
         )
@@ -48,13 +54,26 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
                     stream = await stream.start_tls(
                         ssl_context=self._ssl_context,
                         server_hostname=origin.host,
-                        timeout=timeout
+                        timeout=timeout,
                     )
-                self._connection = AsyncHTTP11Connection(
-                    origin=origin,
-                    stream=stream,
-                    keepalive_expiry=self._keepalive_expiry,
-                )
+
+                ssl_object = stream.get_extra_info("ssl_object")
+                if (
+                    ssl_object is not None
+                    and ssl_object.selected_alpn_protocol() == "h2"
+                ):
+                    from .http2 import AsyncHTTP2Connection
+
+                    self._connection = AsyncHTTP2Connection(
+                        origin=origin,
+                        stream=stream,
+                    )
+                else:
+                    self._connection = AsyncHTTP11Connection(
+                        origin=origin,
+                        stream=stream,
+                        keepalive_expiry=self._keepalive_expiry,
+                    )
             elif not self._connection.is_available():
                 raise ConnectionNotAvailable()
 

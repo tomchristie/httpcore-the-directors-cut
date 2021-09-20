@@ -68,17 +68,15 @@ class HTTP11Connection(ConnectionInterface):
             self._send_request_body(request)
             (
                 http_version,
-                status_code,
+                status,
                 reason_phrase,
                 headers,
             ) = self._receive_response_headers(request)
+
             return Response(
-                status=status_code,
+                status=status,
                 headers=headers,
-                stream=HTTPConnectionByteStream(
-                    iterator=self._receive_response_body(request),
-                    close_func=self._response_closed,
-                ),
+                stream=HTTP11ConnectionByteStream(self, request),
                 extensions={
                     "http_version": http_version,
                     "reason_phrase": reason_phrase,
@@ -160,9 +158,7 @@ class HTTP11Connection(ConnectionInterface):
                 event = self._h11_state.next_event()
 
             if event is h11.NEED_DATA:
-                data = self._network_stream.read(
-                    self.READ_NUM_BYTES, timeout=timeout
-                )
+                data = self._network_stream.read(self.READ_NUM_BYTES, timeout=timeout)
                 self._h11_state.receive_data(data)
             else:
                 return event
@@ -242,14 +238,14 @@ class HTTP11Connection(ConnectionInterface):
         self.close()
 
 
-class HTTPConnectionByteStream(ByteStream):
-    def __init__(self, iterator: Iterator[bytes], close_func: Callable):
-        self._aiterator = iterator
-        self._aclose_func = close_func
+class HTTP11ConnectionByteStream(ByteStream):
+    def __init__(self, connection: HTTP11Connection, request: Request) -> None:
+        self._connection = connection
+        self._request = request
 
     def __iter__(self) -> Iterator[bytes]:
-        for chunk in self._aiterator:
+        for chunk in self._connection._receive_response_body(self._request):
             yield chunk
 
     def close(self) -> None:
-        self._aclose_func()
+        self._connection._response_closed()

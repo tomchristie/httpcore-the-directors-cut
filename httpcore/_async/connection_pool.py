@@ -18,6 +18,7 @@ class AsyncConnectionPool(AsyncRequestInterface):
         max_connections: int = 10,
         max_keepalive_connections: int = None,
         keepalive_expiry: float = None,
+        http2: bool = False,
         network_backend: AsyncNetworkBackend = None,
     ) -> None:
         if max_keepalive_connections is None:
@@ -32,14 +33,13 @@ class AsyncConnectionPool(AsyncRequestInterface):
             max_keepalive_connections, max_connections - 1
         )
         self._keepalive_expiry = keepalive_expiry
+        self._http2 = http2
 
         self._pool: List[AsyncConnectionInterface] = []
         self._pool_lock = AsyncLock()
         self._pool_semaphore = AsyncSemaphore(bound=max_connections)
         self._network_backend = (
-            AutoBackend()
-            if network_backend is None
-            else network_backend
+            AutoBackend() if network_backend is None else network_backend
         )
 
     def create_connection(self, origin: Origin) -> AsyncConnectionInterface:
@@ -47,6 +47,7 @@ class AsyncConnectionPool(AsyncRequestInterface):
             origin=origin,
             ssl_context=self._ssl_context,
             keepalive_expiry=self._keepalive_expiry,
+            http2=self._http2,
             network_backend=self._network_backend,
         )
 

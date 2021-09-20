@@ -1,14 +1,8 @@
-from httpcore import (
-    HTTPProxy,
-    Origin,
-    ByteStream,
-    ProxyError
-)
+from httpcore import HTTPProxy, Origin, ByteStream, ProxyError
 from httpcore.backends.mock import MockBackend
 from typing import List
 import pytest
 from tests import concurrency
-
 
 
 def test_proxy_forwarding():
@@ -67,7 +61,6 @@ def test_proxy_forwarding():
         )
 
 
-
 def test_proxy_tunneling():
     """
     Send an HTTPS request via a proxy.
@@ -123,7 +116,6 @@ def test_proxy_tunneling():
         assert not proxy.connections[0].can_handle_request(
             Origin(b"https", b"other.com", 443)
         )
-
 
 
 def test_proxy_tunneling_with_403():

@@ -5,9 +5,10 @@ from httpcore import (
     ConnectionNotAvailable,
 )
 from httpcore.backends.mock import MockBackend
+import hpack
+import hyperframe.frame
 import pytest
 from typing import List
-
 
 
 def test_http_connection():
@@ -51,7 +52,6 @@ def test_http_connection():
         )
 
 
-
 def test_concurrent_requests_not_available_on_http11_connections():
     """
     Attempting to issue a request against an already active HTTP/1.1 connection
@@ -76,6 +76,35 @@ def test_concurrent_requests_not_available_on_http11_connections():
                 conn.request("GET", "https://example.com/")
 
 
+def test_http2_connection():
+    origin = Origin(b"https", b"example.com", 443)
+    network_backend = MockBackend(
+        [
+            hyperframe.frame.SettingsFrame().serialize(),
+            hyperframe.frame.HeadersFrame(
+                stream_id=1,
+                data=hpack.Encoder().encode(
+                    [
+                        (b":status", b"200"),
+                        (b"content-type", b"plain/text"),
+                    ]
+                ),
+                flags=["END_HEADERS"],
+            ).serialize(),
+            hyperframe.frame.DataFrame(
+                stream_id=1, data=b"Hello, world!", flags=["END_STREAM"]
+            ).serialize(),
+        ],
+        http2=True,
+    )
+
+    with HTTPConnection(origin=origin, network_backend=network_backend) as conn:
+        response = conn.request("GET", "https://example.com/")
+
+        assert response.status == 200
+        assert response.content == b"Hello, world!"
+        assert response.extensions["http_version"] == b"HTTP/2"
+
 
 def test_request_to_incorrect_origin():
     """
@@ -83,8 +112,6 @@ def test_request_to_incorrect_origin():
     """
     origin = Origin(b"https", b"example.com", 443)
     network_backend = MockBackend([])
-    with HTTPConnection(
-        origin=origin, network_backend=network_backend
-    ) as conn:
+    with HTTPConnection(origin=origin, network_backend=network_backend) as conn:
         with pytest.raises(RuntimeError):
             conn.request("GET", "https://other.com/")

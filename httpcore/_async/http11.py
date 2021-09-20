@@ -68,17 +68,15 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
             await self._send_request_body(request)
             (
                 http_version,
-                status_code,
+                status,
                 reason_phrase,
                 headers,
             ) = await self._receive_response_headers(request)
+
             return Response(
-                status=status_code,
+                status=status,
                 headers=headers,
-                stream=HTTPConnectionByteStream(
-                    aiterator=self._receive_response_body(request),
-                    aclose_func=self._response_closed,
-                ),
+                stream=HTTP11ConnectionByteStream(self, request),
                 extensions={
                     "http_version": http_version,
                     "reason_phrase": reason_phrase,
@@ -242,14 +240,14 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
         await self.aclose()
 
 
-class HTTPConnectionByteStream(AsyncByteStream):
-    def __init__(self, aiterator: AsyncIterator[bytes], aclose_func: Callable):
-        self._aiterator = aiterator
-        self._aclose_func = aclose_func
+class HTTP11ConnectionByteStream(AsyncByteStream):
+    def __init__(self, connection: AsyncHTTP11Connection, request: Request) -> None:
+        self._connection = connection
+        self._request = request
 
     async def __aiter__(self) -> AsyncIterator[bytes]:
-        async for chunk in self._aiterator:
+        async for chunk in self._connection._receive_response_body(self._request):
             yield chunk
 
     async def aclose(self) -> None:
-        await self._aclose_func()
+        await self._connection._response_closed()

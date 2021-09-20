@@ -1,9 +1,4 @@
-from httpcore import (
-    AsyncHTTPProxy,
-    Origin,
-    AsyncByteStream,
-    ProxyError
-)
+from httpcore import AsyncHTTPProxy, Origin, AsyncByteStream, ProxyError
 from httpcore.backends.mock import AsyncMockBackend
 from typing import List
 import pytest

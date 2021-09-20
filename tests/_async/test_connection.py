@@ -5,6 +5,8 @@ from httpcore import (
     ConnectionNotAvailable,
 )
 from httpcore.backends.mock import AsyncMockBackend
+import hpack
+import hyperframe.frame
 import pytest
 from typing import List
 
@@ -74,6 +76,39 @@ async def test_concurrent_requests_not_available_on_http11_connections():
         async with conn.stream("GET", "https://example.com/"):
             with pytest.raises(ConnectionNotAvailable):
                 await conn.request("GET", "https://example.com/")
+
+
+@pytest.mark.anyio
+async def test_http2_connection():
+    origin = Origin(b"https", b"example.com", 443)
+    network_backend = AsyncMockBackend(
+        [
+            hyperframe.frame.SettingsFrame().serialize(),
+            hyperframe.frame.HeadersFrame(
+                stream_id=1,
+                data=hpack.Encoder().encode(
+                    [
+                        (b":status", b"200"),
+                        (b"content-type", b"plain/text"),
+                    ]
+                ),
+                flags=["END_HEADERS"],
+            ).serialize(),
+            hyperframe.frame.DataFrame(
+                stream_id=1, data=b"Hello, world!", flags=["END_STREAM"]
+            ).serialize(),
+        ],
+        http2=True,
+    )
+
+    async with AsyncHTTPConnection(
+        origin=origin, network_backend=network_backend
+    ) as conn:
+        response = await conn.request("GET", "https://example.com/")
+
+        assert response.status == 200
+        assert response.content == b"Hello, world!"
+        assert response.extensions["http_version"] == b"HTTP/2"
 
 
 @pytest.mark.anyio

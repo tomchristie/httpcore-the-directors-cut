@@ -1,13 +1,22 @@
 from .base import AsyncNetworkStream, AsyncNetworkBackend, NetworkStream, NetworkBackend
 from .._models import Origin
-from typing import List
+import typing
 import ssl
 
 
+class MockSSLObject:
+    def __init__(self, http2: bool):
+        self._http2 = http2
+
+    def selected_alpn_protocol(self) -> str:
+        return "h2" if self._http2 else "http/1.1"
+
+
 class MockStream(NetworkStream):
-    def __init__(self, buffer: List[bytes]) -> None:
+    def __init__(self, buffer: typing.List[bytes], http2: bool = False) -> None:
         self._original_buffer = buffer
         self._current_buffer = list(self._original_buffer)
+        self._http2 = http2
 
     def read(self, max_bytes: int, timeout: float = None) -> bytes:
         if not self._current_buffer:
@@ -28,19 +37,24 @@ class MockStream(NetworkStream):
     ) -> NetworkStream:
         return self
 
+    def get_extra_info(self, info: str) -> typing.Any:
+        return MockSSLObject(http2=self._http2) if info == "ssl_object" else None
+
 
 class MockBackend(NetworkBackend):
-    def __init__(self, buffer: List[bytes]) -> None:
+    def __init__(self, buffer: typing.List[bytes], http2: bool = False) -> None:
         self._buffer = buffer
+        self._http2 = http2
 
     def connect(self, origin: Origin, timeout: float = None) -> NetworkStream:
-        return MockStream(self._buffer)
+        return MockStream(self._buffer, http2=self._http2)
 
 
 class AsyncMockStream(AsyncNetworkStream):
-    def __init__(self, buffer: List[bytes]) -> None:
+    def __init__(self, buffer: typing.List[bytes], http2: bool = False) -> None:
         self._original_buffer = buffer
         self._current_buffer = list(self._original_buffer)
+        self._http2 = http2
 
     async def read(self, max_bytes: int, timeout: float = None) -> bytes:
         if not self._current_buffer:
@@ -61,12 +75,16 @@ class AsyncMockStream(AsyncNetworkStream):
     ) -> AsyncNetworkStream:
         return self
 
+    def get_extra_info(self, info: str) -> typing.Any:
+        return MockSSLObject(http2=self._http2) if info == "ssl_object" else None
+
 
 class AsyncMockBackend(AsyncNetworkBackend):
-    def __init__(self, buffer: List[bytes]) -> None:
+    def __init__(self, buffer: typing.List[bytes], http2: bool = False) -> None:
         self._buffer = buffer
+        self._http2 = http2
 
     async def connect(
         self, origin: Origin, timeout: float = None
     ) -> AsyncNetworkStream:
-        return AsyncMockStream(self._buffer)
+        return AsyncMockStream(self._buffer, http2=self._http2)

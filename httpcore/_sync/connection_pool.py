@@ -18,6 +18,7 @@ class ConnectionPool(RequestInterface):
         max_connections: int = 10,
         max_keepalive_connections: int = None,
         keepalive_expiry: float = None,
+        http2: bool = False,
         network_backend: NetworkBackend = None,
     ) -> None:
         if max_keepalive_connections is None:
@@ -32,14 +33,13 @@ class ConnectionPool(RequestInterface):
             max_keepalive_connections, max_connections - 1
         )
         self._keepalive_expiry = keepalive_expiry
+        self._http2 = http2
 
         self._pool: List[ConnectionInterface] = []
         self._pool_lock = Lock()
         self._pool_semaphore = Semaphore(bound=max_connections)
         self._network_backend = (
-            SyncBackend()
-            if network_backend is None
-            else network_backend
+            SyncBackend() if network_backend is None else network_backend
         )
 
     def create_connection(self, origin: Origin) -> ConnectionInterface:
@@ -47,6 +47,7 @@ class ConnectionPool(RequestInterface):
             origin=origin,
             ssl_context=self._ssl_context,
             keepalive_expiry=self._keepalive_expiry,
+            http2=self._http2,
             network_backend=self._network_backend,
         )
 
@@ -64,9 +65,7 @@ class ConnectionPool(RequestInterface):
         with self._pool_lock:
             self._pool.remove(connection)
 
-    def _get_from_pool(
-        self, origin: Origin
-    ) -> Optional[ConnectionInterface]:
+    def _get_from_pool(self, origin: Origin) -> Optional[ConnectionInterface]:
         """
         Return an available HTTP connection for the given origin,
         if one currently exists in the pool.
