@@ -1,6 +1,7 @@
 from .._models import ByteStream, Origin, Request, Response
 from ..backends.base import NetworkStream
 from .._exceptions import LocalProtocolError, RemoteProtocolError
+from .._synchronization import Lock
 from .interfaces import ConnectionInterface
 
 import functools
@@ -30,12 +31,17 @@ class HTTP2Connection(ConnectionInterface):
         self._origin = origin
         self._network_stream = stream
         self._h2_state = h2.connection.H2Connection(config=self.CONFIG)
+        self._init_lock = Lock()
+        self._sent_connection_init = False
         self._events = {}
 
     def handle_request(self, request: Request) -> Response:
-        self._send_connection_init(request)
-        stream_id = self._h2_state.get_next_available_stream_id()
+        with self._init_lock:
+            if not self._sent_connection_init:
+                self._send_connection_init(request)
+                self._sent_connection_init = True
 
+        stream_id = self._h2_state.get_next_available_stream_id()
         self._events[stream_id] = []
         self._send_request_headers(request, stream_id=stream_id)
         self._send_request_body(request, stream_id=stream_id)

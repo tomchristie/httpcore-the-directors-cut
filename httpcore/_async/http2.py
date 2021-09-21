@@ -1,6 +1,7 @@
 from .._models import AsyncByteStream, Origin, Request, Response
 from ..backends.base import AsyncNetworkStream
 from .._exceptions import LocalProtocolError, RemoteProtocolError
+from .._synchronization import AsyncLock
 from .interfaces import AsyncConnectionInterface
 
 import functools
@@ -30,12 +31,17 @@ class AsyncHTTP2Connection(AsyncConnectionInterface):
         self._origin = origin
         self._network_stream = stream
         self._h2_state = h2.connection.H2Connection(config=self.CONFIG)
+        self._init_lock = AsyncLock()
+        self._sent_connection_init = False
         self._events = {}
 
     async def handle_async_request(self, request: Request) -> Response:
-        await self._send_connection_init(request)
-        stream_id = self._h2_state.get_next_available_stream_id()
+        async with self._init_lock:
+            if not self._sent_connection_init:
+                await self._send_connection_init(request)
+                self._sent_connection_init = True
 
+        stream_id = self._h2_state.get_next_available_stream_id()
         self._events[stream_id] = []
         await self._send_request_headers(request, stream_id=stream_id)
         await self._send_request_body(request, stream_id=stream_id)
