@@ -67,6 +67,7 @@ class HTTPConnection(ConnectionInterface):
                     self._connection = HTTP2Connection(
                         origin=origin,
                         stream=stream,
+                        keepalive_expiry=self._keepalive_expiry,
                     )
                 else:
                     self._connection = HTTP11Connection(

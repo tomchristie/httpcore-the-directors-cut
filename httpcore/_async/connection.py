@@ -67,6 +67,7 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
                     self._connection = AsyncHTTP2Connection(
                         origin=origin,
                         stream=stream,
+                        keepalive_expiry=self._keepalive_expiry,
                     )
                 else:
                     self._connection = AsyncHTTP11Connection(

@@ -55,9 +55,7 @@ async def test_http11_connection_unread_response():
             b"Hello, world!",
         ]
     )
-    async with AsyncHTTP11Connection(
-        origin=origin, stream=stream, keepalive_expiry=5.0
-    ) as conn:
+    async with AsyncHTTP11Connection(origin=origin, stream=stream) as conn:
         async with conn.stream("GET", "https://example.com/") as response:
             assert response.status == 200
 
@@ -141,9 +139,7 @@ async def test_http11_connection_handles_one_active_request():
             b"Hello, world!",
         ]
     )
-    async with AsyncHTTP11Connection(
-        origin=origin, stream=stream, keepalive_expiry=5.0
-    ) as conn:
+    async with AsyncHTTP11Connection(origin=origin, stream=stream) as conn:
         async with conn.stream("GET", "https://example.com/"):
             with pytest.raises(ConnectionNotAvailable):
                 await conn.request("GET", "https://example.com/")
@@ -165,7 +161,7 @@ async def test_http11_connection_attempt_close():
         ]
     )
     async with AsyncHTTP11Connection(
-        origin=origin, stream=stream, keepalive_expiry=5.0
+        origin=origin, stream=stream
     ) as conn:
         async with conn.stream("GET", "https://example.com/") as response:
             await response.aread()
@@ -176,12 +172,12 @@ async def test_http11_connection_attempt_close():
 
 
 @pytest.mark.anyio
-async def test_request_to_incorrect_origin():
+async def test_http11_request_to_incorrect_origin():
     """
     A connection can only send requests to whichever origin it is connected to.
     """
     origin = Origin(b"https", b"example.com", 443)
     stream = AsyncMockStream([])
     async with AsyncHTTP11Connection(origin=origin, stream=stream) as conn:
-        with pytest.raises(RuntimeError):
+        with pytest.raises(ConnectionNotAvailable):
             await conn.request("GET", "https://other.com/")

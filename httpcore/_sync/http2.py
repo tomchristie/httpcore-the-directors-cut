@@ -1,10 +1,12 @@
 from .._models import ByteStream, Origin, Request, Response
 from ..backends.base import NetworkStream
-from .._exceptions import LocalProtocolError, RemoteProtocolError
+from .._exceptions import ConnectionNotAvailable, LocalProtocolError, RemoteProtocolError
 from .._synchronization import Lock
 from .interfaces import ConnectionInterface
 
+import enum
 import functools
+import time
 import types
 import typing
 
@@ -23,19 +25,43 @@ def has_body_headers(request: Request) -> bool:
     )
 
 
+class HTTPConnectionState(enum.IntEnum):
+    ACTIVE = 1
+    IDLE = 2
+    CLOSED = 3
+
+
 class HTTP2Connection(ConnectionInterface):
     READ_NUM_BYTES = 64 * 1024
     CONFIG = h2.config.H2Configuration(validate_inbound_headers=False)
 
-    def __init__(self, origin: Origin, stream: NetworkStream):
+    def __init__(self, origin: Origin, stream: NetworkStream, keepalive_expiry: float = None):
         self._origin = origin
         self._network_stream = stream
+        self._keepalive_expiry: Optional[float] = keepalive_expiry
         self._h2_state = h2.connection.H2Connection(config=self.CONFIG)
+        self._state = HTTPConnectionState.IDLE
+        self._expire_at: Optional[float] = None
+        self._request_count = 0
         self._init_lock = Lock()
+        self._state_lock = Lock()
         self._sent_connection_init = False
         self._events = {}
 
     def handle_request(self, request: Request) -> Response:
+        if not self.can_handle_request(request.url.origin):
+            raise ConnectionNotAvailable(
+                f"Attempted to send request to {request.url.origin} on connection to {self._origin}"
+            )
+
+        with self._state_lock:
+            if self._state in (HTTPConnectionState.ACTIVE, HTTPConnectionState.IDLE):
+                self._request_count += 1
+                self._expire_at = None
+                self._state = HTTPConnectionState.ACTIVE
+            else:
+                raise ConnectionNotAvailable()
+
         with self._init_lock:
             if not self._sent_connection_init:
                 self._send_connection_init(request)
@@ -208,8 +234,14 @@ class HTTP2Connection(ConnectionInterface):
 
     def _response_closed(self, stream_id: int) -> None:
         del self._events[stream_id]
+        if self._state == HTTPConnectionState.ACTIVE and not self._events:
+            self._state = HTTPConnectionState.IDLE
+            if self._keepalive_expiry is not None:
+                now = time.monotonic()
+                self._expire_at = now + self._keepalive_expiry
 
     def close(self):
+        self._state = HTTPConnectionState.CLOSED
         self._network_stream.close()
 
     # Flow control
@@ -241,6 +273,40 @@ class HTTP2Connection(ConnectionInterface):
         self._h2_state.acknowledge_received_data(amount, stream_id)
         data_to_send = self._h2_state.data_to_send()
         self._network_stream.write(data_to_send, timeout)
+
+    # Interface for connection pooling...
+
+    def can_handle_request(self, origin: Origin) -> bool:
+        return origin == self._origin
+
+    def is_available(self) -> bool:
+        return self._state != HTTPConnectionState.CLOSED
+
+    def has_expired(self) -> bool:
+        now = time.monotonic()
+        return self._expire_at is not None and now > self._expire_at
+
+    def is_idle(self) -> bool:
+        return self._state == HTTPConnectionState.IDLE
+
+    def is_closed(self) -> bool:
+        return self._state == HTTPConnectionState.CLOSED
+
+    def attempt_aclose(self) -> bool:
+        with self._state_lock:
+            if self._state == HTTPConnectionState.IDLE:
+                self.close()
+                return True
+        return False
+
+    def info(self) -> str:
+        origin = str(self._origin)
+        return f"{origin!r}, HTTP/2, {self._state.name}, Request Count: {self._request_count}"
+
+    def __repr__(self) -> str:
+        class_name = self.__class__.__name__
+        origin = str(self._origin)
+        return f"<{class_name} [{origin!r}, {self._state.name}, Request Count: {self._request_count}]>"
 
     # These context managers are not used in the standard flow, but are
     # useful for testing or working with connection instances directly.
