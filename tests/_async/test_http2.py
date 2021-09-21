@@ -69,3 +69,46 @@ async def test_http2_connection_post_request():
         )
         assert response.status == 200
         assert response.content == b"Hello, world!"
+
+
+@pytest.mark.anyio
+async def test_http11_connection_with_remote_protocol_error():
+    """
+    If a remote protocol error occurs, then no response will be returned,
+    and the connection will not be reusable.
+    """
+    origin = Origin(b"https", b"example.com", 443)
+    stream = AsyncMockStream([b"Wait, this isn't valid HTTP!", b""])
+    async with AsyncHTTP2Connection(origin=origin, stream=stream) as conn:
+        with pytest.raises(RemoteProtocolError) as exc_info:
+            await conn.request("GET", "https://example.com/")
+
+
+@pytest.mark.anyio
+async def test_http11_connection_with_stream_cancelled():
+    """
+    If a remote protocol error occurs, then no response will be returned,
+    and the connection will not be reusable.
+    """
+    origin = Origin(b"https", b"example.com", 443)
+    stream = AsyncMockStream(
+        [
+            hyperframe.frame.SettingsFrame().serialize(),
+            hyperframe.frame.HeadersFrame(
+                stream_id=1,
+                data=hpack.Encoder().encode(
+                    [
+                        (b":status", b"200"),
+                        (b"content-type", b"plain/text"),
+                    ]
+                ),
+                flags=["END_HEADERS"],
+            ).serialize(),
+            hyperframe.frame.RstStreamFrame(
+                stream_id=1, error_code=8
+            ).serialize(),
+        ]
+    )
+    async with AsyncHTTP2Connection(origin=origin, stream=stream) as conn:
+        with pytest.raises(RemoteProtocolError) as exc_info:
+            await conn.request("GET", "https://example.com/")

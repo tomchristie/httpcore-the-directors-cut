@@ -1,6 +1,6 @@
 from .._models import AsyncByteStream, Origin, Request, Response
 from ..backends.base import AsyncNetworkStream
-from .._exceptions import LocalProtocolError
+from .._exceptions import LocalProtocolError, RemoteProtocolError
 from .interfaces import AsyncConnectionInterface
 
 import functools
@@ -95,19 +95,7 @@ class AsyncHTTP2Connection(AsyncConnectionInterface):
         # In order to gracefully handle HTTP/1.1 and HTTP/2 we always require
         # HTTP/1.1 style headers, and map them appropriately if we end up on
         # an HTTP/2 connection.
-        authority = None
-
-        for k, v in request.headers:
-            if k.lower() == b"host":
-                authority = v
-                break
-
-        if authority is None:
-            # Mirror the same error we'd see with `h11`, so that the behaviour
-            # is consistent. Although we're dealing with an `:authority`
-            # pseudo-header by this point, from an end-user perspective the issue
-            # is that the outgoing request needed to include a `host` header.
-            raise LocalProtocolError("Missing mandatory Host: header")
+        authority = [v for k, v in request.headers if k.lower() == b"host"][0]
 
         headers = [
             (b":method", request.method),
