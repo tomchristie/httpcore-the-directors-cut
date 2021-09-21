@@ -11,6 +11,7 @@ import pytest
 from typing import List
 
 
+
 def test_http_connection():
     origin = Origin(b"https", b"example.com", 443)
     network_backend = MockBackend(
@@ -52,6 +53,7 @@ def test_http_connection():
         )
 
 
+
 def test_concurrent_requests_not_available_on_http11_connections():
     """
     Attempting to issue a request against an already active HTTP/1.1 connection
@@ -76,6 +78,7 @@ def test_concurrent_requests_not_available_on_http11_connections():
                 conn.request("GET", "https://example.com/")
 
 
+
 def test_http2_connection():
     origin = Origin(b"https", b"example.com", 443)
     network_backend = MockBackend(
@@ -98,12 +101,15 @@ def test_http2_connection():
         http2=True,
     )
 
-    with HTTPConnection(origin=origin, network_backend=network_backend) as conn:
+    with HTTPConnection(
+        origin=origin, network_backend=network_backend
+    ) as conn:
         response = conn.request("GET", "https://example.com/")
 
         assert response.status == 200
         assert response.content == b"Hello, world!"
         assert response.extensions["http_version"] == b"HTTP/2"
+
 
 
 def test_request_to_incorrect_origin():
@@ -112,6 +118,8 @@ def test_request_to_incorrect_origin():
     """
     origin = Origin(b"https", b"example.com", 443)
     network_backend = MockBackend([])
-    with HTTPConnection(origin=origin, network_backend=network_backend) as conn:
+    with HTTPConnection(
+        origin=origin, network_backend=network_backend
+    ) as conn:
         with pytest.raises(RuntimeError):
             conn.request("GET", "https://other.com/")

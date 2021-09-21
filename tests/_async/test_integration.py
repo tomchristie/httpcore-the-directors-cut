@@ -37,10 +37,10 @@ async def test_extra_info(httpbin_secure):
             ssl_object = stream.get_extra_info("ssl_object")
             assert ssl_object.version() == "TLSv1.3"
 
-            local_addr = stream.get_extra_info("local_addr")
+            local_addr = stream.get_extra_info("client_addr")
             assert local_addr[0] == "127.0.0.1"
 
-            remote_addr = stream.get_extra_info("remote_addr")
+            remote_addr = stream.get_extra_info("server_addr")
             assert "https://%s:%d" % remote_addr == httpbin_secure.url
 
             invalid = stream.get_extra_info("invalid")

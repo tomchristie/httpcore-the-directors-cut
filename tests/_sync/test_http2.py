@@ -12,6 +12,7 @@ import hyperframe.frame
 import pytest
 
 
+
 def test_http2_connection():
     origin = Origin(b"https", b"example.com", 443)
     stream = MockStream(
@@ -36,6 +37,7 @@ def test_http2_connection():
         response = conn.request("GET", "https://example.com/")
         assert response.status == 200
         assert response.content == b"Hello, world!"
+
 
 
 def test_http2_connection_post_request():

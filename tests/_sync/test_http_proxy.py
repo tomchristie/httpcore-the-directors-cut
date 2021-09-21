@@ -5,6 +5,7 @@ import pytest
 from tests import concurrency
 
 
+
 def test_proxy_forwarding():
     """
     Send an HTTP request via a proxy.
@@ -59,6 +60,7 @@ def test_proxy_forwarding():
         assert not proxy.connections[0].can_handle_request(
             Origin(b"https", b"other.com", 443)
         )
+
 
 
 def test_proxy_tunneling():
@@ -116,6 +118,7 @@ def test_proxy_tunneling():
         assert not proxy.connections[0].can_handle_request(
             Origin(b"https", b"other.com", 443)
         )
+
 
 
 def test_proxy_tunneling_with_403():

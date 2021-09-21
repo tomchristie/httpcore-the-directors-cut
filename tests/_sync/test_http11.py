@@ -10,6 +10,7 @@ import pytest
 from typing import List
 
 
+
 def test_http11_connection():
     origin = Origin(b"https", b"example.com", 443)
     stream = MockStream(
@@ -21,7 +22,9 @@ def test_http11_connection():
             b"Hello, world!",
         ]
     )
-    with HTTP11Connection(origin=origin, stream=stream, keepalive_expiry=5.0) as conn:
+    with HTTP11Connection(
+        origin=origin, stream=stream, keepalive_expiry=5.0
+    ) as conn:
         response = conn.request("GET", "https://example.com/")
         assert response.status == 200
         assert response.content == b"Hello, world!"
@@ -34,6 +37,7 @@ def test_http11_connection():
             repr(conn)
             == "<HTTP11Connection ['https://example.com:443', IDLE, Request Count: 1]>"
         )
+
 
 
 def test_http11_connection_unread_response():
@@ -51,7 +55,9 @@ def test_http11_connection_unread_response():
             b"Hello, world!",
         ]
     )
-    with HTTP11Connection(origin=origin, stream=stream, keepalive_expiry=5.0) as conn:
+    with HTTP11Connection(
+        origin=origin, stream=stream, keepalive_expiry=5.0
+    ) as conn:
         with conn.stream("GET", "https://example.com/") as response:
             assert response.status == 200
 
@@ -63,6 +69,7 @@ def test_http11_connection_unread_response():
             repr(conn)
             == "<HTTP11Connection ['https://example.com:443', CLOSED, Request Count: 1]>"
         )
+
 
 
 def test_http11_connection_with_remote_protocol_error():
@@ -84,6 +91,7 @@ def test_http11_connection_with_remote_protocol_error():
             repr(conn)
             == "<HTTP11Connection ['https://example.com:443', CLOSED, Request Count: 1]>"
         )
+
 
 
 def test_http11_connection_with_local_protocol_error():
@@ -117,6 +125,7 @@ def test_http11_connection_with_local_protocol_error():
         )
 
 
+
 def test_http11_connection_handles_one_active_request():
     """
     Attempting to send a request while one is already in-flight will raise
@@ -132,10 +141,13 @@ def test_http11_connection_handles_one_active_request():
             b"Hello, world!",
         ]
     )
-    with HTTP11Connection(origin=origin, stream=stream, keepalive_expiry=5.0) as conn:
+    with HTTP11Connection(
+        origin=origin, stream=stream, keepalive_expiry=5.0
+    ) as conn:
         with conn.stream("GET", "https://example.com/"):
             with pytest.raises(ConnectionNotAvailable):
                 conn.request("GET", "https://example.com/")
+
 
 
 def test_http11_connection_attempt_close():
@@ -152,13 +164,16 @@ def test_http11_connection_attempt_close():
             b"Hello, world!",
         ]
     )
-    with HTTP11Connection(origin=origin, stream=stream, keepalive_expiry=5.0) as conn:
+    with HTTP11Connection(
+        origin=origin, stream=stream, keepalive_expiry=5.0
+    ) as conn:
         with conn.stream("GET", "https://example.com/") as response:
             response.read()
             assert response.status == 200
             assert response.content == b"Hello, world!"
             assert not conn.attempt_aclose()
         assert conn.attempt_aclose()
+
 
 
 def test_request_to_incorrect_origin():

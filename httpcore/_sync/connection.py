@@ -47,7 +47,9 @@ class HTTPConnection(ConnectionInterface):
         with self._request_lock:
             if self._connection is None:
                 origin = self._origin
-                stream = self._network_backend.connect(origin=origin, timeout=timeout)
+                stream = self._network_backend.connect(
+                    origin=origin, timeout=timeout
+                )
                 if origin.scheme == b"https":
                     stream = stream.start_tls(
                         ssl_context=self._ssl_context,

@@ -66,9 +66,9 @@ class AsyncIOStream(AsyncNetworkStream):
     def get_extra_info(self, info: str) -> typing.Any:
         if info == "ssl_object":
             return self._stream.extra(anyio.streams.tls.TLSAttribute.ssl_object, None)
-        if info == "local_addr":
+        if info == "client_addr":
             return self._stream.extra(anyio.abc.SocketAttribute.local_address, None)
-        if info == "remote_addr":
+        if info == "server_addr":
             return self._stream.extra(anyio.abc.SocketAttribute.remote_address, None)
         return None
 
