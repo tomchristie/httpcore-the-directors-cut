@@ -126,9 +126,8 @@ class AsyncHTTP2Connection(AsyncConnectionInterface):
 
         async for data in request.stream:
             while data:
-                # max_flow = await self.wait_for_outgoing_flow(request, stream_id)
-                # chunk_size = min(len(data), max_flow)
-                chunk_size = len(data)
+                max_flow = await self._wait_for_outgoing_flow(request, stream_id)
+                chunk_size = min(len(data), max_flow)
                 chunk, data = data[:chunk_size], data[chunk_size:]
                 self._h2_state.send_data(stream_id, chunk)
                 data_to_send = self._h2_state.data_to_send()
@@ -165,9 +164,9 @@ class AsyncHTTP2Connection(AsyncConnectionInterface):
             event = await self._receive_stream_event(request, stream_id)
             if isinstance(event, h2.events.DataReceived):
                 amount = event.flow_controlled_length
-                # await self.connection.acknowledge_received_data(
-                #     self.stream_id, amount, timeout
-                # )
+                await self._acknowledge_received_data(
+                    request, stream_id, amount
+                )
                 yield event.data
             elif isinstance(event, (h2.events.StreamEnded, h2.events.StreamReset)):
                 break
@@ -206,6 +205,36 @@ class AsyncHTTP2Connection(AsyncConnectionInterface):
 
     async def aclose(self):
         await self._network_stream.aclose()
+
+    # Flow control
+
+    async def _wait_for_outgoing_flow(self, request: Request, stream_id: int) -> int:
+        """
+        Returns the maximum allowable outgoing flow for a given stream.
+
+        If the allowable flow is zero, then waits on the network until
+        WindowUpdated frames have increased the flow rate.
+        https://tools.ietf.org/html/rfc7540#section-6.9
+        """
+        local_flow = self._h2_state.local_flow_control_window(stream_id)
+        connection_flow = self._h2_state.max_outbound_frame_size
+        flow = min(local_flow, connection_flow)
+        while flow == 0:
+            await self._receive_events(request)
+            local_flow = self._h2_state.local_flow_control_window(stream_id)
+            connection_flow = self._h2_state.max_outbound_frame_size
+            flow = min(local_flow, connection_flow)
+        return flow
+
+    async def _acknowledge_received_data(
+        self, request: Request, stream_id: int, amount: int
+    ) -> None:
+        timeouts = request.extensions.get("timeout", {})
+        timeout = timeouts.get("read", None)
+
+        self._h2_state.acknowledge_received_data(amount, stream_id)
+        data_to_send = self._h2_state.data_to_send()
+        await self._network_stream.write(data_to_send, timeout)
 
     # These context managers are not used in the standard flow, but are
     # useful for testing or working with connection instances directly.

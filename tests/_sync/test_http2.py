@@ -112,3 +112,39 @@ def test_http11_connection_with_stream_cancelled():
     with HTTP2Connection(origin=origin, stream=stream) as conn:
         with pytest.raises(RemoteProtocolError) as exc_info:
             conn.request("GET", "https://example.com/")
+
+
+
+def test_http2_connection_with_flow_control():
+    origin = Origin(b"https", b"example.com", 443)
+    stream = MockStream(
+        [
+            hyperframe.frame.SettingsFrame().serialize(),
+            hyperframe.frame.WindowUpdateFrame(stream_id=0, window_increment=10000).serialize(),
+            hyperframe.frame.WindowUpdateFrame(stream_id=1, window_increment=10000).serialize(),
+            hyperframe.frame.WindowUpdateFrame(stream_id=0, window_increment=10000).serialize(),
+            hyperframe.frame.WindowUpdateFrame(stream_id=1, window_increment=10000).serialize(),
+            hyperframe.frame.HeadersFrame(
+                stream_id=1,
+                data=hpack.Encoder().encode(
+                    [
+                        (b":status", b"200"),
+                        (b"content-type", b"plain/text"),
+                    ]
+                ),
+                flags=["END_HEADERS"],
+            ).serialize(),
+            hyperframe.frame.DataFrame(
+                stream_id=1, data=b"Hello, world!", flags=["END_STREAM"]
+            ).serialize(),
+        ]
+    )
+    with HTTP2Connection(origin=origin, stream=stream) as conn:
+        response = conn.request(
+            "POST",
+            "https://example.com/",
+            headers={b"content-length": b"100000"},
+            stream=ByteStream(b'x' * 100000)
+        )
+        assert response.status == 200
+        assert response.content == b"Hello, world!"
