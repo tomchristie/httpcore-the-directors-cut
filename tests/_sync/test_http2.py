@@ -31,7 +31,6 @@ def test_http2_connection():
             hyperframe.frame.DataFrame(
                 stream_id=1, data=b"Hello, world!", flags=["END_STREAM"]
             ).serialize(),
-            b""
         ]
     )
     with HTTP2Connection(origin=origin, stream=stream) as conn:
@@ -59,7 +58,6 @@ def test_http2_connection_post_request():
             hyperframe.frame.DataFrame(
                 stream_id=1, data=b"Hello, world!", flags=["END_STREAM"]
             ).serialize(),
-            b""
         ]
     )
     with HTTP2Connection(origin=origin, stream=stream) as conn:
@@ -149,7 +147,6 @@ def test_http2_connection_with_flow_control():
             hyperframe.frame.DataFrame(
                 stream_id=1, data=b"100,000 bytes received", flags=["END_STREAM"]
             ).serialize(),
-            b""
         ]
     )
     with HTTP2Connection(origin=origin, stream=stream) as conn:

@@ -78,7 +78,7 @@ async def test_http11_connection_with_remote_protocol_error():
     and the connection will not be reusable.
     """
     origin = Origin(b"https", b"example.com", 443)
-    stream = AsyncMockStream([b"Wait, this isn't valid HTTP!"])
+    stream = AsyncMockStream([b"Wait, this isn't valid HTTP!", b""])
     async with AsyncHTTP11Connection(origin=origin, stream=stream) as conn:
         with pytest.raises(RemoteProtocolError) as exc_info:
             await conn.request("GET", "https://example.com/")

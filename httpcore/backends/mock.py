@@ -14,14 +14,13 @@ class MockSSLObject:
 
 class MockStream(NetworkStream):
     def __init__(self, buffer: typing.List[bytes], http2: bool = False) -> None:
-        self._original_buffer = buffer
-        self._current_buffer = list(self._original_buffer)
+        self._buffer = buffer
         self._http2 = http2
 
     def read(self, max_bytes: int, timeout: float = None) -> bytes:
-        if not self._current_buffer:
-            self._current_buffer = list(self._original_buffer)
-        return self._current_buffer.pop(0)
+        if not self._buffer:
+            return b""
+        return self._buffer.pop(0)
 
     def write(self, buffer: bytes, timeout: float = None) -> None:
         pass
@@ -47,7 +46,7 @@ class MockBackend(NetworkBackend):
         self._http2 = http2
 
     def connect(self, origin: Origin, timeout: float = None) -> NetworkStream:
-        return MockStream(self._buffer, http2=self._http2)
+        return MockStream(list(self._buffer), http2=self._http2)
 
 
 class AsyncMockStream(AsyncNetworkStream):
@@ -87,4 +86,4 @@ class AsyncMockBackend(AsyncNetworkBackend):
     async def connect(
         self, origin: Origin, timeout: float = None
     ) -> AsyncNetworkStream:
-        return AsyncMockStream(self._buffer, http2=self._http2)
+        return AsyncMockStream(list(self._buffer), http2=self._http2)

@@ -20,6 +20,11 @@ def test_connection_pool_with_keepalive():
             b"Content-Length: 13\r\n",
             b"\r\n",
             b"Hello, world!",
+            b"HTTP/1.1 200 OK\r\n",
+            b"Content-Type: plain/text\r\n",
+            b"Content-Length: 13\r\n",
+            b"\r\n",
+            b"Hello, world!",
         ]
     )
 
