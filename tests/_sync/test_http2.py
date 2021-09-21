@@ -31,6 +31,7 @@ def test_http2_connection():
             hyperframe.frame.DataFrame(
                 stream_id=1, data=b"Hello, world!", flags=["END_STREAM"]
             ).serialize(),
+            b""
         ]
     )
     with HTTP2Connection(origin=origin, stream=stream) as conn:
@@ -58,6 +59,7 @@ def test_http2_connection_post_request():
             hyperframe.frame.DataFrame(
                 stream_id=1, data=b"Hello, world!", flags=["END_STREAM"]
             ).serialize(),
+            b""
         ]
     )
     with HTTP2Connection(origin=origin, stream=stream) as conn:
@@ -107,6 +109,7 @@ def test_http11_connection_with_stream_cancelled():
             hyperframe.frame.RstStreamFrame(
                 stream_id=1, error_code=8
             ).serialize(),
+            b""
         ]
     )
     with HTTP2Connection(origin=origin, stream=stream) as conn:
@@ -120,10 +123,19 @@ def test_http2_connection_with_flow_control():
     stream = MockStream(
         [
             hyperframe.frame.SettingsFrame().serialize(),
+            # Initial available flow: 65,535
             hyperframe.frame.WindowUpdateFrame(stream_id=0, window_increment=10000).serialize(),
             hyperframe.frame.WindowUpdateFrame(stream_id=1, window_increment=10000).serialize(),
+            # Available flow: 75,535
             hyperframe.frame.WindowUpdateFrame(stream_id=0, window_increment=10000).serialize(),
             hyperframe.frame.WindowUpdateFrame(stream_id=1, window_increment=10000).serialize(),
+            # Available flow: 85,535
+            hyperframe.frame.WindowUpdateFrame(stream_id=0, window_increment=10000).serialize(),
+            hyperframe.frame.WindowUpdateFrame(stream_id=1, window_increment=10000).serialize(),
+            # Available flow: 95,535
+            hyperframe.frame.WindowUpdateFrame(stream_id=0, window_increment=10000).serialize(),
+            hyperframe.frame.WindowUpdateFrame(stream_id=1, window_increment=10000).serialize(),
+            # Available flow: 105,535
             hyperframe.frame.HeadersFrame(
                 stream_id=1,
                 data=hpack.Encoder().encode(
@@ -135,8 +147,9 @@ def test_http2_connection_with_flow_control():
                 flags=["END_HEADERS"],
             ).serialize(),
             hyperframe.frame.DataFrame(
-                stream_id=1, data=b"Hello, world!", flags=["END_STREAM"]
+                stream_id=1, data=b"100,000 bytes received", flags=["END_STREAM"]
             ).serialize(),
+            b""
         ]
     )
     with HTTP2Connection(origin=origin, stream=stream) as conn:
@@ -147,4 +160,4 @@ def test_http2_connection_with_flow_control():
             stream=ByteStream(b'x' * 100000)
         )
         assert response.status == 200
-        assert response.content == b"Hello, world!"
+        assert response.content == b"100,000 bytes received"

@@ -217,13 +217,13 @@ class HTTP2Connection(ConnectionInterface):
         https://tools.ietf.org/html/rfc7540#section-6.9
         """
         local_flow = self._h2_state.local_flow_control_window(stream_id)
-        connection_flow = self._h2_state.max_outbound_frame_size
-        flow = min(local_flow, connection_flow)
+        max_frame_size = self._h2_state.max_outbound_frame_size
+        flow = min(local_flow, max_frame_size)
         while flow == 0:
             self._receive_events(request)
             local_flow = self._h2_state.local_flow_control_window(stream_id)
-            connection_flow = self._h2_state.max_outbound_frame_size
-            flow = min(local_flow, connection_flow)
+            max_frame_size = self._h2_state.max_outbound_frame_size
+            flow = min(local_flow, max_frame_size)
         return flow
 
     def _acknowledge_received_data(
