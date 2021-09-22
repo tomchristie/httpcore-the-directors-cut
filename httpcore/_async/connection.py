@@ -18,6 +18,7 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
         origin: Origin,
         ssl_context: ssl.SSLContext = None,
         keepalive_expiry: float = None,
+        http1: bool = True,
         http2: bool = False,
         network_backend: AsyncNetworkBackend = None,
     ) -> None:
@@ -28,6 +29,7 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
         self._origin = origin
         self._ssl_context = ssl_context
         self._keepalive_expiry = keepalive_expiry
+        self._http1 = http1
         self._http2 = http2
         self._network_backend: AsyncNetworkBackend = (
             AutoBackend() if network_backend is None else network_backend
@@ -58,10 +60,11 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
                     )
 
                 ssl_object = stream.get_extra_info("ssl_object")
-                if (
+                http2_negotiated = (
                     ssl_object is not None
                     and ssl_object.selected_alpn_protocol() == "h2"
-                ):
+                )
+                if http2_negotiated or (self._http2 and not self._http1):
                     from .http2 import AsyncHTTP2Connection
 
                     self._connection = AsyncHTTP2Connection(
