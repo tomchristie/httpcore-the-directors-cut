@@ -102,7 +102,7 @@ async def test_http2_connection():
     )
 
     async with AsyncHTTPConnection(
-        origin=origin, network_backend=network_backend
+        origin=origin, network_backend=network_backend, http2=True
     ) as conn:
         response = await conn.request("GET", "https://example.com/")
 

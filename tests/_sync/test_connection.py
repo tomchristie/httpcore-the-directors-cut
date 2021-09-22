@@ -102,7 +102,7 @@ def test_http2_connection():
     )
 
     with HTTPConnection(
-        origin=origin, network_backend=network_backend
+        origin=origin, network_backend=network_backend, http2=True
     ) as conn:
         response = conn.request("GET", "https://example.com/")
 
