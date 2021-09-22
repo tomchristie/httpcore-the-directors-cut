@@ -6,7 +6,7 @@ from ..backends.sync import SyncBackend
 from ..backends.base import NetworkBackend
 from .._exceptions import ConnectionNotAvailable, UnsupportedProtocol
 from .._synchronization import Lock, Semaphore
-from .._models import ByteStream, Origin, Request, Response
+from .._models import SyncByteStream, Origin, Request, Response
 from .connection import HTTPConnection
 from .interfaces import ConnectionInterface, RequestInterface
 
@@ -133,11 +133,11 @@ class ConnectionPool(RequestInterface):
         scheme = request.url.scheme.decode()
         if scheme == "":
             raise UnsupportedProtocol(
-                f"The request to '{request.url}' is missing an 'http://' or 'https://' protocol."
+                f"Request URL is missing an 'http://' or 'https://' protocol."
             )
         if scheme not in ("http", "https"):
             raise UnsupportedProtocol(
-                f"The request to '{request.url}' has an unsupported protocol '{scheme}://'."
+                f"Request URL has an unsupported protocol '{scheme}://'."
             )
 
         while True:
@@ -203,7 +203,7 @@ class ConnectionPool(RequestInterface):
             # When we return the response, we wrap the stream in a special class
             # that handles notifying the connection pool once the response
             # has been released.
-            assert isinstance(response.stream, ByteStream)
+            assert isinstance(response.stream, SyncByteStream)
             return Response(
                 status=response.status,
                 headers=response.headers,
@@ -248,7 +248,7 @@ class ConnectionPool(RequestInterface):
         self.close()
 
 
-class ConnectionPoolByteStream(ByteStream):
+class ConnectionPoolByteStream(SyncByteStream):
     """
     A wrapper around the response byte stream, that additionally handles
     notifying the connection pool when the response has been closed.
@@ -256,7 +256,7 @@ class ConnectionPoolByteStream(ByteStream):
 
     def __init__(
         self,
-        stream: ByteStream,
+        stream: SyncByteStream,
         pool: ConnectionPool,
         connection: ConnectionInterface,
     ) -> None:

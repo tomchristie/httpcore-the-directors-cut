@@ -133,11 +133,11 @@ class AsyncConnectionPool(AsyncRequestInterface):
         scheme = request.url.scheme.decode()
         if scheme == "":
             raise UnsupportedProtocol(
-                f"The request to '{request.url}' is missing an 'http://' or 'https://' protocol."
+                f"Request URL is missing an 'http://' or 'https://' protocol."
             )
         if scheme not in ("http", "https"):
             raise UnsupportedProtocol(
-                f"The request to '{request.url}' has an unsupported protocol '{scheme}://'."
+                f"Request URL has an unsupported protocol '{scheme}://'."
             )
 
         while True:

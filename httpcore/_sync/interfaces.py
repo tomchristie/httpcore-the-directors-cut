@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from .._models import ByteStream, Origin, Request, Response, URL
+from .._models import SyncByteStream, Origin, Request, Response, URL
 from typing import Dict, List, Tuple, Union
 
 
@@ -14,7 +14,7 @@ class RequestInterface:
         url: Union[URL, bytes, str],
         *,
         headers: Union[HeadersAsList, HeadersAsDict] = None,
-        stream: ByteStream = None,
+        stream: SyncByteStream = None,
         extensions: dict = None
     ):
         request = Request(
@@ -38,7 +38,7 @@ class RequestInterface:
         url: Union[URL, bytes, str],
         *,
         headers: Union[HeadersAsList, HeadersAsDict] = None,
-        stream: ByteStream = None,
+        stream: SyncByteStream = None,
         extensions: dict = None
     ):
         request = Request(

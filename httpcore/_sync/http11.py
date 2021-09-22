@@ -5,7 +5,7 @@ from typing import Iterator, Callable, List, Optional, Tuple, Type, Union
 
 import h11
 
-from .._models import ByteStream, Origin, Request, Response
+from .._models import SyncByteStream, Origin, Request, Response
 from ..backends.base import NetworkStream
 from .._exceptions import (
     map_exceptions,
@@ -104,7 +104,7 @@ class HTTP11Connection(ConnectionInterface):
         timeouts = request.extensions.get("timeout", {})
         timeout = timeouts.get("write", None)
 
-        assert isinstance(request.stream, ByteStream)
+        assert isinstance(request.stream, SyncByteStream)
         for chunk in request.stream:
             event = h11.Data(data=chunk)
             self._send_event(event)
@@ -239,7 +239,7 @@ class HTTP11Connection(ConnectionInterface):
         self.close()
 
 
-class HTTP11ConnectionByteStream(ByteStream):
+class HTTP11ConnectionByteStream(SyncByteStream):
     def __init__(self, connection: HTTP11Connection, request: Request) -> None:
         self._connection = connection
         self._request = request

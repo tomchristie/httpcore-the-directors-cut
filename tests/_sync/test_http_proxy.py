@@ -1,4 +1,4 @@
-from httpcore import HTTPProxy, Origin, ByteStream, ProxyError
+from httpcore import HTTPProxy, Origin, SyncByteStream, ProxyError
 from httpcore.backends.mock import MockBackend
 from typing import List
 import pytest

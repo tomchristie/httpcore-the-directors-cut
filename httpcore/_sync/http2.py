@@ -1,4 +1,4 @@
-from .._models import ByteStream, Origin, Request, Response
+from .._models import SyncByteStream, Origin, Request, Response
 from ..backends.base import NetworkStream
 from .._exceptions import ConnectionNotAvailable, LocalProtocolError, RemoteProtocolError
 from .._synchronization import Lock
@@ -323,7 +323,7 @@ class HTTP2Connection(ConnectionInterface):
         self.close()
 
 
-class HTTP2ConnectionByteStream(ByteStream):
+class HTTP2ConnectionByteStream(SyncByteStream):
     def __init__(
         self, connection: HTTP2Connection, request: Request, stream_id: int
     ) -> None:

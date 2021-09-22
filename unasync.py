@@ -7,7 +7,7 @@ SUBS = [
     ('from .._compat import asynccontextmanager', 'from contextlib import contextmanager'),
     ('from ..backends.auto import AutoBackend', 'from ..backends.sync import SyncBackend'),
     ('import trio as concurrency', 'from tests import concurrency'),
-    ('AsyncIteratorByteStream', 'IteratorByteStream'),
+    ('AsyncByteStream', 'SyncByteStream'),
     ('AsyncIterator', 'Iterator'),
     ('AutoBackend', 'SyncBackend'),
     ('Async([A-Z][A-Za-z0-9_]*)', r'\2'),
