@@ -1,5 +1,5 @@
 from .._exceptions import ProxyError
-from .._models import Origin, Request, Response, URL
+from .._models import enforce_headers, Origin, Request, Response, URL
 from ..backends.base import NetworkBackend
 from .._synchronization import Lock
 from .connection_pool import ConnectionPool
@@ -7,7 +7,11 @@ from .connection import HTTPConnection
 from .http11 import HTTP11Connection
 from .interfaces import ConnectionInterface
 import ssl
-from typing import List, Tuple
+from typing import Dict, List, Tuple, Union
+
+
+HeadersAsList = List[Tuple[Union[bytes, str], Union[bytes, str]]]
+HeadersAsDict = Dict[Union[bytes, str], Union[bytes, str]]
 
 
 def merge_headers(
@@ -32,7 +36,7 @@ class HTTPProxy(ConnectionPool):
     def __init__(
         self,
         proxy_origin: Origin,
-        proxy_headers: List[Tuple[bytes, bytes]] = None,
+        proxy_headers: Union[HeadersAsDict, HeadersAsList] = None,
         ssl_context: ssl.SSLContext = None,
         max_connections: int = 10,
         max_keepalive_connections: int = None,
@@ -48,7 +52,7 @@ class HTTPProxy(ConnectionPool):
         )
         self._ssl_context = ssl_context
         self._proxy_origin = proxy_origin
-        self._proxy_headers = proxy_headers
+        self._proxy_headers = enforce_headers(proxy_headers, name="proxy_headers")
 
     def create_connection(self, origin: Origin) -> ConnectionInterface:
         if origin.scheme == b"http":
@@ -70,7 +74,7 @@ class ForwardHTTPConnection(ConnectionInterface):
     def __init__(
         self,
         proxy_origin: Origin,
-        proxy_headers: List[Tuple[bytes, bytes]] = None,
+        proxy_headers: Union[HeadersAsDict, HeadersAsList] = None,
         keepalive_expiry: float = None,
         network_backend: NetworkBackend = None,
     ) -> None:
@@ -80,7 +84,7 @@ class ForwardHTTPConnection(ConnectionInterface):
             network_backend=network_backend,
         )
         self._proxy_origin = proxy_origin
-        self._proxy_headers = [] if proxy_headers is None else proxy_headers
+        self._proxy_headers = enforce_headers(proxy_headers, name="proxy_headers")
 
     def handle_request(self, request: Request) -> Response:
         headers = merge_headers(self._proxy_headers, request.headers)
