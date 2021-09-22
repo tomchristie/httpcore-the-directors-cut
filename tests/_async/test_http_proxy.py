@@ -21,7 +21,7 @@ async def test_proxy_forwarding():
     )
 
     async with AsyncHTTPProxy(
-        proxy_origin=Origin(scheme=b"http", host=b"localhost", port=8080),
+        proxy_url="http://localhost:8080/",
         max_connections=10,
         network_backend=network_backend,
     ) as proxy:
@@ -79,7 +79,7 @@ async def test_proxy_tunneling():
     )
 
     async with AsyncHTTPProxy(
-        proxy_origin=Origin(scheme=b"http", host=b"localhost", port=8080),
+        proxy_url="http://localhost:8080/",
         max_connections=10,
         network_backend=network_backend,
     ) as proxy:
@@ -132,7 +132,7 @@ async def test_proxy_tunneling_with_403():
     )
 
     async with AsyncHTTPProxy(
-        proxy_origin=Origin(scheme=b"http", host=b"localhost", port=8080),
+        proxy_url="http://localhost:8080/",
         max_connections=10,
         network_backend=network_backend,
     ) as proxy:

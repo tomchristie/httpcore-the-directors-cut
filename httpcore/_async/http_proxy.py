@@ -1,5 +1,5 @@
 from .._exceptions import ProxyError
-from .._models import enforce_headers, Origin, Request, Response, URL
+from .._models import enforce_headers, enforce_url, Origin, Request, Response, URL
 from ..backends.base import AsyncNetworkBackend
 from .._synchronization import AsyncLock
 from .connection_pool import AsyncConnectionPool
@@ -35,7 +35,7 @@ def merge_headers(
 class AsyncHTTPProxy(AsyncConnectionPool):
     def __init__(
         self,
-        proxy_origin: Origin,
+        proxy_url: Union[URL, bytes, str, tuple],
         proxy_headers: Union[HeadersAsDict, HeadersAsList] = None,
         ssl_context: ssl.SSLContext = None,
         max_connections: int = 10,
@@ -51,18 +51,18 @@ class AsyncHTTPProxy(AsyncConnectionPool):
             network_backend=network_backend,
         )
         self._ssl_context = ssl_context
-        self._proxy_origin = proxy_origin
+        self._proxy_url = enforce_url(proxy_url, name="proxy_url")
         self._proxy_headers = enforce_headers(proxy_headers, name="proxy_headers")
 
     def create_connection(self, origin: Origin) -> AsyncConnectionInterface:
         if origin.scheme == b"http":
             return AsyncForwardHTTPConnection(
-                proxy_origin=self._proxy_origin,
+                proxy_origin=self._proxy_url.origin,
                 keepalive_expiry=self._keepalive_expiry,
                 network_backend=self._network_backend,
             )
         return AsyncTunnelHTTPConnection(
-            proxy_origin=self._proxy_origin,
+            proxy_origin=self._proxy_url.origin,
             remote_origin=origin,
             ssl_context=self._ssl_context,
             keepalive_expiry=self._keepalive_expiry,

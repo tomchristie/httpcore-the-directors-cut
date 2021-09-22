@@ -21,7 +21,7 @@ def test_proxy_forwarding():
     )
 
     with HTTPProxy(
-        proxy_origin=Origin(scheme=b"http", host=b"localhost", port=8080),
+        proxy_url="http://localhost:8080/",
         max_connections=10,
         network_backend=network_backend,
     ) as proxy:
@@ -79,7 +79,7 @@ def test_proxy_tunneling():
     )
 
     with HTTPProxy(
-        proxy_origin=Origin(scheme=b"http", host=b"localhost", port=8080),
+        proxy_url="http://localhost:8080/",
         max_connections=10,
         network_backend=network_backend,
     ) as proxy:
@@ -132,7 +132,7 @@ def test_proxy_tunneling_with_403():
     )
 
     with HTTPProxy(
-        proxy_origin=Origin(scheme=b"http", host=b"localhost", port=8080),
+        proxy_url="http://localhost:8080/",
         max_connections=10,
         network_backend=network_backend,
     ) as proxy:
