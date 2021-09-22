@@ -22,6 +22,15 @@ def test_url_with_port():
     assert bytes(url) == b"https://www.example.com:443/"
 
 
+def test_parsed_url():
+    parsed = ("https", "www.example.com", None, "/")
+    url = httpcore.URL(parsed)
+    assert url == httpcore.URL(
+        scheme="https", host="www.example.com", port=None, target="/"
+    )
+    assert bytes(url) == b"https://www.example.com/"
+
+
 def test_url_with_invalid_argument():
     with pytest.raises(TypeError) as exc_info:
         httpcore.URL(123)
@@ -66,7 +75,7 @@ def test_request_with_invalid_method():
 def test_request_with_invalid_url():
     with pytest.raises(TypeError) as exc_info:
         httpcore.Request("GET", 123)
-    assert str(exc_info.value) == "url must be a URL, bytes, or str, but got int."
+    assert str(exc_info.value) == "url must be a URL, bytes, str, or four-tuple, but got int."
 
 
 def test_request_with_invalid_headers():
