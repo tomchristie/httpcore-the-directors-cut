@@ -18,6 +18,7 @@ class AsyncConnectionPool(AsyncRequestInterface):
         max_connections: int = 10,
         max_keepalive_connections: int = None,
         keepalive_expiry: float = None,
+        http1: bool = True,
         http2: bool = False,
         network_backend: AsyncNetworkBackend = None,
     ) -> None:
@@ -33,6 +34,7 @@ class AsyncConnectionPool(AsyncRequestInterface):
             max_keepalive_connections, max_connections - 1
         )
         self._keepalive_expiry = keepalive_expiry
+        self._http1 = http1
         self._http2 = http2
 
         self._pool: List[AsyncConnectionInterface] = []
@@ -47,6 +49,7 @@ class AsyncConnectionPool(AsyncRequestInterface):
             origin=origin,
             ssl_context=self._ssl_context,
             keepalive_expiry=self._keepalive_expiry,
+            http1=self._http1,
             http2=self._http2,
             network_backend=self._network_backend,
         )
