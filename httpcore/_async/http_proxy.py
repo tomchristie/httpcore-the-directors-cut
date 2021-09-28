@@ -98,7 +98,7 @@ class AsyncForwardHTTPConnection(AsyncConnectionInterface):
             method=request.method,
             url=url,
             headers=headers,
-            stream=request.stream,
+            content=request.stream,
             extensions=request.extensions,
         )
         return await self._connection.handle_async_request(proxy_request)

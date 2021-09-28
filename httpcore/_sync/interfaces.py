@@ -10,7 +10,7 @@ class RequestInterface:
         url: Union[URL, bytes, str],
         *,
         headers: Union[dict, list] = None,
-        stream: Iterator[bytes] = None,
+        content: Union[bytes, Iterator[bytes]] = None,
         extensions: dict = None
     ):
         # Strict type checking on our parameters.
@@ -25,7 +25,7 @@ class RequestInterface:
             method=method,
             url=url,
             headers=headers,
-            stream=stream,
+            content=content,
             extensions=extensions,
         )
         response = self.handle_request(request)
@@ -42,7 +42,7 @@ class RequestInterface:
         url: Union[URL, bytes, str],
         *,
         headers: Union[dict, list] = None,
-        stream: Iterator[bytes] = None,
+        content: Union[bytes, Iterator[bytes]] = None,
         extensions: dict = None
     ):
         # Strict type checking on our parameters.
@@ -57,7 +57,7 @@ class RequestInterface:
             method=method,
             url=url,
             headers=headers,
-            stream=stream,
+            content=content,
             extensions=extensions,
         )
         response = self.handle_request(request)

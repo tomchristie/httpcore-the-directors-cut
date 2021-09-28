@@ -10,7 +10,7 @@ class AsyncRequestInterface:
         url: Union[URL, bytes, str],
         *,
         headers: Union[dict, list] = None,
-        stream: AsyncIterator[bytes] = None,
+        content: Union[bytes, AsyncIterator[bytes]] = None,
         extensions: dict = None
     ):
         # Strict type checking on our parameters.
@@ -25,7 +25,7 @@ class AsyncRequestInterface:
             method=method,
             url=url,
             headers=headers,
-            stream=stream,
+            content=content,
             extensions=extensions,
         )
         response = await self.handle_async_request(request)
@@ -42,7 +42,7 @@ class AsyncRequestInterface:
         url: Union[URL, bytes, str],
         *,
         headers: Union[dict, list] = None,
-        stream: AsyncIterator[bytes] = None,
+        content: Union[bytes, AsyncIterator[bytes]] = None,
         extensions: dict = None
     ):
         # Strict type checking on our parameters.
@@ -57,7 +57,7 @@ class AsyncRequestInterface:
             method=method,
             url=url,
             headers=headers,
-            stream=stream,
+            content=content,
             extensions=extensions,
         )
         response = await self.handle_async_request(request)

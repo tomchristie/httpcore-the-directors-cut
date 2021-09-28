@@ -76,7 +76,7 @@ class HTTP2Connection(ConnectionInterface):
         return Response(
             status=status,
             headers=headers,
-            stream=HTTP2ConnectionByteStream(self, request, stream_id=stream_id),
+            content=HTTP2ConnectionByteStream(self, request, stream_id=stream_id),
             extensions={"stream_id": stream_id, "http_version": b"HTTP/2"},
         )
 

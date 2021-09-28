@@ -75,7 +75,7 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
             return Response(
                 status=status,
                 headers=headers,
-                stream=HTTP11ConnectionByteStream(self, request),
+                content=HTTP11ConnectionByteStream(self, request),
                 extensions={
                     "http_version": http_version,
                     "reason_phrase": reason_phrase,

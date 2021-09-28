@@ -207,7 +207,7 @@ class AsyncConnectionPool(AsyncRequestInterface):
             return Response(
                 status=response.status,
                 headers=response.headers,
-                stream=ConnectionPoolByteStream(response.stream, self, connection),
+                content=ConnectionPoolByteStream(response.stream, self, connection),
                 extensions=response.extensions,
             )
 

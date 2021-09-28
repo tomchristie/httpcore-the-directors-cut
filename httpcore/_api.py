@@ -8,7 +8,7 @@ def request(
     url: Union[URL, bytes, str],
     *,
     headers: Union[dict, list] = None,
-    stream: Iterator[bytes] = None,
+    content: Union[bytes, Iterator[bytes]] = None,
     extensions: dict = None
 ) -> Response:
     """
@@ -17,11 +17,11 @@ def request(
         response = httpcore.request("GET", "https://www.example.com/")
 
     Arguments:
-        method: HTTP method for the request. Typically one of `"GET"`, `"OPTIONS"`,
+        method: The HTTP method for the request. Typically one of `"GET"`, `"OPTIONS"`,
                 `"HEAD"`, `"POST"`, `"PUT"`, `"PATCH"`, or `"DELETE"`.
         url: ...
-        headers: HTTP request headers. Either as a dictionary of str/bytes, or as a list of two-tuples of str/bytes.
-        stream: The content of the request body.
+        headers: The HTTP request headers. Either as a dictionary of str/bytes, or as a list of two-tuples of str/bytes.
+        content: The content of the request body. Either as bytes, or as a bytes iterator.
         extensions: ...
 
     Returns:
@@ -32,6 +32,6 @@ def request(
             method=method,
             url=url,
             headers=headers,
-            stream=stream,
+            content=content,
             extensions=extensions,
         )

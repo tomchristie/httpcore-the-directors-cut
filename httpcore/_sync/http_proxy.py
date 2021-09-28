@@ -98,7 +98,7 @@ class ForwardHTTPConnection(ConnectionInterface):
             method=request.method,
             url=url,
             headers=headers,
-            stream=request.stream,
+            content=request.stream,
             extensions=request.extensions,
         )
         return self._connection.handle_request(proxy_request)

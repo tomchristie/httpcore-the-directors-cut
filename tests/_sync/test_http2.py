@@ -75,7 +75,7 @@ def test_http2_connection_post_request():
             "POST",
             "https://example.com/",
             headers={b"content-length": b"17"},
-            stream=ByteStream(b'{"data": "upload"}'),
+            content=b'{"data": "upload"}',
         )
         assert response.status == 200
         assert response.content == b"Hello, world!"
@@ -164,7 +164,7 @@ def test_http2_connection_with_flow_control():
             "POST",
             "https://example.com/",
             headers={b"content-length": b"100000"},
-            stream=ByteStream(b'x' * 100_000)
+            content=b'x' * 100_000
         )
         assert response.status == 200
         assert response.content == b"100,000 bytes received"

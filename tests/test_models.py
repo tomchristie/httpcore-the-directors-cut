@@ -90,7 +90,7 @@ def test_response():
 # Tests for reading and streaming sync byte streams...
 
 
-class MockSyncByteStream(httpcore.SyncByteStream):
+class ByteIterator:
     def __init__(self, chunks: List[bytes]) -> None:
         self._chunks = chunks
 
@@ -100,15 +100,15 @@ class MockSyncByteStream(httpcore.SyncByteStream):
 
 
 def test_response_sync_read():
-    stream = MockSyncByteStream([b"Hello, ", b"world!"])
-    response = httpcore.Response(200, stream=stream)
+    stream = ByteIterator([b"Hello, ", b"world!"])
+    response = httpcore.Response(200, content=stream)
     assert response.read() == b"Hello, world!"
     assert response.content == b"Hello, world!"
 
 
 def test_response_sync_streaming():
-    stream = MockSyncByteStream([b"Hello, ", b"world!"])
-    response = httpcore.Response(200, stream=stream)
+    stream = ByteIterator([b"Hello, ", b"world!"])
+    response = httpcore.Response(200, content=stream)
     content = b"".join([chunk for chunk in response.iter_stream()])
     assert content == b"Hello, world!"
 
@@ -125,7 +125,7 @@ def test_response_sync_streaming():
 # Tests for reading and streaming async byte streams...
 
 
-class MockAsyncByteStream(httpcore.AsyncByteStream):
+class AsyncByteIterator:
     def __init__(self, chunks: List[bytes]) -> None:
         self._chunks = chunks
 
@@ -136,16 +136,16 @@ class MockAsyncByteStream(httpcore.AsyncByteStream):
 
 @pytest.mark.trio
 async def test_response_async_read():
-    stream = MockAsyncByteStream([b"Hello, ", b"world!"])
-    response = httpcore.Response(200, stream=stream)
+    stream = AsyncByteIterator([b"Hello, ", b"world!"])
+    response = httpcore.Response(200, content=stream)
     assert await response.aread() == b"Hello, world!"
     assert response.content == b"Hello, world!"
 
 
 @pytest.mark.trio
 async def test_response_async_streaming():
-    stream = MockAsyncByteStream([b"Hello, ", b"world!"])
-    response = httpcore.Response(200, stream=stream)
+    stream = AsyncByteIterator([b"Hello, ", b"world!"])
+    response = httpcore.Response(200, content=stream)
     content = b"".join([chunk async for chunk in response.aiter_stream()])
     assert content == b"Hello, world!"
 

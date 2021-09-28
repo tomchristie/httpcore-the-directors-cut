@@ -92,6 +92,16 @@ def enforce_headers(
     raise TypeError(f"{name} must be a list, but got {seen_type}.")
 
 
+def enforce_stream(
+    value: Union[bytes, Iterable[bytes], AsyncIterable[bytes]], *, name: str
+) -> Union[Iterable[bytes], AsyncIterable[bytes]]:
+    if value is None:
+        return ByteStream(b"")
+    elif isinstance(value, bytes):
+        return ByteStream(value)
+    return value
+
+
 # * https://tools.ietf.org/html/rfc3986#section-3.2.3
 # * https://url.spec.whatwg.org/#url-miscellaneous
 # * https://url.spec.whatwg.org/#scheme-state
@@ -273,13 +283,13 @@ class Request:
         url: Union[URL, bytes, str],
         *,
         headers: Union[dict, list] = None,
-        stream: Union[Iterable[bytes], AsyncIterable[bytes]] = None,
+        content: Union[bytes, Iterable[bytes], AsyncIterable[bytes]] = None,
         extensions: dict = None,
     ) -> None:
-        self.method = enforce_bytes(method, name="method")
-        self.url = enforce_url(url, name="url")
-        self.headers = enforce_headers(headers, name="headers")
-        self.stream = ByteStream(b"") if stream is None else stream
+        self.method: bytes = enforce_bytes(method, name="method")
+        self.url: URL = enforce_url(url, name="url")
+        self.headers: List[Tuple[bytes, bytes]] = enforce_headers(headers, name="headers")
+        self.stream: Union[Iterable[bytes], AsyncIterable[bytes]] = enforce_stream(content, name="content")
         self.extensions = {} if extensions is None else extensions
 
     def __repr__(self):
@@ -293,7 +303,7 @@ class Response:
     Attributes:
         status: The HTTP status code of the response.
         headers: The HTTP response headers.
-        stream: The content of the response body.
+        content: The content of the response body.
         extensions: ...
     """
 
@@ -302,12 +312,12 @@ class Response:
         status: int,
         *,
         headers: Union[dict, list] = None,
-        stream: Union[Iterable[bytes], AsyncIterable[bytes]] = None,
+        content: Union[bytes, Iterable[bytes], AsyncIterable[bytes]] = None,
         extensions: dict = None,
     ) -> None:
         self.status: int = status
         self.headers: List[Tuple[bytes, bytes]] = enforce_headers(headers, name="headers")
-        self.stream: Union[Iterable[bytes], AsyncIterable[bytes]] = ByteStream(b"") if stream is None else stream
+        self.stream: Union[Iterable[bytes], AsyncIterable[bytes]] = enforce_stream(content, name="content")
         self.extensions: dict = {} if extensions is None else extensions
 
         self._stream_consumed = False
@@ -315,7 +325,7 @@ class Response:
     @property
     def content(self) -> bytes:
         if not hasattr(self, "_content"):
-            if isinstance(self.stream, SyncByteStream):
+            if isinstance(self.stream, Iterable):
                 raise RuntimeError(
                     "Attempted to access 'response.content' on a streaming response. "
                     "Call 'response.read()' first."
