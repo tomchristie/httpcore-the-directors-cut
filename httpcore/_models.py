@@ -23,9 +23,6 @@ __all__ = [
 ]
 
 
-HeadersAsList = List[Tuple[Union[bytes, str], Union[bytes, str]]]
-HeadersAsDict = Dict[Union[bytes, str], Union[bytes, str]]
-
 # Functions for typechecking...
 
 
@@ -50,21 +47,21 @@ def enforce_bytes(value: Union[bytes, str], *, name: str) -> bytes:
     raise TypeError(f"{name} must be bytes or str, but got {seen_type}.")
 
 
-def enforce_url(value: Union["URL", bytes, str, tuple], *, name: str) -> "URL":
+def enforce_url(value: Union["URL", bytes, str], *, name: str) -> "URL":
     """
     Type check for URL parameters.
     """
-    if isinstance(value, (bytes, str, tuple)):
+    if isinstance(value, (bytes, str)):
         return URL(value)
     elif isinstance(value, URL):
         return value
 
     seen_type = type(value).__name__
-    raise TypeError(f"{name} must be a URL, bytes, str, or four-tuple, but got {seen_type}.")
+    raise TypeError(f"{name} must be a URL, bytes, or str, but got {seen_type}.")
 
 
 def enforce_headers(
-    value: Union[HeadersAsList, HeadersAsDict] = None, *, name: str
+    value: Union[dict, list] = None, *, name: str
 ) -> List[Tuple[bytes, bytes]]:
     """
     Convienence function that ensure all items in request or response headers
@@ -105,7 +102,7 @@ DEFAULT_PORTS = {
 }
 
 
-def include_host_header(url: "URL", headers: List[Tuple[bytes, bytes]]):
+def include_request_headers(headers: List[Tuple[bytes, bytes]], *, url: "URL"):
     if any([k.lower() == b"host" for k, v in headers]):
         return headers
 
@@ -221,17 +218,13 @@ class URL:
 
     def __init__(
         self,
-        url: Union[bytes, str, tuple] = "",
+        url: Union[bytes, str] = "",
         *,
         scheme: Union[bytes, str] = b"",
         host: Union[bytes, str] = b"",
         port: Optional[int] = None,
         target: Union[bytes, str] = b"",
     ) -> None:
-        if url and isinstance(url, tuple):
-            scheme, host, port, target = url
-            url = ""
-
         if url:
             parsed = urlparse(enforce_bytes(url, name="url"))
             self.scheme = parsed.scheme
@@ -275,16 +268,15 @@ class Request:
     def __init__(
         self,
         method: Union[bytes, str],
-        url: Union[URL, bytes, str, tuple],
+        url: Union[URL, bytes, str],
         *,
-        headers: Union[HeadersAsList, HeadersAsDict] = None,
+        headers: Union[dict, list] = None,
         stream: Union[SyncByteStream, AsyncByteStream] = None,
         extensions: dict = None,
     ) -> None:
         self.method = enforce_bytes(method, name="method")
         self.url = enforce_url(url, name="url")
         self.headers = enforce_headers(headers, name="headers")
-        self.headers = include_host_header(self.url, self.headers)
         self.stream = ByteStream(b"") if stream is None else stream
         self.extensions = {} if extensions is None else extensions
 
@@ -293,18 +285,28 @@ class Request:
 
 
 class Response:
+    """
+    Another docstring
+
+    Attributes:
+        status: The HTTP status code of the response.
+        headers: The HTTP response headers.
+        stream: The content of the response body.
+        extensions: ...
+    """
+
     def __init__(
         self,
         status: int,
         *,
-        headers: Union[HeadersAsList, HeadersAsDict] = None,
+        headers: Union[dict, list] = None,
         stream: Union[SyncByteStream, AsyncByteStream] = None,
         extensions: dict = None,
     ) -> None:
-        self.status = status
-        self.headers = enforce_headers(headers, name="headers")
-        self.stream = ByteStream(b"") if stream is None else stream
-        self.extensions = {} if extensions is None else extensions
+        self.status: int = status
+        self.headers: List[Tuple[bytes, bytes]] = enforce_headers(headers, name="headers")
+        self.stream: SyncByteStream = ByteStream(b"") if stream is None else stream
+        self.extensions: dict = {} if extensions is None else extensions
 
         self._stream_consumed = False
 

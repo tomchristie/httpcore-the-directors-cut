@@ -12,3 +12,9 @@ __all__ += _models.__all__
 __all__ += _exceptions.__all__
 
 __version__ = "0.14.0"
+
+
+__locals = locals()
+for __name in __all__:
+    if not __name.startswith("__"):
+        setattr(__locals[__name], "__module__", "httpcore")  # noqa

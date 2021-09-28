@@ -1,10 +1,6 @@
 from .._compat import asynccontextmanager
-from .._models import AsyncByteStream, Origin, Request, Response, URL
+from .._models import AsyncByteStream, Origin, Request, Response, URL, enforce_bytes, enforce_url, enforce_headers, include_request_headers
 from typing import Dict, List, Tuple, Union
-
-
-HeadersAsList = List[Tuple[Union[bytes, str], Union[bytes, str]]]
-HeadersAsDict = Dict[Union[bytes, str], Union[bytes, str]]
 
 
 class AsyncRequestInterface:
@@ -13,10 +9,18 @@ class AsyncRequestInterface:
         method: Union[bytes, str],
         url: Union[URL, bytes, str],
         *,
-        headers: Union[HeadersAsList, HeadersAsDict] = None,
+        headers: Union[dict, list] = None,
         stream: AsyncByteStream = None,
         extensions: dict = None
     ):
+        # Strict type checking on our parameters.
+        method = enforce_bytes(method, name="method")
+        url = enforce_url(url, name="url")
+        headers = enforce_headers(headers, name="headers")
+
+        # Include Host header.
+        headers = include_request_headers(headers, url=url)
+
         request = Request(
             method=method,
             url=url,
@@ -37,10 +41,18 @@ class AsyncRequestInterface:
         method: Union[bytes, str],
         url: Union[URL, bytes, str],
         *,
-        headers: Union[HeadersAsList, HeadersAsDict] = None,
+        headers: Union[dict, list] = None,
         stream: AsyncByteStream = None,
         extensions: dict = None
     ):
+        # Strict type checking on our parameters.
+        method = enforce_bytes(method, name="method")
+        url = enforce_url(url, name="url")
+        headers = enforce_headers(headers, name="headers")
+
+        # Include Host header.
+        headers = include_request_headers(headers, url=url)
+
         request = Request(
             method=method,
             url=url,
