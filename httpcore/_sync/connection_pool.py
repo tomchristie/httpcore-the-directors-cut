@@ -1,12 +1,12 @@
 import ssl
 from types import TracebackType
-from typing import Iterator, List, Optional, Type
+from typing import Iterable, Iterator, List, Optional, Type
 
 from ..backends.sync import SyncBackend
 from ..backends.base import NetworkBackend
 from .._exceptions import ConnectionNotAvailable, UnsupportedProtocol
 from .._synchronization import Lock, Semaphore
-from .._models import SyncByteStream, Origin, Request, Response
+from .._models import Origin, Request, Response
 from .connection import HTTPConnection
 from .interfaces import ConnectionInterface, RequestInterface
 
@@ -203,7 +203,7 @@ class ConnectionPool(RequestInterface):
             # When we return the response, we wrap the stream in a special class
             # that handles notifying the connection pool once the response
             # has been released.
-            assert isinstance(response.stream, SyncByteStream)
+            assert isinstance(response.stream, Iterable)
             return Response(
                 status=response.status,
                 headers=response.headers,
@@ -248,7 +248,7 @@ class ConnectionPool(RequestInterface):
         self.close()
 
 
-class ConnectionPoolByteStream(SyncByteStream):
+class ConnectionPoolByteStream:
     """
     A wrapper around the response byte stream, that additionally handles
     notifying the connection pool when the response has been closed.
@@ -256,7 +256,7 @@ class ConnectionPoolByteStream(SyncByteStream):
 
     def __init__(
         self,
-        stream: SyncByteStream,
+        stream: Iterable[bytes],
         pool: ConnectionPool,
         connection: ConnectionInterface,
     ) -> None:
@@ -270,6 +270,7 @@ class ConnectionPoolByteStream(SyncByteStream):
 
     def close(self) -> None:
         try:
-            self._stream.close()
+            if hasattr(self._stream, "close"):
+                self._stream.close()
         finally:
             self._pool.response_closed(self._connection)

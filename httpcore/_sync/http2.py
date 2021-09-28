@@ -1,6 +1,10 @@
-from .._models import SyncByteStream, Origin, Request, Response
+from .._models import Origin, Request, Response
 from ..backends.base import NetworkStream
-from .._exceptions import ConnectionNotAvailable, LocalProtocolError, RemoteProtocolError
+from .._exceptions import (
+    ConnectionNotAvailable,
+    LocalProtocolError,
+    RemoteProtocolError,
+)
 from .._synchronization import Lock
 from .interfaces import ConnectionInterface
 
@@ -35,7 +39,9 @@ class HTTP2Connection(ConnectionInterface):
     READ_NUM_BYTES = 64 * 1024
     CONFIG = h2.config.H2Configuration(validate_inbound_headers=False)
 
-    def __init__(self, origin: Origin, stream: NetworkStream, keepalive_expiry: float = None):
+    def __init__(
+        self, origin: Origin, stream: NetworkStream, keepalive_expiry: float = None
+    ):
         self._origin = origin
         self._network_stream = stream
         self._keepalive_expiry: Optional[float] = keepalive_expiry
@@ -196,9 +202,7 @@ class HTTP2Connection(ConnectionInterface):
             event = self._receive_stream_event(request, stream_id)
             if isinstance(event, h2.events.DataReceived):
                 amount = event.flow_controlled_length
-                self._acknowledge_received_data(
-                    request, stream_id, amount
-                )
+                self._acknowledge_received_data(request, stream_id, amount)
                 yield event.data
             elif isinstance(event, (h2.events.StreamEnded, h2.events.StreamReset)):
                 break
@@ -323,7 +327,7 @@ class HTTP2Connection(ConnectionInterface):
         self.close()
 
 
-class HTTP2ConnectionByteStream(SyncByteStream):
+class HTTP2ConnectionByteStream:
     def __init__(
         self, connection: HTTP2Connection, request: Request, stream_id: int
     ) -> None:

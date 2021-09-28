@@ -1,5 +1,14 @@
 from .._compat import asynccontextmanager
-from .._models import AsyncByteStream, Origin, Request, Response, URL, enforce_bytes, enforce_url, enforce_headers, include_request_headers
+from .._models import (
+    Origin,
+    Request,
+    Response,
+    URL,
+    enforce_bytes,
+    enforce_url,
+    enforce_headers,
+    include_request_headers,
+)
 from typing import AsyncIterator, Union
 
 
@@ -18,8 +27,8 @@ class AsyncRequestInterface:
         url = enforce_url(url, name="url")
         headers = enforce_headers(headers, name="headers")
 
-        # Include Host header.
-        headers = include_request_headers(headers, url=url)
+        # Include Host header, and optionally Content-Length or Transfer-Encoding.
+        headers = include_request_headers(headers, url=url, content=content)
 
         request = Request(
             method=method,
@@ -50,8 +59,8 @@ class AsyncRequestInterface:
         url = enforce_url(url, name="url")
         headers = enforce_headers(headers, name="headers")
 
-        # Include Host header.
-        headers = include_request_headers(headers, url=url)
+        # Include Host header, and optionally Content-Length or Transfer-Encoding.
+        headers = include_request_headers(headers, url=url, content=content)
 
         request = Request(
             method=method,

@@ -160,9 +160,7 @@ async def test_http11_connection_attempt_close():
             b"Hello, world!",
         ]
     )
-    async with AsyncHTTP11Connection(
-        origin=origin, stream=stream
-    ) as conn:
+    async with AsyncHTTP11Connection(origin=origin, stream=stream) as conn:
         async with conn.stream("GET", "https://example.com/") as response:
             await response.aread()
             assert response.status == 200

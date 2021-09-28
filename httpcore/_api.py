@@ -1,4 +1,4 @@
-from ._models import SyncByteStream, Request, Response, URL
+from ._models import Request, Response, URL
 from ._sync.connection_pool import ConnectionPool
 from typing import Iterator, Union
 

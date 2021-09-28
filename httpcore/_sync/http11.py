@@ -1,11 +1,20 @@
 import enum
 import time
 from types import TracebackType
-from typing import Iterator, Callable, List, Optional, Tuple, Type, Union
+from typing import (
+    Iterable,
+    Iterator,
+    Callable,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
 
 import h11
 
-from .._models import SyncByteStream, Origin, Request, Response
+from .._models import Origin, Request, Response
 from ..backends.base import NetworkStream
 from .._exceptions import (
     map_exceptions,
@@ -104,7 +113,7 @@ class HTTP11Connection(ConnectionInterface):
         timeouts = request.extensions.get("timeout", {})
         timeout = timeouts.get("write", None)
 
-        assert isinstance(request.stream, SyncByteStream)
+        assert isinstance(request.stream, Iterable)
         for chunk in request.stream:
             event = h11.Data(data=chunk)
             self._send_event(event)
@@ -239,7 +248,7 @@ class HTTP11Connection(ConnectionInterface):
         self.close()
 
 
-class HTTP11ConnectionByteStream(SyncByteStream):
+class HTTP11ConnectionByteStream:
     def __init__(self, connection: HTTP11Connection, request: Request) -> None:
         self._connection = connection
         self._request = request

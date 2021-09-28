@@ -1,6 +1,10 @@
-from .._models import AsyncByteStream, Origin, Request, Response
+from .._models import Origin, Request, Response
 from ..backends.base import AsyncNetworkStream
-from .._exceptions import ConnectionNotAvailable, LocalProtocolError, RemoteProtocolError
+from .._exceptions import (
+    ConnectionNotAvailable,
+    LocalProtocolError,
+    RemoteProtocolError,
+)
 from .._synchronization import AsyncLock
 from .interfaces import AsyncConnectionInterface
 
@@ -35,7 +39,9 @@ class AsyncHTTP2Connection(AsyncConnectionInterface):
     READ_NUM_BYTES = 64 * 1024
     CONFIG = h2.config.H2Configuration(validate_inbound_headers=False)
 
-    def __init__(self, origin: Origin, stream: AsyncNetworkStream, keepalive_expiry: float = None):
+    def __init__(
+        self, origin: Origin, stream: AsyncNetworkStream, keepalive_expiry: float = None
+    ):
         self._origin = origin
         self._network_stream = stream
         self._keepalive_expiry: Optional[float] = keepalive_expiry
@@ -196,9 +202,7 @@ class AsyncHTTP2Connection(AsyncConnectionInterface):
             event = await self._receive_stream_event(request, stream_id)
             if isinstance(event, h2.events.DataReceived):
                 amount = event.flow_controlled_length
-                await self._acknowledge_received_data(
-                    request, stream_id, amount
-                )
+                await self._acknowledge_received_data(request, stream_id, amount)
                 yield event.data
             elif isinstance(event, (h2.events.StreamEnded, h2.events.StreamReset)):
                 break
@@ -323,7 +327,7 @@ class AsyncHTTP2Connection(AsyncConnectionInterface):
         await self.aclose()
 
 
-class HTTP2ConnectionByteStream(AsyncByteStream):
+class HTTP2ConnectionByteStream:
     def __init__(
         self, connection: AsyncHTTP2Connection, request: Request, stream_id: int
     ) -> None:

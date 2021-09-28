@@ -1,6 +1,5 @@
 from httpcore import (
     HTTP2Connection,
-    ByteStream,
     Origin,
     ConnectionNotAvailable,
     RemoteProtocolError,
@@ -33,7 +32,9 @@ def test_http2_connection():
             ).serialize(),
         ]
     )
-    with HTTP2Connection(origin=origin, stream=stream, keepalive_expiry=5.0) as conn:
+    with HTTP2Connection(
+        origin=origin, stream=stream, keepalive_expiry=5.0
+    ) as conn:
         response = conn.request("GET", "https://example.com/")
         assert response.status == 200
         assert response.content == b"Hello, world!"
@@ -42,7 +43,9 @@ def test_http2_connection():
         assert conn.is_available()
         assert not conn.is_closed()
         assert not conn.has_expired()
-        assert conn.info() == "'https://example.com:443', HTTP/2, IDLE, Request Count: 1"
+        assert (
+            conn.info() == "'https://example.com:443', HTTP/2, IDLE, Request Count: 1"
+        )
         assert (
             repr(conn)
             == "<HTTP2Connection ['https://example.com:443', IDLE, Request Count: 1]>"
@@ -114,10 +117,8 @@ def test_http11_connection_with_stream_cancelled():
                 ),
                 flags=["END_HEADERS"],
             ).serialize(),
-            hyperframe.frame.RstStreamFrame(
-                stream_id=1, error_code=8
-            ).serialize(),
-            b""
+            hyperframe.frame.RstStreamFrame(stream_id=1, error_code=8).serialize(),
+            b"",
         ]
     )
     with HTTP2Connection(origin=origin, stream=stream) as conn:
@@ -132,17 +133,33 @@ def test_http2_connection_with_flow_control():
         [
             hyperframe.frame.SettingsFrame().serialize(),
             # Available flow: 65,535
-            hyperframe.frame.WindowUpdateFrame(stream_id=0, window_increment=10_000).serialize(),
-            hyperframe.frame.WindowUpdateFrame(stream_id=1, window_increment=10_000).serialize(),
+            hyperframe.frame.WindowUpdateFrame(
+                stream_id=0, window_increment=10_000
+            ).serialize(),
+            hyperframe.frame.WindowUpdateFrame(
+                stream_id=1, window_increment=10_000
+            ).serialize(),
             # Available flow: 75,535
-            hyperframe.frame.WindowUpdateFrame(stream_id=0, window_increment=10_000).serialize(),
-            hyperframe.frame.WindowUpdateFrame(stream_id=1, window_increment=10_000).serialize(),
+            hyperframe.frame.WindowUpdateFrame(
+                stream_id=0, window_increment=10_000
+            ).serialize(),
+            hyperframe.frame.WindowUpdateFrame(
+                stream_id=1, window_increment=10_000
+            ).serialize(),
             # Available flow: 85,535
-            hyperframe.frame.WindowUpdateFrame(stream_id=0, window_increment=10_000).serialize(),
-            hyperframe.frame.WindowUpdateFrame(stream_id=1, window_increment=10_000).serialize(),
+            hyperframe.frame.WindowUpdateFrame(
+                stream_id=0, window_increment=10_000
+            ).serialize(),
+            hyperframe.frame.WindowUpdateFrame(
+                stream_id=1, window_increment=10_000
+            ).serialize(),
             # Available flow: 95,535
-            hyperframe.frame.WindowUpdateFrame(stream_id=0, window_increment=10_000).serialize(),
-            hyperframe.frame.WindowUpdateFrame(stream_id=1, window_increment=10_000).serialize(),
+            hyperframe.frame.WindowUpdateFrame(
+                stream_id=0, window_increment=10_000
+            ).serialize(),
+            hyperframe.frame.WindowUpdateFrame(
+                stream_id=1, window_increment=10_000
+            ).serialize(),
             # Available flow: 105,535
             hyperframe.frame.HeadersFrame(
                 stream_id=1,
@@ -163,8 +180,7 @@ def test_http2_connection_with_flow_control():
         response = conn.request(
             "POST",
             "https://example.com/",
-            headers={b"content-length": b"100000"},
-            content=b'x' * 100_000
+            content=b"x" * 100_000,
         )
         assert response.status == 200
         assert response.content == b"100,000 bytes received"

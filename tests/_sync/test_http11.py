@@ -160,9 +160,7 @@ def test_http11_connection_attempt_close():
             b"Hello, world!",
         ]
     )
-    with HTTP11Connection(
-        origin=origin, stream=stream
-    ) as conn:
+    with HTTP11Connection(origin=origin, stream=stream) as conn:
         with conn.stream("GET", "https://example.com/") as response:
             response.read()
             assert response.status == 200

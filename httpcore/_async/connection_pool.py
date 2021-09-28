@@ -1,12 +1,12 @@
 import ssl
 from types import TracebackType
-from typing import AsyncIterator, List, Optional, Type
+from typing import AsyncIterable, AsyncIterator, List, Optional, Type
 
 from ..backends.auto import AutoBackend
 from ..backends.base import AsyncNetworkBackend
 from .._exceptions import ConnectionNotAvailable, UnsupportedProtocol
 from .._synchronization import AsyncLock, AsyncSemaphore
-from .._models import AsyncByteStream, Origin, Request, Response
+from .._models import Origin, Request, Response
 from .connection import AsyncHTTPConnection
 from .interfaces import AsyncConnectionInterface, AsyncRequestInterface
 
@@ -203,7 +203,7 @@ class AsyncConnectionPool(AsyncRequestInterface):
             # When we return the response, we wrap the stream in a special class
             # that handles notifying the connection pool once the response
             # has been released.
-            assert isinstance(response.stream, AsyncByteStream)
+            assert isinstance(response.stream, AsyncIterable)
             return Response(
                 status=response.status,
                 headers=response.headers,
@@ -248,7 +248,7 @@ class AsyncConnectionPool(AsyncRequestInterface):
         await self.aclose()
 
 
-class ConnectionPoolByteStream(AsyncByteStream):
+class ConnectionPoolByteStream:
     """
     A wrapper around the response byte stream, that additionally handles
     notifying the connection pool when the response has been closed.
@@ -256,7 +256,7 @@ class ConnectionPoolByteStream(AsyncByteStream):
 
     def __init__(
         self,
-        stream: AsyncByteStream,
+        stream: AsyncIterable[bytes],
         pool: AsyncConnectionPool,
         connection: AsyncConnectionInterface,
     ) -> None:
@@ -270,6 +270,7 @@ class ConnectionPoolByteStream(AsyncByteStream):
 
     async def aclose(self) -> None:
         try:
-            await self._stream.aclose()
+            if hasattr(self._stream, "aclose"):
+                await self._stream.aclose()
         finally:
             await self._pool.response_closed(self._connection)

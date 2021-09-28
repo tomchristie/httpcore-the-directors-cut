@@ -15,9 +15,6 @@ from typing import (
 from urllib.parse import urlparse
 
 __all__ = [
-    "SyncByteStream",
-    "AsyncByteStream",
-    "ByteStream",
     "Origin",
     "URL",
     "Request",
@@ -114,44 +111,43 @@ DEFAULT_PORTS = {
 }
 
 
-def include_request_headers(headers: List[Tuple[bytes, bytes]], *, url: "URL"):
-    if any([k.lower() == b"host" for k, v in headers]):
-        return headers
+def include_request_headers(
+    headers: List[Tuple[bytes, bytes]],
+    *,
+    url: "URL",
+    content: Union[None, bytes, Iterable[bytes], AsyncIterable[bytes]],
+):
+    headers_set = set([k.lower() for k, v in headers])
 
-    default_port = DEFAULT_PORTS.get(url.scheme)
-    if url.port is None or url.port == default_port:
-        header_value = url.host
-    else:
-        header_value = b"%b:%d" % (url.host, url.port)
+    if b"host" not in headers_set:
+        default_port = DEFAULT_PORTS.get(url.scheme)
+        if url.port is None or url.port == default_port:
+            header_value = url.host
+        else:
+            header_value = b"%b:%d" % (url.host, url.port)
+        headers = [(b"Host", header_value)] + headers
 
-    return [(b"Host", header_value)] + headers
+    if (
+        content is not None
+        and b"content-length" not in headers_set
+        and b"transfer-encoding" not in headers_set
+    ):
+        if isinstance(content, bytes):
+            content_length = str(len(content)).encode("ascii")
+            headers += [(b"Content-Length", content_length)]
+        else:
+            headers += [(b"Transfer-Encoding", b"chunked")]  # pragma: nocover
+
+    return headers
 
 
 # Interfaces for byte streams...
 
 
-class SyncByteStream:
-    def __iter__(self) -> Iterator[bytes]:  # pragma: nocover
-        raise NotImplementedError("The '__iter__' method must be implemented.")
-        yield b""
-
-    def close(self) -> None:
-        pass  # pragma: nocover
-
-
-class AsyncByteStream:
-    async def __aiter__(self) -> AsyncIterator[bytes]:  # pragma: nocover
-        raise NotImplementedError("The '__aiter__' method must be implemented.")
-        yield b""
-
-    async def aclose(self) -> None:
-        pass  # pragma: nocover
-
-
-class ByteStream(SyncByteStream, AsyncByteStream):
+class ByteStream:
     """
-    A concrete implementation of a byte stream, that can be used for
-    non-streaming content, and that supports both sync and async styles.
+    A container for non-streaming content, and that supports both sync and async
+    stream iteration.
     """
 
     def __init__(self, content: bytes) -> None:
@@ -288,8 +284,12 @@ class Request:
     ) -> None:
         self.method: bytes = enforce_bytes(method, name="method")
         self.url: URL = enforce_url(url, name="url")
-        self.headers: List[Tuple[bytes, bytes]] = enforce_headers(headers, name="headers")
-        self.stream: Union[Iterable[bytes], AsyncIterable[bytes]] = enforce_stream(content, name="content")
+        self.headers: List[Tuple[bytes, bytes]] = enforce_headers(
+            headers, name="headers"
+        )
+        self.stream: Union[Iterable[bytes], AsyncIterable[bytes]] = enforce_stream(
+            content, name="content"
+        )
         self.extensions = {} if extensions is None else extensions
 
     def __repr__(self):
@@ -316,8 +316,12 @@ class Response:
         extensions: dict = None,
     ) -> None:
         self.status: int = status
-        self.headers: List[Tuple[bytes, bytes]] = enforce_headers(headers, name="headers")
-        self.stream: Union[Iterable[bytes], AsyncIterable[bytes]] = enforce_stream(content, name="content")
+        self.headers: List[Tuple[bytes, bytes]] = enforce_headers(
+            headers, name="headers"
+        )
+        self.stream: Union[Iterable[bytes], AsyncIterable[bytes]] = enforce_stream(
+            content, name="content"
+        )
         self.extensions: dict = {} if extensions is None else extensions
 
         self._stream_consumed = False
@@ -372,7 +376,7 @@ class Response:
                 "Attempted to close an asynchronous response using 'response.close()'. "
                 "You should use 'await response.aclose()' instead."
             )
-        if hasattr(self.stream, 'close'):
+        if hasattr(self.stream, "close"):
             self.stream.close()
 
     # Async interface...
@@ -407,5 +411,5 @@ class Response:
                 "Attempted to close a synchronous response using 'await response.aclose()'. "
                 "You should use 'response.close()' instead."
             )
-        if hasattr(self.stream, 'aclose'):
+        if hasattr(self.stream, "aclose"):
             await self.stream.aclose()

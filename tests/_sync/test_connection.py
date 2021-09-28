@@ -1,7 +1,6 @@
 from httpcore import (
     HTTPConnection,
     Origin,
-    SyncByteStream,
     ConnectionNotAvailable,
 )
 from httpcore.backends.mock import MockBackend

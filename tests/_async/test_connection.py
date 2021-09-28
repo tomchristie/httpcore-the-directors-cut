@@ -1,7 +1,6 @@
 from httpcore import (
     AsyncHTTPConnection,
     Origin,
-    AsyncByteStream,
     ConnectionNotAvailable,
 )
 from httpcore.backends.mock import AsyncMockBackend
