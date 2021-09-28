@@ -303,7 +303,7 @@ class Response:
     Attributes:
         status: The HTTP status code of the response.
         headers: The HTTP response headers.
-        content: The content of the response body.
+        stream: The content of the response body.
         extensions: ...
     """
 
