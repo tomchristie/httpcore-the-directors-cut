@@ -1,6 +1,6 @@
 from .._compat import asynccontextmanager
 from .._models import AsyncByteStream, Origin, Request, Response, URL, enforce_bytes, enforce_url, enforce_headers, include_request_headers
-from typing import Dict, List, Tuple, Union
+from typing import AsyncIterator, Union
 
 
 class AsyncRequestInterface:
@@ -10,7 +10,7 @@ class AsyncRequestInterface:
         url: Union[URL, bytes, str],
         *,
         headers: Union[dict, list] = None,
-        stream: AsyncByteStream = None,
+        stream: AsyncIterator[bytes] = None,
         extensions: dict = None
     ):
         # Strict type checking on our parameters.
@@ -42,7 +42,7 @@ class AsyncRequestInterface:
         url: Union[URL, bytes, str],
         *,
         headers: Union[dict, list] = None,
-        stream: AsyncByteStream = None,
+        stream: AsyncIterator[bytes] = None,
         extensions: dict = None
     ):
         # Strict type checking on our parameters.

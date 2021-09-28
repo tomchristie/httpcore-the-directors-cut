@@ -1,6 +1,6 @@
 from ._models import SyncByteStream, Request, Response, URL
 from ._sync.connection_pool import ConnectionPool
-from typing import AnyStr, Dict, List, Tuple, Union, NewType
+from typing import Iterator, Union
 
 
 def request(
@@ -8,7 +8,7 @@ def request(
     url: Union[URL, bytes, str],
     *,
     headers: Union[dict, list] = None,
-    stream: SyncByteStream = None,
+    stream: Iterator[bytes] = None,
     extensions: dict = None
 ) -> Response:
     """

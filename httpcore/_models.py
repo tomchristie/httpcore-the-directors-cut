@@ -1,8 +1,10 @@
 from types import TracebackType
 from typing import (
     Any,
+    AsyncIterable,
     AsyncIterator,
     Dict,
+    Iterable,
     Iterator,
     List,
     Optional,
@@ -271,7 +273,7 @@ class Request:
         url: Union[URL, bytes, str],
         *,
         headers: Union[dict, list] = None,
-        stream: Union[SyncByteStream, AsyncByteStream] = None,
+        stream: Union[Iterable[bytes], AsyncIterable[bytes]] = None,
         extensions: dict = None,
     ) -> None:
         self.method = enforce_bytes(method, name="method")
@@ -300,12 +302,12 @@ class Response:
         status: int,
         *,
         headers: Union[dict, list] = None,
-        stream: Union[SyncByteStream, AsyncByteStream] = None,
+        stream: Union[Iterable[bytes], AsyncIterable[bytes]] = None,
         extensions: dict = None,
     ) -> None:
         self.status: int = status
         self.headers: List[Tuple[bytes, bytes]] = enforce_headers(headers, name="headers")
-        self.stream: SyncByteStream = ByteStream(b"") if stream is None else stream
+        self.stream: Union[Iterable[bytes], AsyncIterable[bytes]] = ByteStream(b"") if stream is None else stream
         self.extensions: dict = {} if extensions is None else extensions
 
         self._stream_consumed = False
@@ -331,7 +333,7 @@ class Response:
     # Sync interface...
 
     def read(self) -> bytes:
-        if not isinstance(self.stream, SyncByteStream):  # pragma: nocover
+        if not isinstance(self.stream, Iterable):  # pragma: nocover
             raise RuntimeError(
                 "Attempted to read an asynchronous response using 'response.read()'. "
                 "You should use 'await response.aread()' instead."
@@ -341,7 +343,7 @@ class Response:
         return self._content
 
     def iter_stream(self) -> Iterator[bytes]:
-        if not isinstance(self.stream, SyncByteStream):  # pragma: nocover
+        if not isinstance(self.stream, Iterable):  # pragma: nocover
             raise RuntimeError(
                 "Attempted to stream an asynchronous response using 'for ... in response.iter_stream()'. "
                 "You should use 'async for ... in response.aiter_stream()' instead."
@@ -355,17 +357,18 @@ class Response:
             yield chunk
 
     def close(self) -> None:
-        if not isinstance(self.stream, SyncByteStream):  # pragma: nocover
+        if not isinstance(self.stream, Iterable):  # pragma: nocover
             raise RuntimeError(
                 "Attempted to close an asynchronous response using 'response.close()'. "
                 "You should use 'await response.aclose()' instead."
             )
-        self.stream.close()
+        if hasattr(self.stream, 'close'):
+            self.stream.close()
 
     # Async interface...
 
     async def aread(self) -> bytes:
-        if not isinstance(self.stream, AsyncByteStream):  # pragma: nocover
+        if not isinstance(self.stream, AsyncIterable):  # pragma: nocover
             raise RuntimeError(
                 "Attempted to read an synchronous response using 'await response.aread()'. "
                 "You should use 'response.read()' instead."
@@ -375,7 +378,7 @@ class Response:
         return self._content
 
     async def aiter_stream(self) -> Iterator[bytes]:
-        if not isinstance(self.stream, AsyncByteStream):  # pragma: nocover
+        if not isinstance(self.stream, AsyncIterable):  # pragma: nocover
             raise RuntimeError(
                 "Attempted to stream an synchronous response using 'async for ... in response.aiter_stream()'. "
                 "You should use 'for ... in response.iter_stream()' instead."
@@ -389,9 +392,10 @@ class Response:
             yield chunk
 
     async def aclose(self) -> None:
-        if not isinstance(self.stream, AsyncByteStream):  # pragma: nocover
+        if not isinstance(self.stream, AsyncIterable):  # pragma: nocover
             raise RuntimeError(
                 "Attempted to close a synchronous response using 'await response.aclose()'. "
                 "You should use 'response.close()' instead."
             )
-        await self.stream.aclose()
+        if hasattr(self.stream, 'aclose'):
+            await self.stream.aclose()

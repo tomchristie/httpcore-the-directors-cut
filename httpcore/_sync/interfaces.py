@@ -1,10 +1,6 @@
 from contextlib import contextmanager
 from .._models import SyncByteStream, Origin, Request, Response, URL, enforce_bytes, enforce_url, enforce_headers, include_request_headers
-from typing import Dict, List, Tuple, Union
-
-
-HeadersAsList = List[Tuple[Union[bytes, str], Union[bytes, str]]]
-HeadersAsDict = Dict[Union[bytes, str], Union[bytes, str]]
+from typing import Iterator, Union
 
 
 class RequestInterface:
@@ -14,7 +10,7 @@ class RequestInterface:
         url: Union[URL, bytes, str],
         *,
         headers: Union[dict, list] = None,
-        stream: SyncByteStream = None,
+        stream: Iterator[bytes] = None,
         extensions: dict = None
     ):
         # Strict type checking on our parameters.
@@ -46,7 +42,7 @@ class RequestInterface:
         url: Union[URL, bytes, str],
         *,
         headers: Union[dict, list] = None,
-        stream: SyncByteStream = None,
+        stream: Iterator[bytes] = None,
         extensions: dict = None
     ):
         # Strict type checking on our parameters.
