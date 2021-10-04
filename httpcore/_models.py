@@ -298,13 +298,15 @@ class Request:
 
 class Response:
     """
-    Another docstring
+    An HTTP response.
 
     Attributes:
         status: The HTTP status code of the response.
         headers: The HTTP response headers.
         stream: The content of the response body.
-        extensions: ...
+        extensions: A dictionary of optional extra information included on the response.
+                    Possible keys include `"http_version"`, `"reason_phrase"`, and
+                    `"network_stream"`.
     """
 
     def __init__(
