@@ -17,6 +17,7 @@ import typing
 import h2.config
 import h2.connection
 import h2.events
+import h2.exceptions
 import h2.settings
 
 
@@ -52,6 +53,7 @@ class HTTP2Connection(ConnectionInterface):
         self._init_lock = Lock()
         self._state_lock = Lock()
         self._sent_connection_init = False
+        self._used_all_stream_ids = False
         self._events = {}
 
     def handle_request(self, request: Request) -> Response:
@@ -75,10 +77,15 @@ class HTTP2Connection(ConnectionInterface):
                 max_streams = self._h2_state.local_settings.max_concurrent_streams
                 self._max_streams_semaphore = Semaphore(max_streams)
 
-        self._max_streams_semaphore.acquire()
         try:
             stream_id = self._h2_state.get_next_available_stream_id()
             self._events[stream_id] = []
+        except h2.exceptions.NoAvailableStreamIDError:  # pragma: nocover
+            self._used_all_stream_ids = True
+            raise ConnectionNotAvailable()
+
+        self._max_streams_semaphore.acquire()
+        try:
             self._send_request_headers(request, stream_id=stream_id)
             self._send_request_body(request, stream_id=stream_id)
             status, headers = self._receive_response(request, stream_id=stream_id)
@@ -90,7 +97,7 @@ class HTTP2Connection(ConnectionInterface):
                 extensions={"stream_id": stream_id, "http_version": b"HTTP/2"},
             )
         except Exception:  # noqa: PIE786
-            self._max_streams_semaphore.release()
+            self._response_closed(stream_id)
             raise
 
     def _send_connection_init(self, request: Request) -> None:
@@ -292,7 +299,7 @@ class HTTP2Connection(ConnectionInterface):
         return origin == self._origin
 
     def is_available(self) -> bool:
-        return self._state != HTTPConnectionState.CLOSED
+        return self._state != HTTPConnectionState.CLOSED and not self._used_all_stream_ids
 
     def has_expired(self) -> bool:
         now = time.monotonic()
