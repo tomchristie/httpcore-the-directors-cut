@@ -253,13 +253,19 @@ class AsyncHTTP2Connection(AsyncConnectionInterface):
     async def _response_closed(self, stream_id: int) -> None:
         await self._max_streams_semaphore.release()
         del self._events[stream_id]
-        if self._state == HTTPConnectionState.ACTIVE and not self._events:
-            self._state = HTTPConnectionState.IDLE
-            if self._keepalive_expiry is not None:
-                now = time.monotonic()
-                self._expire_at = now + self._keepalive_expiry
+        async with self._state_lock:
+            if self._state == HTTPConnectionState.ACTIVE and not self._events:
+                self._state = HTTPConnectionState.IDLE
+                if self._keepalive_expiry is not None:
+                    now = time.monotonic()
+                    self._expire_at = now + self._keepalive_expiry
+                if self._used_all_stream_ids:  # pragma: nocover
+                    await self.aclose()
 
     async def aclose(self):
+        # Note that this method unilaterally closes the connection, and does
+        # not have any kind of locking in place around it.
+        # For task-safe/thread-safe operations call into 'attempt_close' instead.
         self._state = HTTPConnectionState.CLOSED
         await self._network_stream.aclose()
 

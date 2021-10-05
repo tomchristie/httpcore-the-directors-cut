@@ -253,13 +253,19 @@ class HTTP2Connection(ConnectionInterface):
     def _response_closed(self, stream_id: int) -> None:
         self._max_streams_semaphore.release()
         del self._events[stream_id]
-        if self._state == HTTPConnectionState.ACTIVE and not self._events:
-            self._state = HTTPConnectionState.IDLE
-            if self._keepalive_expiry is not None:
-                now = time.monotonic()
-                self._expire_at = now + self._keepalive_expiry
+        with self._state_lock:
+            if self._state == HTTPConnectionState.ACTIVE and not self._events:
+                self._state = HTTPConnectionState.IDLE
+                if self._keepalive_expiry is not None:
+                    now = time.monotonic()
+                    self._expire_at = now + self._keepalive_expiry
+                if self._used_all_stream_ids:  # pragma: nocover
+                    self.close()
 
     def close(self):
+        # Note that this method unilaterally closes the connection, and does
+        # not have any kind of locking in place around it.
+        # For task-safe/thread-safe operations call into 'attempt_close' instead.
         self._state = HTTPConnectionState.CLOSED
         self._network_stream.close()
 
