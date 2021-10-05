@@ -37,7 +37,7 @@ class AsyncIOStream(AsyncNetworkStream):
         }
         with map_exceptions(exc_map):
             with anyio.fail_after(timeout):
-                return await self._stream.send(item=buffer)
+                await self._stream.send(item=buffer)
 
     async def aclose(self) -> None:
         await self._stream.aclose()
