@@ -39,7 +39,6 @@ def request(
 
 @contextmanager
 def stream(
-    self,
     method: Union[bytes, str],
     url: Union[URL, bytes, str],
     *,
