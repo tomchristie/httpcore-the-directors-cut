@@ -5,7 +5,7 @@ from .._exceptions import (
     LocalProtocolError,
     RemoteProtocolError,
 )
-from .._synchronization import AsyncLock
+from .._synchronization import AsyncLock, AsyncSemaphore
 from .interfaces import AsyncConnectionInterface
 
 import enum
@@ -72,19 +72,26 @@ class AsyncHTTP2Connection(AsyncConnectionInterface):
             if not self._sent_connection_init:
                 await self._send_connection_init(request)
                 self._sent_connection_init = True
+                max_streams = self._h2_state.local_settings.max_concurrent_streams
+                self._max_streams_semaphore = AsyncSemaphore(max_streams)
 
-        stream_id = self._h2_state.get_next_available_stream_id()
-        self._events[stream_id] = []
-        await self._send_request_headers(request, stream_id=stream_id)
-        await self._send_request_body(request, stream_id=stream_id)
-        status, headers = await self._receive_response(request, stream_id=stream_id)
+        await self._max_streams_semaphore.acquire()
+        try:
+            stream_id = self._h2_state.get_next_available_stream_id()
+            self._events[stream_id] = []
+            await self._send_request_headers(request, stream_id=stream_id)
+            await self._send_request_body(request, stream_id=stream_id)
+            status, headers = await self._receive_response(request, stream_id=stream_id)
 
-        return Response(
-            status=status,
-            headers=headers,
-            content=HTTP2ConnectionByteStream(self, request, stream_id=stream_id),
-            extensions={"stream_id": stream_id, "http_version": b"HTTP/2"},
-        )
+            return Response(
+                status=status,
+                headers=headers,
+                content=HTTP2ConnectionByteStream(self, request, stream_id=stream_id),
+                extensions={"stream_id": stream_id, "http_version": b"HTTP/2"},
+            )
+        except Exception:  # noqa: PIE786
+            await self._max_streams_semaphore.release()
+            raise
 
     async def _send_connection_init(self, request: Request) -> None:
         """
@@ -237,6 +244,7 @@ class AsyncHTTP2Connection(AsyncConnectionInterface):
         await self._network_stream.write(data_to_send, write_timeout)
 
     async def _response_closed(self, stream_id: int) -> None:
+        await self._max_streams_semaphore.release()
         del self._events[stream_id]
         if self._state == HTTPConnectionState.ACTIVE and not self._events:
             self._state = HTTPConnectionState.IDLE
