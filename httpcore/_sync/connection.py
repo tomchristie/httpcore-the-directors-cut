@@ -4,7 +4,7 @@ from typing import Optional, Type
 
 from .._models import Origin, Request, Response
 from ..backends.sync import SyncBackend
-from ..backends.base import NetworkBackend
+from ..backends.base import NetworkBackend, NetworkStream
 from .._exceptions import ConnectionNotAvailable
 from .._ssl import default_ssl_context
 from .._synchronization import Lock
@@ -38,9 +38,6 @@ class HTTPConnection(ConnectionInterface):
         self._request_lock = Lock()
 
     def handle_request(self, request: Request) -> Response:
-        timeouts = request.extensions.get("timeout", {})
-        timeout = timeouts.get("connect", None)
-
         if not self.can_handle_request(request.url.origin):
             raise RuntimeError(
                 f"Attempted to send request to {request.url.origin} on connection to {self._origin}"
@@ -48,16 +45,7 @@ class HTTPConnection(ConnectionInterface):
 
         with self._request_lock:
             if self._connection is None:
-                origin = self._origin
-                stream = self._network_backend.connect(
-                    origin=origin, timeout=timeout
-                )
-                if origin.scheme == b"https":
-                    stream = stream.start_tls(
-                        ssl_context=self._ssl_context,
-                        server_hostname=origin.host,
-                        timeout=timeout,
-                    )
+                stream = self._connect(request)
 
                 ssl_object = stream.get_extra_info("ssl_object")
                 http2_negotiated = (
@@ -68,13 +56,13 @@ class HTTPConnection(ConnectionInterface):
                     from .http2 import HTTP2Connection
 
                     self._connection = HTTP2Connection(
-                        origin=origin,
+                        origin=self._origin,
                         stream=stream,
                         keepalive_expiry=self._keepalive_expiry,
                     )
                 else:
                     self._connection = HTTP11Connection(
-                        origin=origin,
+                        origin=self._origin,
                         stream=stream,
                         keepalive_expiry=self._keepalive_expiry,
                     )
@@ -82,6 +70,21 @@ class HTTPConnection(ConnectionInterface):
                 raise ConnectionNotAvailable()
 
         return self._connection.handle_request(request)
+
+    def _connect(self, request: Request) -> NetworkStream:
+        timeouts = request.extensions.get("timeout", {})
+        timeout = timeouts.get("connect", None)
+
+        stream = self._network_backend.connect(
+            origin=self._origin, timeout=timeout
+        )
+        if self._origin.scheme == b"https":
+            stream = stream.start_tls(
+                ssl_context=self._ssl_context,
+                server_hostname=self._origin.host,
+                timeout=timeout,
+            )
+        return stream
 
     def can_handle_request(self, origin: Origin) -> bool:
         return origin == self._origin

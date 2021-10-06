@@ -4,7 +4,7 @@ from typing import Optional, Type
 
 from .._models import Origin, Request, Response
 from ..backends.auto import AutoBackend
-from ..backends.base import AsyncNetworkBackend
+from ..backends.base import AsyncNetworkBackend, AsyncNetworkStream
 from .._exceptions import ConnectionNotAvailable
 from .._ssl import default_ssl_context
 from .._synchronization import AsyncLock
@@ -38,9 +38,6 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
         self._request_lock = AsyncLock()
 
     async def handle_async_request(self, request: Request) -> Response:
-        timeouts = request.extensions.get("timeout", {})
-        timeout = timeouts.get("connect", None)
-
         if not self.can_handle_request(request.url.origin):
             raise RuntimeError(
                 f"Attempted to send request to {request.url.origin} on connection to {self._origin}"
@@ -48,16 +45,7 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
 
         async with self._request_lock:
             if self._connection is None:
-                origin = self._origin
-                stream = await self._network_backend.connect(
-                    origin=origin, timeout=timeout
-                )
-                if origin.scheme == b"https":
-                    stream = await stream.start_tls(
-                        ssl_context=self._ssl_context,
-                        server_hostname=origin.host,
-                        timeout=timeout,
-                    )
+                stream = await self._connect(request)
 
                 ssl_object = stream.get_extra_info("ssl_object")
                 http2_negotiated = (
@@ -68,13 +56,13 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
                     from .http2 import AsyncHTTP2Connection
 
                     self._connection = AsyncHTTP2Connection(
-                        origin=origin,
+                        origin=self._origin,
                         stream=stream,
                         keepalive_expiry=self._keepalive_expiry,
                     )
                 else:
                     self._connection = AsyncHTTP11Connection(
-                        origin=origin,
+                        origin=self._origin,
                         stream=stream,
                         keepalive_expiry=self._keepalive_expiry,
                     )
@@ -82,6 +70,21 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
                 raise ConnectionNotAvailable()
 
         return await self._connection.handle_async_request(request)
+
+    async def _connect(self, request: Request) -> AsyncNetworkStream:
+        timeouts = request.extensions.get("timeout", {})
+        timeout = timeouts.get("connect", None)
+
+        stream = await self._network_backend.connect(
+            origin=self._origin, timeout=timeout
+        )
+        if self._origin.scheme == b"https":
+            stream = await stream.start_tls(
+                ssl_context=self._ssl_context,
+                server_hostname=self._origin.host,
+                timeout=timeout,
+            )
+        return stream
 
     def can_handle_request(self, origin: Origin) -> bool:
         return origin == self._origin
