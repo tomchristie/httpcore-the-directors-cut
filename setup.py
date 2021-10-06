@@ -53,7 +53,7 @@ setup(
     packages=get_packages("httpcore"),
     include_package_data=True,
     zip_safe=False,
-    install_requires=["h11>=0.11,<0.13", "trio", "certifi"],
+    install_requires=["h11>=0.11,<0.13", "certifi"],
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Environment :: Web Environment",
