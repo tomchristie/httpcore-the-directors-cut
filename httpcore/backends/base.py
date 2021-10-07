@@ -28,7 +28,9 @@ class NetworkStream:
 
 
 class NetworkBackend:
-    def connect(self, origin: Origin, timeout: float = None) -> NetworkStream:
+    def connect(
+        self, origin: Origin, timeout: float = None, local_address: str = None
+    ) -> NetworkStream:
         raise NotImplementedError()  # pragma: nocover
 
     def sleep(self, seconds: float) -> None:
@@ -58,7 +60,9 @@ class AsyncNetworkStream:
 
 
 class AsyncNetworkBackend:
-    async def connect(self, origin: Origin, timeout: float = None) -> NetworkStream:
+    async def connect(
+        self, origin: Origin, timeout: float = None, local_address: str = None
+    ) -> NetworkStream:
         raise NotImplementedError()  # pragma: nocover
 
     async def sleep(self, seconds: float) -> None:

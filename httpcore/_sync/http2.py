@@ -305,7 +305,9 @@ class HTTP2Connection(ConnectionInterface):
         return origin == self._origin
 
     def is_available(self) -> bool:
-        return self._state != HTTPConnectionState.CLOSED and not self._used_all_stream_ids
+        return (
+            self._state != HTTPConnectionState.CLOSED and not self._used_all_stream_ids
+        )
 
     def has_expired(self) -> bool:
         now = time.monotonic()

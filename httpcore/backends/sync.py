@@ -63,9 +63,14 @@ class SyncStream(NetworkStream):
 
 
 class SyncBackend(NetworkBackend):
-    def connect(self, origin: Origin, timeout: float = None) -> SyncStream:
+    def connect(
+        self, origin: Origin, timeout: float = None, local_address: str = None
+    ) -> SyncStream:
         address = (origin.host.decode("ascii"), origin.port)
+        source_address = None if local_address is None else (local_address, 0)
         exc_map = {socket.timeout: ConnectTimeout, socket.error: ConnectError}
         with map_exceptions(exc_map):
-            sock = socket.create_connection(address, timeout)
+            sock = socket.create_connection(
+                address, timeout, source_address=source_address
+            )
         return SyncStream(sock)

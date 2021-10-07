@@ -30,6 +30,7 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
         http1: bool = True,
         http2: bool = False,
         retries: int = 0,
+        local_address: str = None,
         network_backend: AsyncNetworkBackend = None,
     ) -> None:
         ssl_context = default_ssl_context() if ssl_context is None else ssl_context
@@ -42,6 +43,7 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
         self._http1 = http1
         self._http2 = http2
         self._retries = retries
+        self._local_address = local_address
         self._network_backend: AsyncNetworkBackend = (
             AutoBackend() if network_backend is None else network_backend
         )
@@ -92,7 +94,9 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
         while True:
             try:
                 stream = await self._network_backend.connect(
-                    origin=self._origin, timeout=timeout
+                    origin=self._origin,
+                    timeout=timeout,
+                    local_address=self._local_address,
                 )
             except (ConnectError, ConnectTimeout):
                 if retries_left <= 0:

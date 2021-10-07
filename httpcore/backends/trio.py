@@ -83,7 +83,7 @@ class TrioStream(AsyncNetworkStream):
 
 class TrioBackend(AsyncNetworkBackend):
     async def connect(
-        self, origin: Origin, timeout: float = None
+        self, origin: Origin, timeout: float = None, local_address: str = None
     ) -> AsyncNetworkStream:
         timeout_or_inf = float("inf") if timeout is None else timeout
         exc_map = {
@@ -93,7 +93,7 @@ class TrioBackend(AsyncNetworkBackend):
         with map_exceptions(exc_map):
             with trio.fail_after(timeout_or_inf):
                 trio_stream: trio.abc.Stream = await trio.open_tcp_stream(
-                    host=origin.host, port=origin.port
+                    host=origin.host, port=origin.port, local_address=local_address
                 )
         return TrioStream(trio_stream)
 

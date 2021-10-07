@@ -75,7 +75,7 @@ class AsyncIOStream(AsyncNetworkStream):
 
 class AsyncIOBackend(AsyncNetworkBackend):
     async def connect(
-        self, origin: Origin, timeout: float = None
+        self, origin: Origin, timeout: float = None, local_address: str = None
     ) -> AsyncNetworkStream:
         exc_map = {
             TimeoutError: ConnectTimeout,
@@ -84,7 +84,9 @@ class AsyncIOBackend(AsyncNetworkBackend):
         with map_exceptions(exc_map):
             with anyio.fail_after(timeout):
                 anyio_stream: anyio.abc.ByteStream = await anyio.connect_tcp(
-                    remote_host=origin.host.decode("ascii"), remote_port=origin.port
+                    remote_host=origin.host.decode("ascii"),
+                    remote_port=origin.port,
+                    local_host=local_address,
                 )
         return AsyncIOStream(anyio_stream)
 

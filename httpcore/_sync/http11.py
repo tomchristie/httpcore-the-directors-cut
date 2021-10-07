@@ -163,9 +163,7 @@ class HTTP11Connection(ConnectionInterface):
                 event = self._h11_state.next_event()
 
             if event is h11.NEED_DATA:
-                data = self._network_stream.read(
-                    self.READ_NUM_BYTES, timeout=timeout
-                )
+                data = self._network_stream.read(self.READ_NUM_BYTES, timeout=timeout)
                 self._h11_state.receive_data(data)
             else:
                 return event

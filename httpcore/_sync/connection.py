@@ -30,6 +30,7 @@ class HTTPConnection(ConnectionInterface):
         http1: bool = True,
         http2: bool = False,
         retries: int = 0,
+        local_address: str = None,
         network_backend: NetworkBackend = None,
     ) -> None:
         ssl_context = default_ssl_context() if ssl_context is None else ssl_context
@@ -42,6 +43,7 @@ class HTTPConnection(ConnectionInterface):
         self._http1 = http1
         self._http2 = http2
         self._retries = retries
+        self._local_address = local_address
         self._network_backend: NetworkBackend = (
             SyncBackend() if network_backend is None else network_backend
         )
@@ -92,7 +94,9 @@ class HTTPConnection(ConnectionInterface):
         while True:
             try:
                 stream = self._network_backend.connect(
-                    origin=self._origin, timeout=timeout
+                    origin=self._origin,
+                    timeout=timeout,
+                    local_address=self._local_address,
                 )
             except (ConnectError, ConnectTimeout):
                 if retries_left <= 0:

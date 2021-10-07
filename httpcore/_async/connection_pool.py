@@ -21,6 +21,7 @@ class AsyncConnectionPool(AsyncRequestInterface):
         http1: bool = True,
         http2: bool = False,
         retries: int = 0,
+        local_address: str = None,
         network_backend: AsyncNetworkBackend = None,
     ) -> None:
         if max_keepalive_connections is None:
@@ -38,6 +39,7 @@ class AsyncConnectionPool(AsyncRequestInterface):
         self._http1 = http1
         self._http2 = http2
         self._retries = retries
+        self._local_address = local_address
 
         self._pool: List[AsyncConnectionInterface] = []
         self._pool_lock = AsyncLock()
@@ -54,6 +56,7 @@ class AsyncConnectionPool(AsyncRequestInterface):
             http1=self._http1,
             http2=self._http2,
             retries=self._retries,
+            local_address=self._local_address,
             network_backend=self._network_backend,
         )
 

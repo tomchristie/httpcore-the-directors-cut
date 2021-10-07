@@ -37,6 +37,7 @@ def request(
             extensions=extensions,
         )
 
+
 @contextmanager
 def stream(
     method: Union[bytes, str],

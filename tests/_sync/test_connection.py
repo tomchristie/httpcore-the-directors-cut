@@ -132,7 +132,7 @@ class NeedsRetryBackend(MockBackend):
         super().__init__(*args, **kwargs)
 
     def connect(
-        self, origin: Origin, timeout: float = None
+        self, origin: Origin, timeout: float = None, local_address: str = None
     ) -> NetworkStream:
         if self._retry > 0:
             self._retry -= 1

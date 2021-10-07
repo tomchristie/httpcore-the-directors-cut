@@ -21,6 +21,7 @@ class ConnectionPool(RequestInterface):
         http1: bool = True,
         http2: bool = False,
         retries: int = 0,
+        local_address: str = None,
         network_backend: NetworkBackend = None,
     ) -> None:
         if max_keepalive_connections is None:
@@ -38,6 +39,7 @@ class ConnectionPool(RequestInterface):
         self._http1 = http1
         self._http2 = http2
         self._retries = retries
+        self._local_address = local_address
 
         self._pool: List[ConnectionInterface] = []
         self._pool_lock = Lock()
@@ -54,6 +56,7 @@ class ConnectionPool(RequestInterface):
             http1=self._http1,
             http2=self._http2,
             retries=self._retries,
+            local_address=self._local_address,
             network_backend=self._network_backend,
         )
 
@@ -71,9 +74,7 @@ class ConnectionPool(RequestInterface):
         with self._pool_lock:
             self._pool.remove(connection)
 
-    def _get_from_pool(
-        self, origin: Origin
-    ) -> Optional[ConnectionInterface]:
+    def _get_from_pool(self, origin: Origin) -> Optional[ConnectionInterface]:
         """
         Return an available HTTP connection for the given origin,
         if one currently exists in the pool.
