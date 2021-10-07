@@ -33,6 +33,9 @@ class NetworkBackend:
     ) -> NetworkStream:
         raise NotImplementedError()  # pragma: nocover
 
+    def connect_unix_socket(self, path: str, timeout: float = None) -> NetworkStream:
+        raise NotImplementedError()  # pragma: nocover
+
     def sleep(self, seconds: float) -> None:
         time.sleep(seconds)  # pragma: nocover
 
@@ -63,6 +66,11 @@ class AsyncNetworkBackend:
     async def connect_tcp(
         self, host: str, port: int, timeout: float = None, local_address: str = None
     ) -> NetworkStream:
+        raise NotImplementedError()  # pragma: nocover
+
+    async def connect_unix_socket(
+        self, path: str, timeout: float = None
+    ) -> AsyncNetworkStream:
         raise NotImplementedError()  # pragma: nocover
 
     async def sleep(self, seconds: float) -> None:

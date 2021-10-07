@@ -1,9 +1,4 @@
-from httpcore import (
-    AsyncHTTPConnection,
-    Origin,
-    ConnectionNotAvailable,
-    ConnectError
-)
+from httpcore import AsyncHTTPConnection, Origin, ConnectionNotAvailable, ConnectError
 from httpcore.backends.base import AsyncNetworkStream
 from httpcore.backends.mock import AsyncMockBackend
 import hpack
@@ -139,10 +134,7 @@ class NeedsRetryBackend(AsyncMockBackend):
             raise ConnectError()
 
         return await super().connect_tcp(
-            host,
-            port,
-            timeout=timeout,
-            local_address=local_address
+            host, port, timeout=timeout, local_address=local_address
         )
 
 
@@ -166,7 +158,30 @@ async def test_connection_retries():
 
     network_backend = NeedsRetryBackend(content)
     async with AsyncHTTPConnection(
-        origin=origin, network_backend=network_backend,
+        origin=origin,
+        network_backend=network_backend,
     ) as conn:
         with pytest.raises(ConnectError):
             await conn.request("GET", "https://example.com/")
+
+
+@pytest.mark.anyio
+async def test_uds_connections():
+    # We're not actually testing Unix Domain Sockets here, because we're just
+    # using a mock backend, but at least we're covering the UDS codepath
+    # in `connection.py` which we may as well do.
+    origin = Origin(b"https", b"example.com", 443)
+    network_backend = AsyncMockBackend(
+        [
+            b"HTTP/1.1 200 OK\r\n",
+            b"Content-Type: plain/text\r\n",
+            b"Content-Length: 13\r\n",
+            b"\r\n",
+            b"Hello, world!",
+        ]
+    )
+    async with AsyncHTTPConnection(
+        origin=origin, network_backend=network_backend, uds="/mock/example"
+    ) as conn:
+        response = await conn.request("GET", "https://example.com/")
+        assert response.status == 200

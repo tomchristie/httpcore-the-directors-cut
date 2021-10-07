@@ -22,6 +22,7 @@ class ConnectionPool(RequestInterface):
         http2: bool = False,
         retries: int = 0,
         local_address: str = None,
+        uds: str = None,
         network_backend: NetworkBackend = None,
     ) -> None:
         if max_keepalive_connections is None:
@@ -40,6 +41,7 @@ class ConnectionPool(RequestInterface):
         self._http2 = http2
         self._retries = retries
         self._local_address = local_address
+        self._uds = uds
 
         self._pool: List[ConnectionInterface] = []
         self._pool_lock = Lock()
@@ -57,6 +59,7 @@ class ConnectionPool(RequestInterface):
             http2=self._http2,
             retries=self._retries,
             local_address=self._local_address,
+            uds=self._uds,
             network_backend=self._network_backend,
         )
 

@@ -92,10 +92,23 @@ class TrioBackend(AsyncNetworkBackend):
         }
         with map_exceptions(exc_map):
             with trio.fail_after(timeout_or_inf):
-                trio_stream: trio.abc.Stream = await trio.open_tcp_stream(
+                stream: trio.abc.Stream = await trio.open_tcp_stream(
                     host=host, port=port, local_address=local_address
                 )
-        return TrioStream(trio_stream)
+        return TrioStream(stream)
+
+    async def connect_unix_socket(
+        self, path: str, timeout: float = None
+    ) -> AsyncNetworkStream:  # pragma: nocover
+        timeout_or_inf = float("inf") if timeout is None else timeout
+        exc_map = {
+            trio.TooSlowError: ConnectTimeout,
+            trio.BrokenResourceError: ConnectError,
+        }
+        with map_exceptions(exc_map):
+            with trio.fail_after(timeout_or_inf):
+                stream: trio.abc.Stream = await trio.open_unix_socket(path)
+        return TrioStream(stream)
 
     async def sleep(self, seconds: float) -> None:
         await trio.sleep(seconds)  # pragma: nocover

@@ -79,16 +79,30 @@ class AsyncIOBackend(AsyncNetworkBackend):
     ) -> AsyncNetworkStream:
         exc_map = {
             TimeoutError: ConnectTimeout,
+            OSError: ConnectError,
             anyio.BrokenResourceError: ConnectError,
         }
         with map_exceptions(exc_map):
             with anyio.fail_after(timeout):
-                anyio_stream: anyio.abc.ByteStream = await anyio.connect_tcp(
+                stream: anyio.abc.ByteStream = await anyio.connect_tcp(
                     remote_host=host,
                     remote_port=port,
                     local_host=local_address,
                 )
-        return AsyncIOStream(anyio_stream)
+        return AsyncIOStream(stream)
+
+    async def connect_unix_socket(
+        self, path: str, timeout: float = None
+    ) -> AsyncNetworkStream:  # pragma: nocover
+        exc_map = {
+            TimeoutError: ConnectTimeout,
+            OSError: ConnectError,
+            anyio.BrokenResourceError: ConnectError,
+        }
+        with map_exceptions(exc_map):
+            with anyio.fail_after(timeout):
+                stream: anyio.abc.ByteStream = await anyio.connect_unix(path)
+        return AsyncIOStream(stream)
 
     async def sleep(self, seconds: float) -> None:
         await anyio.sleep(seconds)  # pragma: nocover

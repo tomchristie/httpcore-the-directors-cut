@@ -25,6 +25,12 @@ class AutoBackend(AsyncNetworkBackend):
             host, port, timeout=timeout, local_address=local_address
         )
 
+    async def connect_unix_socket(
+        self, path: str, timeout: float = None
+    ) -> AsyncNetworkStream:  # pragma: nocover
+        await self._init_backend()
+        return await self._backend.connect_unix_socket(path, timeout=timeout)
+
     async def sleep(self, seconds: float) -> None:  # pragma: nocover
         await self._init_backend()
         return await self._backend.sleep(seconds)

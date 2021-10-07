@@ -65,7 +65,7 @@ class SyncStream(NetworkStream):
 class SyncBackend(NetworkBackend):
     def connect_tcp(
         self, host: str, port: int, timeout: float = None, local_address: str = None
-    ) -> SyncStream:
+    ) -> NetworkStream:
         address = (host, port)
         source_address = None if local_address is None else (local_address, 0)
         exc_map = {socket.timeout: ConnectTimeout, socket.error: ConnectError}
@@ -73,4 +73,14 @@ class SyncBackend(NetworkBackend):
             sock = socket.create_connection(
                 address, timeout, source_address=source_address
             )
+        return SyncStream(sock)
+
+    def connect_unix_socket(
+        self, path: str, timeout: float = None
+    ) -> NetworkStream:  # pragma: nocover
+        exc_map = {socket.timeout: ConnectTimeout, socket.error: ConnectError}
+        with map_exceptions(exc_map):
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.settimeout(connect_timeout)
+            sock.connect(path)
         return SyncStream(sock)

@@ -50,6 +50,9 @@ class MockBackend(NetworkBackend):
     ) -> NetworkStream:
         return MockStream(list(self._buffer), http2=self._http2)
 
+    def connect_unix_socket(self, path: str, timeout: float = None) -> NetworkStream:
+        return MockStream(list(self._buffer), http2=self._http2)
+
     def sleep(self, seconds: float) -> None:
         pass
 
@@ -90,6 +93,11 @@ class AsyncMockBackend(AsyncNetworkBackend):
 
     async def connect_tcp(
         self, host: str, port: int, timeout: float = None, local_address: str = None
+    ) -> AsyncNetworkStream:
+        return AsyncMockStream(list(self._buffer), http2=self._http2)
+
+    async def connect_unix_socket(
+        self, path: str, timeout: float = None
     ) -> AsyncNetworkStream:
         return AsyncMockStream(list(self._buffer), http2=self._http2)
 

@@ -1,9 +1,4 @@
-from httpcore import (
-    HTTPConnection,
-    Origin,
-    ConnectionNotAvailable,
-    ConnectError
-)
+from httpcore import HTTPConnection, Origin, ConnectionNotAvailable, ConnectError
 from httpcore.backends.base import NetworkStream
 from httpcore.backends.mock import MockBackend
 import hpack
@@ -139,10 +134,7 @@ class NeedsRetryBackend(MockBackend):
             raise ConnectError()
 
         return super().connect_tcp(
-            host,
-            port,
-            timeout=timeout,
-            local_address=local_address
+            host, port, timeout=timeout, local_address=local_address
         )
 
 
@@ -166,7 +158,27 @@ def test_connection_retries():
 
     network_backend = NeedsRetryBackend(content)
     with HTTPConnection(
-        origin=origin, network_backend=network_backend,
+        origin=origin,
+        network_backend=network_backend,
     ) as conn:
         with pytest.raises(ConnectError):
             conn.request("GET", "https://example.com/")
+
+
+
+def test_uds_connections():
+    origin = Origin(b"https", b"example.com", 443)
+    network_backend = MockBackend(
+        [
+            b"HTTP/1.1 200 OK\r\n",
+            b"Content-Type: plain/text\r\n",
+            b"Content-Length: 13\r\n",
+            b"\r\n",
+            b"Hello, world!",
+        ]
+    )
+    with HTTPConnection(
+        origin=origin, network_backend=network_backend, uds="/mock/example"
+    ) as conn:
+        response = conn.request("GET", "https://example.com/")
+        assert response.status == 200

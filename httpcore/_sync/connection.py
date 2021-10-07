@@ -31,6 +31,7 @@ class HTTPConnection(ConnectionInterface):
         http2: bool = False,
         retries: int = 0,
         local_address: str = None,
+        uds: str = None,
         network_backend: NetworkBackend = None,
     ) -> None:
         ssl_context = default_ssl_context() if ssl_context is None else ssl_context
@@ -44,6 +45,8 @@ class HTTPConnection(ConnectionInterface):
         self._http2 = http2
         self._retries = retries
         self._local_address = local_address
+        self._uds = uds
+
         self._network_backend: NetworkBackend = (
             SyncBackend() if network_backend is None else network_backend
         )
@@ -93,12 +96,18 @@ class HTTPConnection(ConnectionInterface):
 
         while True:
             try:
-                stream = self._network_backend.connect_tcp(
-                    host=self._origin.host.decode("ascii"),
-                    port=self._origin.port,
-                    local_address=self._local_address,
-                    timeout=timeout,
-                )
+                if self._uds is None:
+                    stream = self._network_backend.connect_tcp(
+                        host=self._origin.host.decode("ascii"),
+                        port=self._origin.port,
+                        local_address=self._local_address,
+                        timeout=timeout,
+                    )
+                else:
+                    stream = self._network_backend.connect_unix_socket(
+                        path=self._uds,
+                        timeout=timeout,
+                    )
             except (ConnectError, ConnectTimeout):
                 if retries_left <= 0:
                     raise
