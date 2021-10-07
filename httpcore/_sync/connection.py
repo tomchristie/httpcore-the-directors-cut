@@ -93,7 +93,7 @@ class HTTPConnection(ConnectionInterface):
 
         while True:
             try:
-                stream = self._network_backend.connect(
+                stream = self._network_backend.connect_tcp(
                     origin=self._origin,
                     timeout=timeout,
                     local_address=self._local_address,

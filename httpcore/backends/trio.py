@@ -82,7 +82,7 @@ class TrioStream(AsyncNetworkStream):
 
 
 class TrioBackend(AsyncNetworkBackend):
-    async def connect(
+    async def connect_tcp(
         self, origin: Origin, timeout: float = None, local_address: str = None
     ) -> AsyncNetworkStream:
         timeout_or_inf = float("inf") if timeout is None else timeout

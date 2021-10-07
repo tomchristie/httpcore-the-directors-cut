@@ -63,7 +63,7 @@ class SyncStream(NetworkStream):
 
 
 class SyncBackend(NetworkBackend):
-    def connect(
+    def connect_tcp(
         self, origin: Origin, timeout: float = None, local_address: str = None
     ) -> SyncStream:
         address = (origin.host.decode("ascii"), origin.port)

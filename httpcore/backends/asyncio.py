@@ -74,7 +74,7 @@ class AsyncIOStream(AsyncNetworkStream):
 
 
 class AsyncIOBackend(AsyncNetworkBackend):
-    async def connect(
+    async def connect_tcp(
         self, origin: Origin, timeout: float = None, local_address: str = None
     ) -> AsyncNetworkStream:
         exc_map = {

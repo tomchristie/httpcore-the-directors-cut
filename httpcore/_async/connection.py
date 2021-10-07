@@ -93,7 +93,7 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
 
         while True:
             try:
-                stream = await self._network_backend.connect(
+                stream = await self._network_backend.connect_tcp(
                     origin=self._origin,
                     timeout=timeout,
                     local_address=self._local_address,

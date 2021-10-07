@@ -131,13 +131,13 @@ class NeedsRetryBackend(AsyncMockBackend):
         self._retry = 2
         super().__init__(*args, **kwargs)
 
-    async def connect(
+    async def connect_tcp(
         self, origin: Origin, timeout: float = None, local_address: str = None
     ) -> AsyncNetworkStream:
         if self._retry > 0:
             self._retry -= 1
             raise ConnectError()
-        return await super().connect(origin, timeout=timeout)
+        return await super().connect_tcp(origin, timeout=timeout)
 
 
 @pytest.mark.anyio
