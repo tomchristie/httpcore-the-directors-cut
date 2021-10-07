@@ -94,9 +94,10 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
         while True:
             try:
                 stream = await self._network_backend.connect_tcp(
-                    origin=self._origin,
-                    timeout=timeout,
+                    host=self._origin.host.decode("ascii"),
+                    port=self._origin.port,
                     local_address=self._local_address,
+                    timeout=timeout,
                 )
             except (ConnectError, ConnectTimeout):
                 if retries_left <= 0:

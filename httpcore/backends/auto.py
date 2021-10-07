@@ -18,11 +18,11 @@ class AutoBackend(AsyncNetworkBackend):
                 self._backend = AsyncIOBackend()
 
     async def connect_tcp(
-        self, origin: Origin, timeout: float = None, local_address: str = None
+        self, host: str, port: int, timeout: float = None, local_address: str = None
     ) -> AsyncNetworkStream:
         await self._init_backend()
         return await self._backend.connect_tcp(
-            origin, timeout=timeout, local_address=local_address
+            host, port, timeout=timeout, local_address=local_address
         )
 
     async def sleep(self, seconds: float) -> None:  # pragma: nocover

@@ -29,7 +29,7 @@ class NetworkStream:
 
 class NetworkBackend:
     def connect_tcp(
-        self, origin: Origin, timeout: float = None, local_address: str = None
+        self, host: str, port: int, timeout: float = None, local_address: str = None
     ) -> NetworkStream:
         raise NotImplementedError()  # pragma: nocover
 
@@ -61,7 +61,7 @@ class AsyncNetworkStream:
 
 class AsyncNetworkBackend:
     async def connect_tcp(
-        self, origin: Origin, timeout: float = None, local_address: str = None
+        self, host: str, port: int, timeout: float = None, local_address: str = None
     ) -> NetworkStream:
         raise NotImplementedError()  # pragma: nocover
 

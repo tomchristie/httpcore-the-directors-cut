@@ -64,9 +64,9 @@ class SyncStream(NetworkStream):
 
 class SyncBackend(NetworkBackend):
     def connect_tcp(
-        self, origin: Origin, timeout: float = None, local_address: str = None
+        self, host: str, port: int, timeout: float = None, local_address: str = None
     ) -> SyncStream:
-        address = (origin.host.decode("ascii"), origin.port)
+        address = (host, port)
         source_address = None if local_address is None else (local_address, 0)
         exc_map = {socket.timeout: ConnectTimeout, socket.error: ConnectError}
         with map_exceptions(exc_map):
