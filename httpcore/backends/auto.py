@@ -22,3 +22,7 @@ class AutoBackend(AsyncNetworkBackend):
     ) -> AsyncNetworkStream:
         await self._init_backend()
         return await self._backend.connect(origin, timeout=timeout)
+
+    async def sleep(self, seconds: float) -> None:  # pragma: nocover
+        await self._init_backend()
+        return await self._backend.sleep(seconds)

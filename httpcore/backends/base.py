@@ -1,6 +1,7 @@
 from .._models import Origin
 
 import ssl
+import time
 import typing
 
 
@@ -30,6 +31,9 @@ class NetworkBackend:
     def connect(self, origin: Origin, timeout: float = None) -> NetworkStream:
         raise NotImplementedError()  # pragma: nocover
 
+    def sleep(self, seconds: float) -> None:
+        time.sleep(seconds)  # pragma: nocover
+
 
 class AsyncNetworkStream:
     async def read(self, max_bytes: int, timeout: float = None) -> bytes:
@@ -55,4 +59,7 @@ class AsyncNetworkStream:
 
 class AsyncNetworkBackend:
     async def connect(self, origin: Origin, timeout: float = None) -> NetworkStream:
+        raise NotImplementedError()  # pragma: nocover
+
+    async def sleep(self, seconds: float) -> None:
         raise NotImplementedError()  # pragma: nocover

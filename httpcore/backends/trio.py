@@ -96,3 +96,6 @@ class TrioBackend(AsyncNetworkBackend):
                     host=origin.host, port=origin.port
                 )
         return TrioStream(trio_stream)
+
+    async def sleep(self, seconds: float) -> None:
+        await trio.sleep(seconds)  # pragma: nocover

@@ -20,6 +20,7 @@ class ConnectionPool(RequestInterface):
         keepalive_expiry: float = None,
         http1: bool = True,
         http2: bool = False,
+        retries: int = 0,
         network_backend: NetworkBackend = None,
     ) -> None:
         if max_keepalive_connections is None:
@@ -36,6 +37,7 @@ class ConnectionPool(RequestInterface):
         self._keepalive_expiry = keepalive_expiry
         self._http1 = http1
         self._http2 = http2
+        self._retries = retries
 
         self._pool: List[ConnectionInterface] = []
         self._pool_lock = Lock()
@@ -51,6 +53,7 @@ class ConnectionPool(RequestInterface):
             keepalive_expiry=self._keepalive_expiry,
             http1=self._http1,
             http2=self._http2,
+            retries=self._retries,
             network_backend=self._network_backend,
         )
 

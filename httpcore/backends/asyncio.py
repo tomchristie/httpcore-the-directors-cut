@@ -87,3 +87,6 @@ class AsyncIOBackend(AsyncNetworkBackend):
                     remote_host=origin.host.decode("ascii"), remote_port=origin.port
                 )
         return AsyncIOStream(anyio_stream)
+
+    async def sleep(self, seconds: float) -> None:
+        await anyio.sleep(seconds)  # pragma: nocover

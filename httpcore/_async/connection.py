@@ -1,15 +1,24 @@
+import itertools
 import ssl
 from types import TracebackType
-from typing import Optional, Type
+from typing import Iterator, Optional, Type
 
 from .._models import Origin, Request, Response
 from ..backends.auto import AutoBackend
 from ..backends.base import AsyncNetworkBackend, AsyncNetworkStream
-from .._exceptions import ConnectionNotAvailable
+from .._exceptions import ConnectionNotAvailable, ConnectError, ConnectTimeout
 from .._ssl import default_ssl_context
 from .._synchronization import AsyncLock
 from .http11 import AsyncHTTP11Connection
 from .interfaces import AsyncConnectionInterface
+
+RETRIES_BACKOFF_FACTOR = 0.5  # 0s, 0.5s, 1s, 2s, 4s, etc.
+
+
+def exponential_backoff(factor: float) -> Iterator[float]:
+    yield 0
+    for n in itertools.count(2):
+        yield factor * (2 ** (n - 2))
 
 
 class AsyncHTTPConnection(AsyncConnectionInterface):
@@ -20,6 +29,7 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
         keepalive_expiry: float = None,
         http1: bool = True,
         http2: bool = False,
+        retries: int = 0,
         network_backend: AsyncNetworkBackend = None,
     ) -> None:
         ssl_context = default_ssl_context() if ssl_context is None else ssl_context
@@ -31,6 +41,7 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
         self._keepalive_expiry = keepalive_expiry
         self._http1 = http1
         self._http2 = http2
+        self._retries = retries
         self._network_backend: AsyncNetworkBackend = (
             AutoBackend() if network_backend is None else network_backend
         )
@@ -75,9 +86,23 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
         timeouts = request.extensions.get("timeout", {})
         timeout = timeouts.get("connect", None)
 
-        stream = await self._network_backend.connect(
-            origin=self._origin, timeout=timeout
-        )
+        retries_left = self._retries
+        delays = exponential_backoff(factor=RETRIES_BACKOFF_FACTOR)
+
+        while True:
+            try:
+                stream = await self._network_backend.connect(
+                    origin=self._origin, timeout=timeout
+                )
+            except (ConnectError, ConnectTimeout):
+                if retries_left <= 0:
+                    raise
+                retries_left -= 1
+                delay = next(delays)
+                await self._network_backend.sleep(delay)
+            else:
+                break
+
         if self._origin.scheme == b"https":
             stream = await stream.start_tls(
                 ssl_context=self._ssl_context,

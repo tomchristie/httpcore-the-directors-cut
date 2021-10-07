@@ -2,7 +2,9 @@ from httpcore import (
     AsyncHTTPConnection,
     Origin,
     ConnectionNotAvailable,
+    ConnectError
 )
+from httpcore.backends.base import AsyncNetworkStream
 from httpcore.backends.mock import AsyncMockBackend
 import hpack
 import hyperframe.frame
@@ -122,3 +124,43 @@ async def test_request_to_incorrect_origin():
     ) as conn:
         with pytest.raises(RuntimeError):
             await conn.request("GET", "https://other.com/")
+
+
+class NeedsRetryBackend(AsyncMockBackend):
+    def __init__(self, *args, **kwargs) -> None:
+        self._retry = 2
+        super().__init__(*args, **kwargs)
+
+    async def connect(
+        self, origin: Origin, timeout: float = None
+    ) -> AsyncNetworkStream:
+        if self._retry > 0:
+            self._retry -= 1
+            raise ConnectError()
+        return await super().connect(origin, timeout=timeout)
+
+
+@pytest.mark.anyio
+async def test_connection_retries():
+    origin = Origin(b"https", b"example.com", 443)
+    content = [
+        b"HTTP/1.1 200 OK\r\n",
+        b"Content-Type: plain/text\r\n",
+        b"Content-Length: 13\r\n",
+        b"\r\n",
+        b"Hello, world!",
+    ]
+
+    network_backend = NeedsRetryBackend(content)
+    async with AsyncHTTPConnection(
+        origin=origin, network_backend=network_backend, retries=3
+    ) as conn:
+        response = await conn.request("GET", "https://example.com/")
+        assert response.status == 200
+
+    network_backend = NeedsRetryBackend(content)
+    async with AsyncHTTPConnection(
+        origin=origin, network_backend=network_backend,
+    ) as conn:
+        with pytest.raises(ConnectError):
+            await conn.request("GET", "https://example.com/")
