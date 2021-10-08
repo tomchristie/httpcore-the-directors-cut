@@ -167,6 +167,9 @@ def test_connection_retries():
 
 
 def test_uds_connections():
+    # We're not actually testing Unix Domain Sockets here, because we're just
+    # using a mock backend, but at least we're covering the UDS codepath
+    # in `connection.py` which we may as well do.
     origin = Origin(b"https", b"example.com", 443)
     network_backend = MockBackend(
         [
