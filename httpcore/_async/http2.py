@@ -6,6 +6,7 @@ from .._exceptions import (
     RemoteProtocolError,
 )
 from .._synchronization import AsyncLock, AsyncSemaphore
+from .._trace import Trace
 from .interfaces import AsyncConnectionInterface
 
 import enum
@@ -72,7 +73,9 @@ class AsyncHTTP2Connection(AsyncConnectionInterface):
 
         async with self._init_lock:
             if not self._sent_connection_init:
-                await self._send_connection_init(request)
+                kwargs = {"request": request}
+                async with Trace("http2.send_connection_init", request, kwargs):
+                    await self._send_connection_init(**kwargs)
                 self._sent_connection_init = True
                 max_streams = self._h2_state.local_settings.max_concurrent_streams
                 self._max_streams_semaphore = AsyncSemaphore(max_streams)
@@ -86,9 +89,16 @@ class AsyncHTTP2Connection(AsyncConnectionInterface):
 
         await self._max_streams_semaphore.acquire()
         try:
-            await self._send_request_headers(request, stream_id=stream_id)
-            await self._send_request_body(request, stream_id=stream_id)
-            status, headers = await self._receive_response(request, stream_id=stream_id)
+            kwargs = {"request": request, "stream_id": stream_id}
+            async with Trace("http2.send_request_headers", request, kwargs):
+                await self._send_request_headers(**kwargs)
+            async with Trace("http2.send_request_body", request, kwargs):
+                await self._send_request_body(**kwargs)
+            async with Trace(
+                "http2.receive_response_headers", request, kwargs
+            ) as trace:
+                status, headers = await self._receive_response(**kwargs)
+                trace.return_value = (status, headers)
 
             return Response(
                 status=status,
@@ -97,7 +107,9 @@ class AsyncHTTP2Connection(AsyncConnectionInterface):
                 extensions={"stream_id": stream_id, "http_version": b"HTTP/2"},
             )
         except Exception:  # noqa: PIE786
-            await self._response_closed(stream_id)
+            kwargs = {"stream_id": stream_id}
+            async with Trace("http2.response_closed", request, kwargs) as trace:
+                await self._response_closed(**kwargs)
             raise
 
     async def _send_connection_init(self, request: Request) -> None:
@@ -359,10 +371,12 @@ class HTTP2ConnectionByteStream:
         self._stream_id = stream_id
 
     async def __aiter__(self) -> typing.AsyncIterator[bytes]:
-        async for chunk in self._connection._receive_response_body(
-            self._request, self._stream_id
-        ):
-            yield chunk
+        kwargs = {"request": self._request, "stream_id": self._stream_id}
+        async with Trace("http2.receive_response_body", self._request, kwargs) as trace:
+            async for chunk in self._connection._receive_response_body(**kwargs):
+                yield chunk
 
     async def aclose(self) -> None:
-        await self._connection._response_closed(self._stream_id)
+        kwargs = {"stream_id": self._stream_id}
+        async with Trace("http2.response_closed", self._request, kwargs) as trace:
+            await self._connection._response_closed(**kwargs)

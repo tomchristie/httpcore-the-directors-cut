@@ -9,6 +9,7 @@ from ..backends.base import NetworkBackend, NetworkStream
 from .._exceptions import ConnectionNotAvailable, ConnectError, ConnectTimeout
 from .._ssl import default_ssl_context
 from .._synchronization import Lock
+from .._trace import Trace
 from .http11 import HTTP11Connection
 from .interfaces import ConnectionInterface
 
@@ -97,32 +98,48 @@ class HTTPConnection(ConnectionInterface):
         while True:
             try:
                 if self._uds is None:
-                    stream = self._network_backend.connect_tcp(
-                        host=self._origin.host.decode("ascii"),
-                        port=self._origin.port,
-                        local_address=self._local_address,
-                        timeout=timeout,
-                    )
+                    kwargs = {
+                        "host": self._origin.host.decode("ascii"),
+                        "port": self._origin.port,
+                        "local_address": self._local_address,
+                        "timeout": timeout,
+                    }
+                    with Trace(
+                        "connection.connect_tcp", request, kwargs
+                    ) as trace:
+                        stream = self._network_backend.connect_tcp(**kwargs)
+                        trace.return_value = stream
                 else:
-                    stream = self._network_backend.connect_unix_socket(
-                        path=self._uds,
-                        timeout=timeout,
-                    )
+                    kwargs = {
+                        "path": self._uds,
+                        "timeout": timeout,
+                    }
+                    with Trace(
+                        "connection.connect_unix_socket", request, kwargs
+                    ) as trace:
+                        stream = self._network_backend.connect_unix_socket(
+                            **kwargs
+                        )
+                        trace.return_value = stream
             except (ConnectError, ConnectTimeout):
                 if retries_left <= 0:
                     raise
                 retries_left -= 1
                 delay = next(delays)
+                # TRACE 'retry'
                 self._network_backend.sleep(delay)
             else:
                 break
 
         if self._origin.scheme == b"https":
-            stream = stream.start_tls(
-                ssl_context=self._ssl_context,
-                server_hostname=self._origin.host,
-                timeout=timeout,
-            )
+            kwargs = {
+                "ssl_context": self._ssl_context,
+                "server_hostname": self._origin.host,
+                "timeout": timeout,
+            }
+            with Trace("connection.start_tls", request, kwargs) as trace:
+                stream = stream.start_tls(**kwargs)
+                trace.return_value = stream
         return stream
 
     def can_handle_request(self, origin: Origin) -> bool:

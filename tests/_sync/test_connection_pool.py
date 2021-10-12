@@ -113,6 +113,47 @@ def test_connection_pool_with_close():
 
 
 
+def test_trace_request():
+    """
+    The 'trace' request extension allows for a callback function to inspect the
+    internal events that occur while sending a request.
+    """
+    network_backend = MockBackend(
+        [
+            b"HTTP/1.1 200 OK\r\n",
+            b"Content-Type: plain/text\r\n",
+            b"Content-Length: 13\r\n",
+            b"\r\n",
+            b"Hello, world!",
+        ]
+    )
+
+    called = []
+    def trace(name, kwargs):
+        called.append(name)
+
+    with ConnectionPool(network_backend=network_backend) as pool:
+         pool.request("GET", "https://example.com/", extensions={"trace": trace})
+
+    assert called == [
+        'connection.connect_tcp.started',
+        'connection.connect_tcp.complete',
+        'connection.start_tls.started',
+        'connection.start_tls.complete',
+        'http11.send_request_headers.started',
+        'http11.send_request_headers.complete',
+        'http11.send_request_body.started',
+        'http11.send_request_body.complete',
+        'http11.receive_response_headers.started',
+        'http11.receive_response_headers.complete',
+        'http11.receive_response_body.started',
+        'http11.receive_response_body.complete',
+        'http11.response_closed.started',
+        'http11.response_closed.complete',
+    ]
+
+
+
 def test_connection_pool_with_exception():
     """
     HTTP/1.1 requests that result in an exception should not be returned to the
@@ -120,13 +161,32 @@ def test_connection_pool_with_exception():
     """
     network_backend = MockBackend([b"Wait, this isn't valid HTTP!"])
 
+    called = []
+    def trace(name, kwargs):
+        called.append(name)
+
     with ConnectionPool(network_backend=network_backend) as pool:
         # Sending an initial request, which once complete will not return to the pool.
         with pytest.raises(Exception):
-            pool.request("GET", "https://example.com/")
+            pool.request("GET", "https://example.com/", extensions={'trace': trace})
 
         info = [repr(c) for c in pool.connections]
         assert info == []
+
+    assert called == [
+        'connection.connect_tcp.started',
+        'connection.connect_tcp.complete',
+        'connection.start_tls.started',
+        'connection.start_tls.complete',
+        'http11.send_request_headers.started',
+        'http11.send_request_headers.complete',
+        'http11.send_request_body.started',
+        'http11.send_request_body.complete',
+        'http11.receive_response_headers.started',
+        'http11.receive_response_headers.failed',
+        'http11.response_closed.started',
+        'http11.response_closed.complete',
+    ]
 
 
 

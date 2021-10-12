@@ -23,6 +23,7 @@ from .._exceptions import (
     RemoteProtocolError,
 )
 from .._synchronization import Lock
+from .._trace import Trace
 from .interfaces import ConnectionInterface
 
 H11Event = Union[
@@ -72,14 +73,26 @@ class HTTP11Connection(ConnectionInterface):
                 raise ConnectionNotAvailable()
 
         try:
-            self._send_request_headers(request)
-            self._send_request_body(request)
-            (
-                http_version,
-                status,
-                reason_phrase,
-                headers,
-            ) = self._receive_response_headers(request)
+            kwargs = {"request": request}
+            with Trace("http11.send_request_headers", request, kwargs) as trace:
+                self._send_request_headers(**kwargs)
+            with Trace("http11.send_request_body", request, kwargs) as trace:
+                self._send_request_body(**kwargs)
+            with Trace(
+                "http11.receive_response_headers", request, kwargs
+            ) as trace:
+                (
+                    http_version,
+                    status,
+                    reason_phrase,
+                    headers,
+                ) = self._receive_response_headers(**kwargs)
+                trace.return_value = (
+                    http_version,
+                    status,
+                    reason_phrase,
+                    headers,
+                )
 
             return Response(
                 status=status,
@@ -92,7 +105,8 @@ class HTTP11Connection(ConnectionInterface):
                 },
             )
         except BaseException as exc:
-            self.close()
+            with Trace("http11.response_closed", request) as trace:
+                self._response_closed()
             raise exc
 
     # Sending the request...
@@ -254,8 +268,13 @@ class HTTP11ConnectionByteStream:
         self._request = request
 
     def __iter__(self) -> Iterator[bytes]:
-        for chunk in self._connection._receive_response_body(self._request):
-            yield chunk
+        kwargs = {"request": self._request}
+        with Trace(
+            "http11.receive_response_body", self._request, kwargs
+        ) as trace:
+            for chunk in self._connection._receive_response_body(**kwargs):
+                yield chunk
 
     def close(self) -> None:
-        self._connection._response_closed()
+        with Trace("http11.response_closed", self._request) as trace:
+            self._connection._response_closed()

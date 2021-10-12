@@ -6,6 +6,7 @@ from .._exceptions import (
     RemoteProtocolError,
 )
 from .._synchronization import Lock, Semaphore
+from .._trace import Trace
 from .interfaces import ConnectionInterface
 
 import enum
@@ -72,7 +73,9 @@ class HTTP2Connection(ConnectionInterface):
 
         with self._init_lock:
             if not self._sent_connection_init:
-                self._send_connection_init(request)
+                kwargs = {"request": request}
+                with Trace("http2.send_connection_init", request, kwargs):
+                    self._send_connection_init(**kwargs)
                 self._sent_connection_init = True
                 max_streams = self._h2_state.local_settings.max_concurrent_streams
                 self._max_streams_semaphore = Semaphore(max_streams)
@@ -86,9 +89,16 @@ class HTTP2Connection(ConnectionInterface):
 
         self._max_streams_semaphore.acquire()
         try:
-            self._send_request_headers(request, stream_id=stream_id)
-            self._send_request_body(request, stream_id=stream_id)
-            status, headers = self._receive_response(request, stream_id=stream_id)
+            kwargs = {"request": request, "stream_id": stream_id}
+            with Trace("http2.send_request_headers", request, kwargs):
+                self._send_request_headers(**kwargs)
+            with Trace("http2.send_request_body", request, kwargs):
+                self._send_request_body(**kwargs)
+            with Trace(
+                "http2.receive_response_headers", request, kwargs
+            ) as trace:
+                status, headers = self._receive_response(**kwargs)
+                trace.return_value = (status, headers)
 
             return Response(
                 status=status,
@@ -97,7 +107,9 @@ class HTTP2Connection(ConnectionInterface):
                 extensions={"stream_id": stream_id, "http_version": b"HTTP/2"},
             )
         except Exception:  # noqa: PIE786
-            self._response_closed(stream_id)
+            kwargs = {"stream_id": stream_id}
+            with Trace("http2.response_closed", request, kwargs) as trace:
+                self._response_closed(**kwargs)
             raise
 
     def _send_connection_init(self, request: Request) -> None:
@@ -359,10 +371,12 @@ class HTTP2ConnectionByteStream:
         self._stream_id = stream_id
 
     def __iter__(self) -> typing.Iterator[bytes]:
-        for chunk in self._connection._receive_response_body(
-            self._request, self._stream_id
-        ):
-            yield chunk
+        kwargs = {"request": self._request, "stream_id": self._stream_id}
+        with Trace("http2.receive_response_body", self._request, kwargs) as trace:
+            for chunk in self._connection._receive_response_body(**kwargs):
+                yield chunk
 
     def close(self) -> None:
-        self._connection._response_closed(self._stream_id)
+        kwargs = {"stream_id": self._stream_id}
+        with Trace("http2.response_closed", self._request, kwargs) as trace:
+            self._connection._response_closed(**kwargs)

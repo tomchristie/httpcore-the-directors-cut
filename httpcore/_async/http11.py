@@ -23,6 +23,7 @@ from .._exceptions import (
     RemoteProtocolError,
 )
 from .._synchronization import AsyncLock
+from .._trace import Trace
 from .interfaces import AsyncConnectionInterface
 
 H11Event = Union[
@@ -72,14 +73,26 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
                 raise ConnectionNotAvailable()
 
         try:
-            await self._send_request_headers(request)
-            await self._send_request_body(request)
-            (
-                http_version,
-                status,
-                reason_phrase,
-                headers,
-            ) = await self._receive_response_headers(request)
+            kwargs = {"request": request}
+            async with Trace("http11.send_request_headers", request, kwargs) as trace:
+                await self._send_request_headers(**kwargs)
+            async with Trace("http11.send_request_body", request, kwargs) as trace:
+                await self._send_request_body(**kwargs)
+            async with Trace(
+                "http11.receive_response_headers", request, kwargs
+            ) as trace:
+                (
+                    http_version,
+                    status,
+                    reason_phrase,
+                    headers,
+                ) = await self._receive_response_headers(**kwargs)
+                trace.return_value = (
+                    http_version,
+                    status,
+                    reason_phrase,
+                    headers,
+                )
 
             return Response(
                 status=status,
@@ -92,7 +105,8 @@ class AsyncHTTP11Connection(AsyncConnectionInterface):
                 },
             )
         except BaseException as exc:
-            await self.aclose()
+            async with Trace("http11.response_closed", request) as trace:
+                await self._response_closed()
             raise exc
 
     # Sending the request...
@@ -254,8 +268,13 @@ class HTTP11ConnectionByteStream:
         self._request = request
 
     async def __aiter__(self) -> AsyncIterator[bytes]:
-        async for chunk in self._connection._receive_response_body(self._request):
-            yield chunk
+        kwargs = {"request": self._request}
+        async with Trace(
+            "http11.receive_response_body", self._request, kwargs
+        ) as trace:
+            async for chunk in self._connection._receive_response_body(**kwargs):
+                yield chunk
 
     async def aclose(self) -> None:
-        await self._connection._response_closed()
+        async with Trace("http11.response_closed", self._request) as trace:
+            await self._connection._response_closed()
