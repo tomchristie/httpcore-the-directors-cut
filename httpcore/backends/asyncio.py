@@ -25,7 +25,10 @@ class AsyncIOStream(AsyncNetworkStream):
         }
         with map_exceptions(exc_map):
             with anyio.fail_after(timeout):
-                return await self._stream.receive(max_bytes=max_bytes)
+                try:
+                    return await self._stream.receive(max_bytes=max_bytes)
+                except anyio.EndOfStream:  # pragma: nocover
+                    return b""
 
     async def write(self, buffer: bytes, timeout: float = None) -> None:
         if not buffer:
