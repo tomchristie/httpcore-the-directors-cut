@@ -53,6 +53,8 @@ class HTTP2Connection(ConnectionInterface):
         self._request_count = 0
         self._init_lock = Lock()
         self._state_lock = Lock()
+        self._read_lock = Lock()
+        self._write_lock = Lock()
         self._sent_connection_init = False
         self._used_all_stream_ids = False
         self._events = {}
@@ -117,9 +119,6 @@ class HTTP2Connection(ConnectionInterface):
         The HTTP/2 connection requires some initial setup before we can start
         using individual request/response streams on it.
         """
-        timeouts = request.extensions.get("timeout", {})
-        timeout = timeouts.get("write", None)
-
         # Need to set these manually here instead of manipulating via
         # __setitem__() otherwise the H2Connection will emit SettingsUpdate
         # frames in addition to sending the undesired defaults.
@@ -144,15 +143,11 @@ class HTTP2Connection(ConnectionInterface):
 
         self._h2_state.initiate_connection()
         self._h2_state.increment_flow_control_window(2 ** 24)
-        data_to_send = self._h2_state.data_to_send()
-        self._network_stream.write(data_to_send, timeout)
+        self._write_outgoing_data(request)
 
     # Sending the request...
 
     def _send_request_headers(self, request: Request, stream_id: int) -> None:
-        timeouts = request.extensions.get("timeout", {})
-        timeout = timeouts.get("write", None)
-
         end_stream = not has_body_headers(request)
 
         # In HTTP/2 the ':authority' pseudo-header is used instead of 'Host'.
@@ -178,15 +173,11 @@ class HTTP2Connection(ConnectionInterface):
 
         self._h2_state.send_headers(stream_id, headers, end_stream=end_stream)
         self._h2_state.increment_flow_control_window(2 ** 24, stream_id=stream_id)
-        data_to_send = self._h2_state.data_to_send()
-        self._network_stream.write(data_to_send, timeout)
+        self._write_outgoing_data(request)
 
     def _send_request_body(self, request: Request, stream_id: int) -> None:
         if not has_body_headers(request):
             return
-
-        timeouts = request.extensions.get("timeout", {})
-        timeout = timeouts.get("write", None)
 
         for data in request.stream:
             while data:
@@ -194,12 +185,10 @@ class HTTP2Connection(ConnectionInterface):
                 chunk_size = min(len(data), max_flow)
                 chunk, data = data[:chunk_size], data[chunk_size:]
                 self._h2_state.send_data(stream_id, chunk)
-                data_to_send = self._h2_state.data_to_send()
-                self._network_stream.write(data_to_send, timeout)
+                self._write_outgoing_data(request)
 
         self._h2_state.end_stream(stream_id)
-        data_to_send = self._h2_state.data_to_send()
-        self._network_stream.write(data_to_send, timeout)
+        self._write_outgoing_data(request)
 
     # Receiving the response...
 
@@ -228,7 +217,8 @@ class HTTP2Connection(ConnectionInterface):
             event = self._receive_stream_event(request, stream_id)
             if isinstance(event, h2.events.DataReceived):
                 amount = event.flow_controlled_length
-                self._acknowledge_received_data(request, stream_id, amount)
+                self._h2_state.acknowledge_received_data(amount, stream_id)
+                self._write_outgoing_data(request)
                 yield event.data
             elif isinstance(event, (h2.events.StreamEnded, h2.events.StreamReset)):
                 break
@@ -241,15 +231,7 @@ class HTTP2Connection(ConnectionInterface):
         return self._events[stream_id].pop(0)
 
     def _receive_events(self, request: Request) -> None:
-        timeouts = request.extensions.get("timeout", {})
-        read_timeout = timeouts.get("read", None)
-        write_timeout = timeouts.get("write", None)
-
-        data = self._network_stream.read(self.READ_NUM_BYTES, read_timeout)
-        if data == b"":
-            raise RemoteProtocolError("Server disconnected")
-
-        events = self._h2_state.receive_data(data)
+        events = self._read_incoming_data(request)
         for event in events:
             event_stream_id = getattr(event, "stream_id", 0)
 
@@ -259,8 +241,7 @@ class HTTP2Connection(ConnectionInterface):
             if event_stream_id in self._events:
                 self._events[event_stream_id].append(event)
 
-        data_to_send = self._h2_state.data_to_send()
-        self._network_stream.write(data_to_send, write_timeout)
+        self._write_outgoing_data(request)
 
     def _response_closed(self, stream_id: int) -> None:
         self._max_streams_semaphore.release()
@@ -281,7 +262,27 @@ class HTTP2Connection(ConnectionInterface):
         self._state = HTTPConnectionState.CLOSED
         self._network_stream.close()
 
-    # Flow control
+    # Wrappers around network read/write operations...
+
+    def _read_incoming_data(self, request: Request) -> typing.List[h2.events.Event]:
+        timeouts = request.extensions.get("timeout", {})
+        timeout = timeouts.get("read", None)
+
+        with self._read_lock:
+            data = self._network_stream.read(self.READ_NUM_BYTES, timeout)
+            if data == b"":
+                raise RemoteProtocolError("Server disconnected")
+            return self._h2_state.receive_data(data)
+
+    def _write_outgoing_data(self, request: Request) -> None:
+        timeouts = request.extensions.get("timeout", {})
+        timeout = timeouts.get("write", None)
+
+        with self._write_lock:
+            data_to_send = self._h2_state.data_to_send()
+            self._network_stream.write(data_to_send, timeout)
+
+    # Flow control...
 
     def _wait_for_outgoing_flow(self, request: Request, stream_id: int) -> int:
         """
@@ -300,16 +301,6 @@ class HTTP2Connection(ConnectionInterface):
             max_frame_size = self._h2_state.max_outbound_frame_size
             flow = min(local_flow, max_frame_size)
         return flow
-
-    def _acknowledge_received_data(
-        self, request: Request, stream_id: int, amount: int
-    ) -> None:
-        timeouts = request.extensions.get("timeout", {})
-        timeout = timeouts.get("read", None)
-
-        self._h2_state.acknowledge_received_data(amount, stream_id)
-        data_to_send = self._h2_state.data_to_send()
-        self._network_stream.write(data_to_send, timeout)
 
     # Interface for connection pooling...
 
