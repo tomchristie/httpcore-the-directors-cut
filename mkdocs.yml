@@ -1,0 +1,16 @@
+site_name: HTTPCore
+site_description: A minimal HTTP client for Python.
+site_url: https://www.encode.io/httpcore/
+
+repo_name: encode/httpcore
+repo_url: https://github.com/encode/httpcore/
+
+nav:
+    - Introduction: 'index.md'
+
+theme:
+  name: "material"
+
+plugins:
+- search
+- mkdocstrings
