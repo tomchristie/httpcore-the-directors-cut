@@ -190,38 +190,64 @@ class URL:
 
     The URL may either be specified as a plain string, for convienence:
 
-    >>> url = httpcore.URL("https://www.example.com/")
+    ```python
+    url = httpcore.URL("https://www.example.com/")
+    ```
 
     Or be constructed with explicitily pre-parsed components:
 
-    >>> url = httpcore.URL(scheme=b'https', host=b'www.example.com', port=None, target=b'/')
+    ```python
+    url = httpcore.URL(scheme=b'https', host=b'www.example.com', port=None, target=b'/')
+    ```
+
+    Using this second more explicit style allows integrations that are using `httpcore` to
+    pass through URLs that have already been parsed in order to use libraries such
+    as `rfc-3986` rather than relying on the stdlib. It also ensures that URL parsing is
+    treated identically at both the networking level and at any higher layers of abstraction.
 
     The four components are important here, as they allow the URL to be precisely specified
     in a pre-parsed format. They also allow certain types of request to be created that
     could not otherwise be expressed.
 
-    For example, an HTTP request to 'http://www.example.com/' made via a proxy
-    at http://localhost:8080...
+    For example, an HTTP request to `http://www.example.com/` forwarded via a proxy
+    at `http://localhost:8080`...
 
-    >>> url = httpcore.URL(
+    ```python
+    # Constructs an HTTP request with a complete URL as the target:
+    # GET https://www.example.com/ HTTP/1.1
+    url = httpcore.URL(
         scheme=b'http',
         host=b'localhost',
         port=8080,
         target=b'https://www.example.com/'
     )
-    >>> request = httpcore.Request(
+    request = httpcore.Request(
         method="GET",
         url=url
     )
+    ```
 
-    GET https://www.example.com/ HTTP/1.1
+    Another example is constructing an `OPTIONS *` request...
 
-    Another example is constructing an 'OPTIONS *' request...
+    ```python
+    # Constructs an 'OPTIONS *' HTTP request:
+    # OPTIONS * HTTP/1.1
+    url = httpcore.URL(scheme=b'https', host=b'www.example.com', target=b'*')
+    request = httpcore.Request(method="OPTIONS", url=url)
+    ```
 
-    >>> url = httpcore.URL(scheme=b'https', host=b'www.example.com', target=b'*')
-    >>> request = httpcore.Request(method="OPTIONS", url=url)
+    This kind of request is not possible to formulate with a URL string,
+    because the `/` delimiter is always used to demark the target from the
+    host/port portion of the URL.
 
-    OPTIONS * HTTP/1.1
+    For convenience, string-like arguments may be specified either as strings or
+    as bytes. However, once a request is being issue over-the-wire, the URL components
+    are always ultimately required to be a bytewise representation.
+
+    In order to avoid any ambiguity over character encodings, when strings are used
+    as arguments, they must be strictly limited to the ASCII range `chr(0)` - `chr(127)`.
+    If you require a bytewise representation that is outside this range you must
+    handle the character encoding directly, and pass a bytes instance.
     """
 
     def __init__(
@@ -233,6 +259,14 @@ class URL:
         port: Optional[int] = None,
         target: Union[bytes, str] = b"",
     ) -> None:
+        """
+        Parameters:
+            url: The complete URL as a string or bytes.
+            scheme: The URL scheme as a string or bytes. Typically either `"http"` or `"https"`.
+            host: The URL host as a string or bytes. Such as `"www.example.com"`.
+            port: The port to connect to. Either an integer or `None`.
+            target: The target of the HTTP request. Such as `"/items?search=red"`.
+        """
         if url:
             parsed = urlparse(enforce_bytes(url, name="url"))
             self.scheme = parsed.scheme
@@ -273,6 +307,10 @@ class URL:
 
 
 class Request:
+    """
+    An HTTP request.
+    """
+
     def __init__(
         self,
         method: Union[bytes, str],
@@ -282,6 +320,15 @@ class Request:
         content: Union[bytes, Iterable[bytes], AsyncIterable[bytes]] = None,
         extensions: dict = None,
     ) -> None:
+        """
+        Parameters:
+            method: The HTTP request method, either as a string or bytes. For example: `GET`.
+            url: The request URL, either as a `URL` instance, or as a string or bytes. For example: `"https://www.example.com".`
+            headers: The HTTP request headers.
+            content: The content of the response body.
+            extensions: A dictionary of optional extra information included on the request.
+                        Possible keys include `"timeout"`, and `"trace"`.
+        """
         self.method: bytes = enforce_bytes(method, name="method")
         self.url: URL = enforce_url(url, name="url")
         self.headers: List[Tuple[bytes, bytes]] = enforce_headers(
@@ -299,14 +346,6 @@ class Request:
 class Response:
     """
     An HTTP response.
-
-    Attributes:
-        status: The HTTP status code of the response.
-        headers: The HTTP response headers.
-        stream: The content of the response body.
-        extensions: A dictionary of optional extra information included on the response.
-                    Possible keys include `"http_version"`, `"reason_phrase"`, and
-                    `"network_stream"`.
     """
 
     def __init__(
@@ -317,6 +356,15 @@ class Response:
         content: Union[bytes, Iterable[bytes], AsyncIterable[bytes]] = None,
         extensions: dict = None,
     ) -> None:
+        """
+        Parameters:
+            status: The HTTP status code of the response. For example `200`.
+            headers: The HTTP response headers.
+            content: The content of the response body.
+            extensions: A dictionary of optional extra information included on the response.
+                        Possible keys include `"http_version"`, `"reason_phrase"`, and
+                        `"network_stream"`.
+        """
         self.status: int = status
         self.headers: List[Tuple[bytes, bytes]] = enforce_headers(
             headers, name="headers"

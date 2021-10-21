@@ -7,6 +7,16 @@ repo_url: https://github.com/encode/httpcore/
 
 nav:
     - Introduction: 'index.md'
+    - Quickstart: 'quickstart.md'
+    - Requests, Responses, and URLs: 'requests-responses-urls.md'
+    - Connection Pools: 'connection-pools.md'
+    - Proxies: 'proxies.md'
+    - Connections: 'connections.md'
+    - HTTP/2: 'http2.md'
+    - Extensions: 'extensions.md'
+    - Async Support: 'async.md'
+    - Network Backends: 'network-backends.md'
+    - Exceptions: 'exceptions.md'
 
 theme:
   name: "material"
@@ -14,3 +24,7 @@ theme:
 plugins:
 - search
 - mkdocstrings
+
+markdown_extensions:
+  - codehilite:
+      css_class: highlight

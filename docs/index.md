@@ -48,20 +48,37 @@ print(response.content)
 # b'<!doctype html>\n<html>\n<head>\n<title>Example Domain</title>\n\n<meta charset="utf-8"/>\n ...'
 ```
 
-# Reference
+---
 
-## `httpcore.request()`
+# API Reference
 
-::: httpcore.request
-    handler: python
-    rendering:
-        show_source: False
-
-Something, something, [httpcore.Response].
-
-## `httpcore.Response()`
-
-::: httpcore.Response
-    handler: python
-    rendering:
-        show_source: False
+* Quickstart
+    * `httpcore.request()`
+    * `httpcore.stream()`
+* Requests, Responses, and URLs
+    * `httpcore.Request`
+    * `httpcore.Response`
+    * `httpcore.URL`
+* Connection Pools
+    * `httpcore.ConnectionPool`
+* Proxies
+    * `httpcore.HTTPProxy`
+* Connections
+    * `httpcore.HTTPConnection`
+    * `httpcore.HTTP11Connection`
+    * `httpcore.HTTP2Connection`
+* Async Support
+    * `httpcore.AsyncConnectionPool`
+    * `httpcore.AsyncHTTPProxy`
+    * `httpcore.AsyncHTTPConnection`
+    * `httpcore.AsyncHTTP11Connection`
+    * `httpcore.AsyncHTTP2Connection`
+* Network Backends
+    * `httpcore.backends.sync.SyncBackend`
+    * `httpcore.backends.auto.AutoBackend`
+    * `httpcore.backends.asyncio.AsyncioBackend`
+    * `httpcore.backends.trio.TrioBackend`
+    * `httpcore.backends.mock.MockBackend`
+    * `httpcore.backends.mock.AsyncMockBackend`
+    * `httpcore.backends.base.NetworkBackend`
+    * `httpcore.backends.base.AsyncNetworkBackend`
