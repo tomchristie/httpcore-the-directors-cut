@@ -32,7 +32,7 @@ async def test_extra_info(httpbin_secure):
     async with AsyncConnectionPool(ssl_context=ssl_context) as pool:
         async with pool.stream("GET", httpbin_secure.url) as response:
             assert response.status == 200
-            stream = response.extensions["stream"]
+            stream = response.extensions["network_stream"]
 
             ssl_object = stream.get_extra_info("ssl_object")
             assert ssl_object.version() == "TLSv1.3"
