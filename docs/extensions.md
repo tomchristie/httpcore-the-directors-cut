@@ -22,7 +22,7 @@ This is everything that's needed in order to represent an HTTP exchange.
 
 Well... almost.
 
-There is a maxim in Computer Science that "All non-trivial abstractions, to some degree, are leaky.". When an expression is leaky, it's important that it ought to at least leak only in well-defined places.
+There is a maxim in Computer Science that *"All non-trivial abstractions, to some degree, are leaky"*. When an expression is leaky, it's important that it ought to at least leak only in well-defined places.
 
 In order to handle cases that don't otherwise fit inside this core abstraction, `httpcore` requests and responses have 'extensions'. These are a dictionary of optional additional information.
 
@@ -147,4 +147,63 @@ When no key is included, a default based on the status code may be used.
 
 ### `"network_stream"`
 
-...
+The `"network_stream"` extension allows developers to handle HTTP `CONNECT` and `Upgrade` requests, by providing an API that steps outside the standard request/response model, and can directly read or write to the network.
+
+The interface provided by the network stream:
+
+* `read(max_bytes, timeout = None) -> bytes`
+* `write(buffer, timeout = None)`
+* `close()`
+* `start_tls(ssl_context, server_hostname = None, timeout = None) -> NetworkStream`
+* `get_extra_info(info) -> Any`
+
+This API can be used as the foundation for working with HTTP proxies, WebSocket upgrades, and other advanced use-cases.
+
+An example to demonstrate:
+
+```python
+# Formulate a CONNECT request...
+#
+# This will establish a connection to 127.0.0.1:8080, and then send the following...
+#
+# CONNECT http://www.example.com HTTP/1.1
+# Host: 127.0.0.1:8080
+url = httpcore.URL(b"http", b"127.0.0.1", 8080, b"http://www.example.com")
+with httpcore.stream("CONNECT", url) as response:
+    network_stream = response.extensions["network_stream"]
+
+    # Upgrade to an SSL stream...
+    network_stream = network_stream.start_tls(
+        ssl_context=httpcore.default_ssl_context(),
+        hostname=b"www.example.com",
+    )
+
+    # Manually send an HTTP request over the network stream, and read the response...
+    #
+    # For a more complete example see the httpcore `TunnelHTTPConnection` implementation.
+    network_stream.write(b"GET / HTTP/1.1\r\nHost: example.com\r\n\r\n")
+    data = network_stream.read()
+    print(data)
+```
+
+The network stream abstraction also allows access to various low-level information that may be exposed by the underlying socket:
+
+```python
+response = httpcore.request("GET", "https://www.example.com")
+network_stream = response.extensions["network_stream"]
+
+client_addr = network_stream.get_extra_info("client_addr")
+server_addr = network_stream.get_extra_info("server_addr")
+print("Client address", client_addr)
+print("Server address", server_addr)
+```
+
+The socket SSL information is also available through this interface, although you need to ensure that the underlying connection is still open, in order to access it...
+
+```python
+with httpcore.stream("GET", "https://www.example.com") as response:
+    network_stream = response.extensions["network_stream"]
+
+    ssl_object = network_stream.get_extra_info("ssl_object")
+    print("TLS version", ssl_object.version())
+```

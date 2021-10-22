@@ -183,7 +183,7 @@ class TunnelHTTPConnection(ConnectionInterface):
                     self._connection.close()
                     raise ProxyError(msg)
 
-                stream = connect_response.extensions["stream"]
+                stream = connect_response.extensions["network_stream"]
                 stream = stream.start_tls(
                     ssl_context=self._ssl_context,
                     server_hostname=self._remote_origin.host,
