@@ -156,7 +156,7 @@ The one other difference to be aware of is the `Transfer-Encoding: chunked` head
 
 In HTTP/2 this header is never used, since streaming data is framed using a different mechanism.
 
-In `httpcore` the `Transfer-Encoding: chunked` header is always used to represent a streaming body on the request, and is automatically populated if required. However the header is only sent if the underlying connection ends up being HTTP/1.1, and is omitted if the underlying connection ends up being HTTP/2.
+In `httpcore` the `Transfer-Encoding: chunked` header is always used to represent the presence of a streaming body on the request, and is automatically populated if required. However the header is only sent if the underlying connection ends up being HTTP/1.1, and is omitted if the underlying connection ends up being HTTP/2.
 
 ## Response headers
 
