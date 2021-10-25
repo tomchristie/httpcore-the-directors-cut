@@ -5,6 +5,7 @@ from typing import AsyncIterable, AsyncIterator, List, Optional, Type
 from ..backends.auto import AutoBackend
 from ..backends.base import AsyncNetworkBackend
 from .._exceptions import ConnectionNotAvailable, UnsupportedProtocol
+from .._ssl import default_ssl_context
 from .._synchronization import AsyncLock, AsyncSemaphore
 from .._models import Origin, Request, Response
 from .connection import AsyncHTTPConnection
@@ -12,6 +13,10 @@ from .interfaces import AsyncConnectionInterface, AsyncRequestInterface
 
 
 class AsyncConnectionPool(AsyncRequestInterface):
+    """
+    A connection pool for making HTTP requests.
+    """
+
     def __init__(
         self,
         ssl_context: ssl.SSLContext = None,
@@ -53,6 +58,9 @@ class AsyncConnectionPool(AsyncRequestInterface):
         """
         if max_keepalive_connections is None:
             max_keepalive_connections = max_connections - 1
+
+        if ssl_context is None:
+            ssl_context = default_ssl_context()
 
         self._ssl_context = ssl_context
 
@@ -166,6 +174,8 @@ class AsyncConnectionPool(AsyncRequestInterface):
     async def handle_async_request(self, request: Request) -> Response:
         """
         Send an HTTP request, and return an HTTP response.
+
+        This is the core implementation that is called into by `.request()` or `.stream()`.
         """
         scheme = request.url.scheme.decode()
         if scheme == "":
@@ -192,7 +202,7 @@ class AsyncConnectionPool(AsyncRequestInterface):
                 while True:
                     # If no existing connection are available, we need to make
                     # sure not to exceed the maximum allowable number of
-                    # connections, before we create on and add it to the pool.
+                    # connections, before we create one and add it to the pool.
 
                     # Try to obtain a ticket from the semaphore without
                     # blocking. If we get one, then we're now good to go.

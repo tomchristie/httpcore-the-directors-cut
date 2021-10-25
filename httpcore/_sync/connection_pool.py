@@ -5,6 +5,7 @@ from typing import Iterable, Iterator, List, Optional, Type
 from ..backends.sync import SyncBackend
 from ..backends.base import NetworkBackend
 from .._exceptions import ConnectionNotAvailable, UnsupportedProtocol
+from .._ssl import default_ssl_context
 from .._synchronization import Lock, Semaphore
 from .._models import Origin, Request, Response
 from .connection import HTTPConnection
@@ -12,6 +13,10 @@ from .interfaces import ConnectionInterface, RequestInterface
 
 
 class ConnectionPool(RequestInterface):
+    """
+    A connection pool for making HTTP requests.
+    """
+
     def __init__(
         self,
         ssl_context: ssl.SSLContext = None,
@@ -53,6 +58,9 @@ class ConnectionPool(RequestInterface):
         """
         if max_keepalive_connections is None:
             max_keepalive_connections = max_connections - 1
+
+        if ssl_context is None:
+            ssl_context = default_ssl_context()
 
         self._ssl_context = ssl_context
 
@@ -166,6 +174,8 @@ class ConnectionPool(RequestInterface):
     def handle_request(self, request: Request) -> Response:
         """
         Send an HTTP request, and return an HTTP response.
+
+        This is the core implementation that is called into by `.request()` or `.stream()`.
         """
         scheme = request.url.scheme.decode()
         if scheme == "":

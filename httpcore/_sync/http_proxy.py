@@ -1,6 +1,7 @@
 from .._exceptions import ProxyError
 from .._models import enforce_headers, enforce_url, Origin, Request, Response, URL
 from ..backends.base import NetworkBackend
+from .._ssl import default_ssl_context
 from .._synchronization import Lock
 from .connection_pool import ConnectionPool
 from .connection import HTTPConnection
@@ -33,6 +34,10 @@ def merge_headers(
 
 
 class HTTPProxy(ConnectionPool):
+    """
+    A connection pool that sends requests via an HTTP proxy.
+    """
+
     def __init__(
         self,
         proxy_url: Union[URL, bytes, str, tuple],
@@ -41,14 +46,49 @@ class HTTPProxy(ConnectionPool):
         max_connections: int = 10,
         max_keepalive_connections: int = None,
         keepalive_expiry: float = None,
+        retries: int = 0,
+        local_address: str = None,
+        uds: str = None,
         network_backend: NetworkBackend = None,
     ) -> None:
+        """
+        A connection pool for making HTTP requests.
+
+        Parameters:
+            proxy_url: The URL to use when connecting to the proxy server.
+                       For example `"http://127.0.0.1:8080/"`.
+            proxy_headers: Any HTTP headers to use for the proxy requests.
+                           For example `{"Proxy-Authorization": "Basic <username>:<password>"`.
+            ssl_context: An SSL context to use for verifying connections.
+                         If not specified, the default `httpcore.default_ssl_context()`
+                         will be used.
+            max_connections: The maximum number of concurrent HTTP connections that the pool
+                             should allow. Any attempt to send a request on a pool that would
+                             exceed this amount will block until a connection is available.
+            max_keepalive_connections: The maximum number of idle HTTP connections that will
+                                       be maintained in the pool.
+            keepalive_expiry: The duration in seconds that an idle HTTP connection may be
+                              maintained for before being expired from the pool.
+            retries: The maximum number of retries when trying to establish a connection.
+            local_address: Local address to connect from. Can also be used to connect using
+                           a particular address family. Using `local_address="0.0.0.0"` will
+                           connect using an `AF_INET` address (IPv4), while using `local_address="::"`
+                           will connect using an `AF_INET6` address (IPv6).
+            uds: Path to a Unix Domain Socket to use instead of TCP sockets.
+            network_backend: A backend instance to use for handling network I/O.
+        """
+        if ssl_context is None:
+            ssl_context = default_ssl_context()
+
         super().__init__(
             ssl_context=ssl_context,
             max_connections=max_connections,
             max_keepalive_connections=max_keepalive_connections,
             keepalive_expiry=keepalive_expiry,
             network_backend=network_backend,
+            retries=retries,
+            local_address=local_address,
+            uds=uds,
         )
         self._ssl_context = ssl_context
         self._proxy_url = enforce_url(proxy_url, name="proxy_url")

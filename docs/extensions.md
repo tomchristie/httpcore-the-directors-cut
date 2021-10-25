@@ -26,6 +26,26 @@ There is a maxim in Computer Science that *"All non-trivial abstractions, to som
 
 In order to handle cases that don't otherwise fit inside this core abstraction, `httpcore` requests and responses have 'extensions'. These are a dictionary of optional additional information.
 
+Let's expand on our request/response abstraction...
+
+```
+# Pseudo-code expressing the essentials of the request/response model,
+# plus extensions allowing for additional API that does not fit into
+# this abstraction.
+(
+    status_code: int,
+    headers: List[Tuple(bytes, bytes)],
+    stream: Iterable[bytes],
+    extensions: dict
+) = handle_request(
+    method: bytes,
+    url: URL,
+    headers: List[Tuple(bytes, bytes)],
+    stream: Iterable[bytes],
+    extensions: dict
+)
+```
+
 Several extensions are supported both on the request:
 
 ```python

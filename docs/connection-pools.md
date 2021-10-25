@@ -16,10 +16,34 @@ print(r)
 # <Response [200]>
 ```
 
-Connection pools support the same `.request()` and `.stream()` APIs [as described in
-the Quickstart](../quickstart).
+Connection pools support the same `.request()` and `.stream()` APIs [as described in the Quickstart](../quickstart).
 
-...
+We can observe the benefits of connection pooling with a simple script like so:
+
+```python
+import httpcore
+import time
+
+
+pool = httpcore.ConnectionPool()
+for counter in range(5):
+    started = time.time()
+    response = pool.request("GET", "https://www.example.com/")
+    complete = time.time()
+    print(response, "in %.3f seconds" % (complete - started))
+```
+
+The output *should* demonstrate the initial request as being substantially slower than the subsequent requests:
+
+```
+<Response [200]> in {0.529} seconds
+<Response [200]> in {0.096} seconds
+<Response [200]> in {0.097} seconds
+<Response [200]> in {0.095} seconds
+<Response [200]> in {0.098} seconds
+```
+
+This is to be expected. Once we've established a connection to `"www.example.com"` we're able to reuse it for following requests.
 
 ## Configuration
 

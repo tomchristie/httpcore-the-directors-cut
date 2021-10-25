@@ -15,7 +15,9 @@ def request(
     """
     Sends an HTTP request, returning the response.
 
-        response = httpcore.request("GET", "https://www.example.com/")
+    ```
+    response = httpcore.request("GET", "https://www.example.com/")
+    ```
 
     Arguments:
         method: The HTTP method for the request. Typically one of `"GET"`, `"OPTIONS"`,
@@ -50,8 +52,10 @@ def stream(
     """
     Sends an HTTP request, returning the response within a content manager.
 
-        with httpcore.stream("GET", "https://www.example.com/") as response:
-            ...
+    ```
+    with httpcore.stream("GET", "https://www.example.com/") as response:
+        ...
+    ```
 
     When using the `stream()` function, the body of the response will not be
     automatically read. If you want to access the response body you should
