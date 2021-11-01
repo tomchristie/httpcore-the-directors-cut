@@ -145,12 +145,6 @@ class HTTPConnection(ConnectionInterface):
     def can_handle_request(self, origin: Origin) -> bool:
         return origin == self._origin
 
-    def attempt_aclose(self) -> bool:
-        closed = False
-        if self._connection is not None:
-            closed = self._connection.attempt_aclose()
-        return closed
-
     def close(self) -> None:
         if self._connection is not None:
             self._connection.close()

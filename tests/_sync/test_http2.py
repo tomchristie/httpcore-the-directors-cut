@@ -215,8 +215,8 @@ def test_http2_connection_attempt_close():
             response.read()
             assert response.status == 200
             assert response.content == b"Hello, world!"
-            assert not conn.attempt_aclose()
-        assert conn.attempt_aclose()
+
+        conn.close()
         with pytest.raises(ConnectionNotAvailable):
             conn.request("GET", "https://example.com/")
 

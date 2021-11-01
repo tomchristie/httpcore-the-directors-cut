@@ -80,9 +80,6 @@ class AsyncRequestInterface:
 
 
 class AsyncConnectionInterface(AsyncRequestInterface):
-    async def attempt_aclose(self) -> bool:
-        raise NotImplementedError()  # pragma: nocover
-
     async def aclose(self) -> None:
         raise NotImplementedError()  # pragma: nocover
 

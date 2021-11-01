@@ -299,6 +299,92 @@ async def test_connection_pool_concurrency():
             ]
 
 
+@pytest.mark.trio
+async def test_connection_pool_concurrency_same_domain_closing():
+    """
+    HTTP/1.1 requests made in concurrency must not ever exceed the maximum number
+    of allowable connection in the pool.
+    """
+    network_backend = AsyncMockBackend(
+        [
+            b"HTTP/1.1 200 OK\r\n",
+            b"Content-Type: plain/text\r\n",
+            b"Content-Length: 13\r\n",
+            b"\r\n",
+            b"Hello, world!",
+        ]
+    )
+
+    async def fetch(pool, domain, info_list):
+        async with pool.stream("GET", f"http://{domain}/") as response:
+            info = [repr(c) for c in pool.connections]
+            info_list.append(info)
+            await response.aread()
+
+    async with AsyncConnectionPool(
+        max_connections=1, max_keepalive_connections=0, network_backend=network_backend
+    ) as pool:
+        info_list = []
+        async with concurrency.open_nursery() as nursery:
+            for domain in ["a.com", "a.com", "a.com", "a.com", "a.com"]:
+                nursery.start_soon(fetch, pool, domain, info_list)
+
+        # Check that each time we inspect the connection pool, only a
+        # single connection was established.
+        for item in info_list:
+            assert len(item) == 1
+            assert item[0] in [
+                "<AsyncHTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 1]>",
+                "<AsyncHTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 2]>",
+                "<AsyncHTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 3]>",
+                "<AsyncHTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 4]>",
+                "<AsyncHTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 5]>",
+            ]
+
+
+@pytest.mark.trio
+async def test_connection_pool_concurrency_same_domain_keepalive():
+    """
+    HTTP/1.1 requests made in concurrency must not ever exceed the maximum number
+    of allowable connection in the pool.
+    """
+    network_backend = AsyncMockBackend(
+        [
+            b"HTTP/1.1 200 OK\r\n",
+            b"Content-Type: plain/text\r\n",
+            b"Content-Length: 13\r\n",
+            b"\r\n",
+            b"Hello, world!",
+        ] * 5
+    )
+
+    async def fetch(pool, domain, info_list):
+        async with pool.stream("GET", f"http://{domain}/") as response:
+            info = [repr(c) for c in pool.connections]
+            info_list.append(info)
+            await response.aread()
+
+    async with AsyncConnectionPool(
+        max_connections=1, network_backend=network_backend
+    ) as pool:
+        info_list = []
+        async with concurrency.open_nursery() as nursery:
+            for domain in ["a.com", "a.com", "a.com", "a.com", "a.com"]:
+                nursery.start_soon(fetch, pool, domain, info_list)
+
+        # Check that each time we inspect the connection pool, only a
+        # single connection was established.
+        for item in info_list:
+            assert len(item) == 1
+            assert item[0] in [
+                "<AsyncHTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 1]>",
+                "<AsyncHTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 2]>",
+                "<AsyncHTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 3]>",
+                "<AsyncHTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 4]>",
+                "<AsyncHTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 5]>",
+            ]
+
+
 @pytest.mark.anyio
 async def test_unsupported_protocol():
     async with AsyncConnectionPool() as pool:

@@ -80,9 +80,6 @@ class RequestInterface:
 
 
 class ConnectionInterface(RequestInterface):
-    def attempt_aclose(self) -> bool:
-        raise NotImplementedError()  # pragma: nocover
-
     def close(self) -> None:
         raise NotImplementedError()  # pragma: nocover
 

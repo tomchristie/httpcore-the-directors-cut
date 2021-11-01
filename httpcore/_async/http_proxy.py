@@ -149,9 +149,6 @@ class AsyncForwardHTTPConnection(AsyncConnectionInterface):
     async def aclose(self):
         await self._connection.aclose()
 
-    async def attempt_aclose(self) -> bool:
-        await self._connection.attempt_aclose()
-
     def info(self) -> str:
         return self._connection.info()
 
@@ -242,9 +239,6 @@ class AsyncTunnelHTTPConnection(AsyncConnectionInterface):
 
     async def aclose(self):
         await self._connection.aclose()
-
-    async def attempt_aclose(self) -> bool:
-        await self._connection.attempt_aclose()
 
     def info(self) -> str:
         return self._connection.info()

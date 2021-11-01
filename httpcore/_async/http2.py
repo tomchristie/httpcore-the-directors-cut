@@ -264,7 +264,9 @@ class AsyncHTTP2Connection(AsyncConnectionInterface):
 
     # Wrappers around network read/write operations...
 
-    async def _read_incoming_data(self, request: Request) -> typing.List[h2.events.Event]:
+    async def _read_incoming_data(
+        self, request: Request
+    ) -> typing.List[h2.events.Event]:
         timeouts = request.extensions.get("timeout", {})
         timeout = timeouts.get("read", None)
 
@@ -321,13 +323,6 @@ class AsyncHTTP2Connection(AsyncConnectionInterface):
 
     def is_closed(self) -> bool:
         return self._state == HTTPConnectionState.CLOSED
-
-    async def attempt_aclose(self) -> bool:
-        async with self._state_lock:
-            if self._state == HTTPConnectionState.IDLE:
-                await self.aclose()
-                return True
-        return False
 
     def info(self) -> str:
         origin = str(self._origin)

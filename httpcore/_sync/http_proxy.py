@@ -149,9 +149,6 @@ class ForwardHTTPConnection(ConnectionInterface):
     def close(self):
         self._connection.close()
 
-    def attempt_aclose(self) -> bool:
-        self._connection.attempt_aclose()
-
     def info(self) -> str:
         return self._connection.info()
 
@@ -242,9 +239,6 @@ class TunnelHTTPConnection(ConnectionInterface):
 
     def close(self):
         self._connection.close()
-
-    def attempt_aclose(self) -> bool:
-        self._connection.attempt_aclose()
 
     def info(self) -> str:
         return self._connection.info()

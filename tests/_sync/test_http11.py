@@ -165,8 +165,6 @@ def test_http11_connection_attempt_close():
             response.read()
             assert response.status == 200
             assert response.content == b"Hello, world!"
-            assert not conn.attempt_aclose()
-        assert conn.attempt_aclose()
 
 
 

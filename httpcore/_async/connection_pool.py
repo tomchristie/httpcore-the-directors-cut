@@ -6,10 +6,26 @@ from ..backends.auto import AutoBackend
 from ..backends.base import AsyncNetworkBackend
 from .._exceptions import ConnectionNotAvailable, UnsupportedProtocol
 from .._ssl import default_ssl_context
-from .._synchronization import AsyncLock, AsyncSemaphore
+from .._synchronization import AsyncEvent, AsyncLock, AsyncSemaphore
 from .._models import Origin, Request, Response
 from .connection import AsyncHTTPConnection
 from .interfaces import AsyncConnectionInterface, AsyncRequestInterface
+
+
+class RequestStatus:
+    def __init__(self, request: Request):
+        self.request = request
+        self.connection: Optional[AsyncConnectionInterface] = None
+        self._connection_acquired = AsyncEvent()
+
+    def set_connection(self, connection: AsyncConnectionInterface) -> None:
+        self.connection = connection
+        self._connection_acquired.set()
+
+    async def wait_for_connection(self) -> AsyncConnectionInterface:
+        await self._connection_acquired.wait()
+        assert self.connection is not None
+        return self.connection
 
 
 class AsyncConnectionPool(AsyncRequestInterface):
@@ -57,19 +73,18 @@ class AsyncConnectionPool(AsyncRequestInterface):
             network_backend: A backend instance to use for handling network I/O.
         """
         if max_keepalive_connections is None:
-            max_keepalive_connections = max_connections - 1
+            max_keepalive_connections = max_connections
 
         if ssl_context is None:
             ssl_context = default_ssl_context()
 
         self._ssl_context = ssl_context
 
-        # We always close off keep-alives to allow at least one slot
-        # in the connection pool. There are more nifty strategies that we
-        # could use, but this keeps things nice and simple.
+        self._max_connections = max_connections
         self._max_keepalive_connections = min(
-            max_keepalive_connections, max_connections - 1
+            max_keepalive_connections, max_connections
         )
+
         self._keepalive_expiry = keepalive_expiry
         self._http1 = http1
         self._http2 = http2
@@ -78,8 +93,8 @@ class AsyncConnectionPool(AsyncRequestInterface):
         self._uds = uds
 
         self._pool: List[AsyncConnectionInterface] = []
+        self._requests: List[RequestStatus] = []
         self._pool_lock = AsyncLock()
-        self._pool_semaphore = AsyncSemaphore(bound=max_connections)
         self._network_backend = (
             AutoBackend() if network_backend is None else network_backend
         )
@@ -96,62 +111,6 @@ class AsyncConnectionPool(AsyncRequestInterface):
             uds=self._uds,
             network_backend=self._network_backend,
         )
-
-    async def _add_to_pool(self, connection: AsyncConnectionInterface) -> None:
-        """
-        Add an HTTP connection to the pool.
-        """
-        async with self._pool_lock:
-            self._pool.insert(0, connection)
-
-    async def _remove_from_pool(self, connection: AsyncConnectionInterface) -> None:
-        """
-        Remove an HTTP connection from the pool.
-        """
-        async with self._pool_lock:
-            self._pool.remove(connection)
-
-    async def _get_from_pool(
-        self, origin: Origin
-    ) -> Optional[AsyncConnectionInterface]:
-        """
-        Return an available HTTP connection for the given origin,
-        if one currently exists in the pool.
-        """
-        async with self._pool_lock:
-            for idx, connection in enumerate(self._pool):
-                if connection.can_handle_request(origin) and connection.is_available():
-                    self._pool.pop(idx)
-                    self._pool.insert(0, connection)
-                    return connection
-
-        return None
-
-    async def _close_one_idle_connection(self) -> bool:
-        """
-        Close one IDLE connection from the pool, returning `True` if successful,
-        and `False` otherwise.
-        """
-        async with self._pool_lock:
-            for idx, connection in reversed(list(enumerate(self._pool))):
-                closed = await connection.attempt_aclose()
-                if closed:
-                    self._pool.pop(idx)
-                    await self._pool_semaphore.release()
-                    return True
-        return False
-
-    async def _close_expired_connections(self) -> None:
-        """
-        Close any connections in the pool that have expired their keepalive.
-        """
-        async with self._pool_lock:
-            for idx, connection in reversed(list(enumerate(self._pool))):
-                if connection.has_expired():
-                    closed = await connection.attempt_aclose()
-                    if closed:
-                        self._pool.pop(idx)
-                        await self._pool_semaphore.release()
 
     @property
     def connections(self) -> List[AsyncConnectionInterface]:
@@ -171,6 +130,63 @@ class AsyncConnectionPool(AsyncRequestInterface):
         """
         return list(self._pool)
 
+    async def _attempt_to_acquire_connection(
+        self, status: RequestStatus
+    ) -> Optional[AsyncConnectionInterface]:
+        """
+        Attempt to provide a connection that can handle the given origin.
+        """
+        origin = status.request.url.origin
+
+        # If there are queued requests in front of us, then don't acquire a
+        # connection. We handle requests strictly in order.
+        waiting = [s for s in self._requests if s.connection is None]
+        if waiting and waiting[0] is not status:
+            return None
+
+        # Reuse an existing connection if one is currently available.
+        for idx, connection in enumerate(self._pool):
+            if connection.can_handle_request(origin) and connection.is_available():
+                self._pool.pop(idx)
+                self._pool.insert(0, connection)
+                return connection
+
+        # If the pool is currently full, attempt to close one idle connection.
+        if len(self._pool) >= self._max_connections:
+            for idx, connection in reversed(list(enumerate(self._pool))):
+                if connection.is_idle():
+                    await connection.aclose()
+                    self._pool.pop(idx)
+                    break
+
+        # If the pool is still full, then we cannot acquire a connection.
+        if len(self._pool) >= self._max_connections:
+            return None
+
+        # Otherwise create a new connection.
+        connection = self.create_connection(origin)
+        self._pool.insert(0, connection)
+        return connection
+
+    async def _close_expired_connections(self):
+        """
+        Clean up the connection pool by closing off any connections that have expired.
+        """
+        # Close any connections that have expired their keep-alive time.
+        for idx, connection in reversed(list(enumerate(self._pool))):
+            if connection.has_expired():
+                await connection.aclose()
+                self._pool.pop(idx)
+
+        # If the pool size exceeds the maximum number of allowed keep-alive connections,
+        # then close off idle connections as required.
+        pool_size = len(self._pool)
+        for idx, connection in reversed(list(enumerate(self._pool))):
+            if connection.is_idle() and pool_size > self._max_keepalive_connections:
+                await connection.aclose()
+                self._pool.pop(idx)
+                pool_size -= 1
+
     async def handle_async_request(self, request: Request) -> Response:
         """
         Send an HTTP request, and return an HTTP response.
@@ -187,101 +203,71 @@ class AsyncConnectionPool(AsyncRequestInterface):
                 f"Request URL has an unsupported protocol '{scheme}://'."
             )
 
-        while True:
-            existing_connection = await self._get_from_pool(request.url.origin)
+        status = RequestStatus(request)
 
-            if existing_connection is not None:
-                # An existing connection was available. This could be:
-                #
-                # * An IDLE HTTP/1.1 connection.
-                # * An IDLE or ACTIVE HTTP/2 connection.
-                # * An HTTP connection that is in the process of being
-                #   opened, and that *might* result in an HTTP/2 connection.
-                connection = existing_connection
-            else:
-                while True:
-                    # If no existing connection are available, we need to make
-                    # sure not to exceed the maximum allowable number of
-                    # connections, before we create one and add it to the pool.
+        async with self._pool_lock:
+            self._requests.append(status)
+            acquired = await self._attempt_to_acquire_connection(status)
+            if acquired is not None:
+                status.set_connection(acquired)
 
-                    # Try to obtain a ticket from the semaphore without
-                    # blocking. If we get one, then we're now good to go.
-                    if await self._pool_semaphore.acquire_noblock():
-                        break
+        connection = await status.wait_for_connection()
+        try:
+            response = await connection.handle_async_request(request)
+        except Exception as exc:
+            await self.response_closed(status)
+            # The ConnectionNotAvailable exception is a special case, that
+            # indicates we need to retry the request on a new connection.
+            if isinstance(exc, ConnectionNotAvailable):
+                return await self.handle_async_request(request)
+            raise exc
 
-                    # If we couldn't get a ticket from the semaphore, then
-                    # attempt to close one IDLE connection from the pool,
-                    # before looping again.
-                    if not await self._close_one_idle_connection():
-                        # If we couldn't get a ticket from the semaphore,
-                        # and there are no IDLE connections that we can close
-                        # then we need a blocking wait on the semaphore.
-                        timeouts = request.extensions.get("timeout", {})
-                        timeout = timeouts.get("pool", None)
-                        await self._pool_semaphore.acquire(timeout=timeout)
-                        break
+        # When we return the response, we wrap the stream in a special class
+        # that handles notifying the connection pool once the response
+        # has been released.
+        assert isinstance(response.stream, AsyncIterable)
+        return Response(
+            status=response.status,
+            headers=response.headers,
+            content=ConnectionPoolByteStream(response.stream, self, status),
+            extensions=response.extensions,
+        )
 
-                # Create a new connection and add it to the pool.
-                connection = self.create_connection(request.url.origin)
-                await self._add_to_pool(connection)
-
-            try:
-                # We've selected a connection to use, let's send the request.
-                response = await connection.handle_async_request(request)
-            except ConnectionNotAvailable:
-                # Turns out the connection wasn't able to handle the request
-                # for us. This could be because:
-                #
-                # * Multiple requests attempted to reuse an existing HTTP/1.1
-                #   connection in close concurrency.
-                # * A request attempted to reuse an existing connection,
-                #   that ended up being closed in close concurrency.
-                # * Multiple requests were contending for an opening connection
-                #   that ended up resulting in an HTTP/1.1 connection.
-                # * The request was to an HTTP/2 connection, but the stream ID
-                #   space became exhausted, or a global error occured.
-                continue  # pragma: nocover
-            except BaseException as exc:
-                # If an exception occurs we check if we can release the
-                # the connection to the pool.
-                await self.response_closed(connection)
-                raise exc
-
-            # When we return the response, we wrap the stream in a special class
-            # that handles notifying the connection pool once the response
-            # has been released.
-            assert isinstance(response.stream, AsyncIterable)
-            return Response(
-                status=response.status,
-                headers=response.headers,
-                content=ConnectionPoolByteStream(response.stream, self, connection),
-                extensions=response.extensions,
-            )
-
-    async def response_closed(self, connection: AsyncConnectionInterface) -> None:
+    async def response_closed(self, status: RequestStatus) -> None:
         """
         This method acts as a callback once the request/response cycle is complete.
 
         It is called into from the `ConnectionPoolByteStream.aclose()` method.
         """
-        if connection.is_closed():
-            await self._remove_from_pool(connection)
-            await self._pool_semaphore.release()
+        assert status.connection is not None
+        connection = status.connection
 
-        # Close any connections that have expired their keepalive time.
-        await self._close_expired_connections()
+        async with self._pool_lock:
+            # Update the state of the connection pool.
+            self._requests.remove(status)
 
-        # Where possible we want to close off IDLE connections, until we're not
-        # exceeding the max_keepalive_connections.
-        while len(self._pool) > self._max_keepalive_connections:
-            if not await self._close_one_idle_connection():
-                break  # pragma: nocover
+            if connection.is_closed():
+                self._pool.remove(connection)
+
+            # Since we've had a response closed, it's possible we'll now be able
+            # to service one or more requests that are currently pending.
+            for status in self._requests:
+                if status.connection is None:
+                    acquired = await self._attempt_to_acquire_connection(status)
+                    if acquired is None:
+                        break
+                    else:
+                        status.set_connection(acquired)
+
+            # Housekeeping.
+            await self._close_expired_connections()
 
     async def aclose(self) -> None:
         async with self._pool_lock:
             for connection in self._pool:
                 await connection.aclose()
             self._pool = []
+            self._requests = []
 
     async def __aenter__(self) -> "AsyncConnectionPool":
         return self
@@ -305,11 +291,11 @@ class ConnectionPoolByteStream:
         self,
         stream: AsyncIterable[bytes],
         pool: AsyncConnectionPool,
-        connection: AsyncConnectionInterface,
+        status: RequestStatus,
     ) -> None:
         self._stream = stream
         self._pool = pool
-        self._connection = connection
+        self._status = status
 
     async def __aiter__(self) -> AsyncIterator[bytes]:
         async for part in self._stream:
@@ -320,4 +306,4 @@ class ConnectionPoolByteStream:
             if hasattr(self._stream, "aclose"):
                 await self._stream.aclose()
         finally:
-            await self._pool.response_closed(self._connection)
+            await self._pool.response_closed(self._status)

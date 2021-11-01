@@ -264,7 +264,9 @@ class HTTP2Connection(ConnectionInterface):
 
     # Wrappers around network read/write operations...
 
-    def _read_incoming_data(self, request: Request) -> typing.List[h2.events.Event]:
+    def _read_incoming_data(
+        self, request: Request
+    ) -> typing.List[h2.events.Event]:
         timeouts = request.extensions.get("timeout", {})
         timeout = timeouts.get("read", None)
 
@@ -321,13 +323,6 @@ class HTTP2Connection(ConnectionInterface):
 
     def is_closed(self) -> bool:
         return self._state == HTTPConnectionState.CLOSED
-
-    def attempt_aclose(self) -> bool:
-        with self._state_lock:
-            if self._state == HTTPConnectionState.IDLE:
-                self.close()
-                return True
-        return False
 
     def info(self) -> str:
         origin = str(self._origin)

@@ -300,6 +300,92 @@ def test_connection_pool_concurrency():
 
 
 
+def test_connection_pool_concurrency_same_domain_closing():
+    """
+    HTTP/1.1 requests made in concurrency must not ever exceed the maximum number
+    of allowable connection in the pool.
+    """
+    network_backend = MockBackend(
+        [
+            b"HTTP/1.1 200 OK\r\n",
+            b"Content-Type: plain/text\r\n",
+            b"Content-Length: 13\r\n",
+            b"\r\n",
+            b"Hello, world!",
+        ]
+    )
+
+    def fetch(pool, domain, info_list):
+        with pool.stream("GET", f"http://{domain}/") as response:
+            info = [repr(c) for c in pool.connections]
+            info_list.append(info)
+            response.read()
+
+    with ConnectionPool(
+        max_connections=1, max_keepalive_connections=0, network_backend=network_backend
+    ) as pool:
+        info_list = []
+        with concurrency.open_nursery() as nursery:
+            for domain in ["a.com", "a.com", "a.com", "a.com", "a.com"]:
+                nursery.start_soon(fetch, pool, domain, info_list)
+
+        # Check that each time we inspect the connection pool, only a
+        # single connection was established.
+        for item in info_list:
+            assert len(item) == 1
+            assert item[0] in [
+                "<HTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 1]>",
+                "<HTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 2]>",
+                "<HTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 3]>",
+                "<HTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 4]>",
+                "<HTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 5]>",
+            ]
+
+
+
+def test_connection_pool_concurrency_same_domain_keepalive():
+    """
+    HTTP/1.1 requests made in concurrency must not ever exceed the maximum number
+    of allowable connection in the pool.
+    """
+    network_backend = MockBackend(
+        [
+            b"HTTP/1.1 200 OK\r\n",
+            b"Content-Type: plain/text\r\n",
+            b"Content-Length: 13\r\n",
+            b"\r\n",
+            b"Hello, world!",
+        ] * 5
+    )
+
+    def fetch(pool, domain, info_list):
+        with pool.stream("GET", f"http://{domain}/") as response:
+            info = [repr(c) for c in pool.connections]
+            info_list.append(info)
+            response.read()
+
+    with ConnectionPool(
+        max_connections=1, network_backend=network_backend
+    ) as pool:
+        info_list = []
+        with concurrency.open_nursery() as nursery:
+            for domain in ["a.com", "a.com", "a.com", "a.com", "a.com"]:
+                nursery.start_soon(fetch, pool, domain, info_list)
+
+        # Check that each time we inspect the connection pool, only a
+        # single connection was established.
+        for item in info_list:
+            assert len(item) == 1
+            assert item[0] in [
+                "<HTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 1]>",
+                "<HTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 2]>",
+                "<HTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 3]>",
+                "<HTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 4]>",
+                "<HTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 5]>",
+            ]
+
+
+
 def test_unsupported_protocol():
     with ConnectionPool() as pool:
         with pytest.raises(UnsupportedProtocol):

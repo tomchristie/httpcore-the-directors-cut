@@ -203,7 +203,6 @@ class HTTP11Connection(ConnectionInterface):
     def close(self) -> None:
         # Note that this method unilaterally closes the connection, and does
         # not have any kind of locking in place around it.
-        # For task-safe/thread-safe operations call into 'attempt_close' instead.
         self._state = HTTPConnectionState.CLOSED
         self._network_stream.close()
 
@@ -230,13 +229,6 @@ class HTTP11Connection(ConnectionInterface):
 
     def is_closed(self) -> bool:
         return self._state == HTTPConnectionState.CLOSED
-
-    def attempt_aclose(self) -> bool:
-        with self._state_lock:
-            if self._state in (HTTPConnectionState.NEW, HTTPConnectionState.IDLE):
-                self.close()
-                return True
-        return False
 
     def info(self) -> str:
         origin = str(self._origin)

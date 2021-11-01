@@ -23,6 +23,17 @@ class AsyncLock:
         self._lock.release()
 
 
+class AsyncEvent:
+    def __init__(self) -> None:
+        self._event = anyio.Event()
+
+    def set(self) -> None:
+        self._event.set()
+
+    async def wait(self) -> None:
+        await self._event.wait()
+
+
 class AsyncSemaphore:
     def __init__(self, bound: int) -> None:
         self._semaphore = anyio.Semaphore(initial_value=bound, max_value=bound)
@@ -59,6 +70,17 @@ class Lock:
         traceback: TracebackType = None,
     ) -> None:
         self._lock.release()
+
+
+class Event:
+    def __init__(self) -> None:
+        self._event = threading.Event()
+
+    def set(self) -> None:
+        self._event.set()
+
+    def wait(self) -> None:
+        self._event.wait()
 
 
 class Semaphore:

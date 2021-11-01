@@ -145,12 +145,6 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
     def can_handle_request(self, origin: Origin) -> bool:
         return origin == self._origin
 
-    async def attempt_aclose(self) -> bool:
-        closed = False
-        if self._connection is not None:
-            closed = await self._connection.attempt_aclose()
-        return closed
-
     async def aclose(self) -> None:
         if self._connection is not None:
             await self._connection.aclose()

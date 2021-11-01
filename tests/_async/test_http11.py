@@ -165,8 +165,6 @@ async def test_http11_connection_attempt_close():
             await response.aread()
             assert response.status == 200
             assert response.content == b"Hello, world!"
-            assert not await conn.attempt_aclose()
-        assert await conn.attempt_aclose()
 
 
 @pytest.mark.anyio

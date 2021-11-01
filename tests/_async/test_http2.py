@@ -215,8 +215,8 @@ async def test_http2_connection_attempt_close():
             await response.aread()
             assert response.status == 200
             assert response.content == b"Hello, world!"
-            assert not await conn.attempt_aclose()
-        assert await conn.attempt_aclose()
+
+        await conn.aclose()
         with pytest.raises(ConnectionNotAvailable):
             await conn.request("GET", "https://example.com/")
 
