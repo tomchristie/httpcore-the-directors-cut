@@ -316,13 +316,13 @@ async def test_connection_pool_concurrency_same_domain_closing():
     )
 
     async def fetch(pool, domain, info_list):
-        async with pool.stream("GET", f"http://{domain}/") as response:
+        async with pool.stream("GET", f"https://{domain}/") as response:
             info = [repr(c) for c in pool.connections]
             info_list.append(info)
             await response.aread()
 
     async with AsyncConnectionPool(
-        max_connections=1, network_backend=network_backend
+        max_connections=1, network_backend=network_backend, http2=True
     ) as pool:
         info_list = []
         async with concurrency.open_nursery() as nursery:
@@ -334,11 +334,11 @@ async def test_connection_pool_concurrency_same_domain_closing():
         for item in info_list:
             assert len(item) == 1
             assert item[0] in [
-                "<AsyncHTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 1]>",
-                "<AsyncHTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 2]>",
-                "<AsyncHTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 3]>",
-                "<AsyncHTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 4]>",
-                "<AsyncHTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 5]>",
+                "<AsyncHTTPConnection ['https://a.com:443', HTTP/1.1, ACTIVE, Request Count: 1]>",
+                "<AsyncHTTPConnection ['https://a.com:443', HTTP/1.1, ACTIVE, Request Count: 2]>",
+                "<AsyncHTTPConnection ['https://a.com:443', HTTP/1.1, ACTIVE, Request Count: 3]>",
+                "<AsyncHTTPConnection ['https://a.com:443', HTTP/1.1, ACTIVE, Request Count: 4]>",
+                "<AsyncHTTPConnection ['https://a.com:443', HTTP/1.1, ACTIVE, Request Count: 5]>",
             ]
 
 
@@ -359,13 +359,13 @@ async def test_connection_pool_concurrency_same_domain_keepalive():
     )
 
     async def fetch(pool, domain, info_list):
-        async with pool.stream("GET", f"http://{domain}/") as response:
+        async with pool.stream("GET", f"https://{domain}/") as response:
             info = [repr(c) for c in pool.connections]
             info_list.append(info)
             await response.aread()
 
     async with AsyncConnectionPool(
-        max_connections=1, network_backend=network_backend
+        max_connections=1, network_backend=network_backend, http2=True
     ) as pool:
         info_list = []
         async with concurrency.open_nursery() as nursery:
@@ -377,11 +377,11 @@ async def test_connection_pool_concurrency_same_domain_keepalive():
         for item in info_list:
             assert len(item) == 1
             assert item[0] in [
-                "<AsyncHTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 1]>",
-                "<AsyncHTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 2]>",
-                "<AsyncHTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 3]>",
-                "<AsyncHTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 4]>",
-                "<AsyncHTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 5]>",
+                "<AsyncHTTPConnection ['https://a.com:443', HTTP/1.1, ACTIVE, Request Count: 1]>",
+                "<AsyncHTTPConnection ['https://a.com:443', HTTP/1.1, ACTIVE, Request Count: 2]>",
+                "<AsyncHTTPConnection ['https://a.com:443', HTTP/1.1, ACTIVE, Request Count: 3]>",
+                "<AsyncHTTPConnection ['https://a.com:443', HTTP/1.1, ACTIVE, Request Count: 4]>",
+                "<AsyncHTTPConnection ['https://a.com:443', HTTP/1.1, ACTIVE, Request Count: 5]>",
             ]
 
 

@@ -19,8 +19,14 @@ class RequestStatus:
         self._connection_acquired = Event()
 
     def set_connection(self, connection: ConnectionInterface) -> None:
+        assert self.connection is None
         self.connection = connection
         self._connection_acquired.set()
+
+    def unset_connection(self) -> None:
+        assert self.connection is not None
+        self.connection = None
+        self._connection_acquired = Event()
 
     def wait_for_connection(self) -> ConnectionInterface:
         self._connection_acquired.wait()
@@ -210,21 +216,28 @@ class ConnectionPool(RequestInterface):
             self._close_expired_connections()
             self._attempt_to_acquire_connection(status)
 
-        connection = status.wait_for_connection()
-        try:
-            response = connection.handle_request(request)
-        except Exception as exc:
-            self.response_closed(status)
-            # The ConnectionNotAvailable exception is a special case, that
-            # indicates we need to retry the request on a new connection.
-            #
-            # The most common case where this can occur is when multiple
-            # requests are queued waiting for a single connection, which
-            # might end up as an HTTP/2 connection, but which actually ends
-            # up as HTTP/1.1.
-            if isinstance(exc, ConnectionNotAvailable):  # pragma: nocover
-                return self.handle_request(request)
-            raise exc
+        while True:
+            connection = status.wait_for_connection()
+            try:
+                response = connection.handle_request(request)
+            except ConnectionNotAvailable as exc:
+                # The ConnectionNotAvailable exception is a special case, that
+                # indicates we need to retry the request on a new connection.
+                #
+                # The most common case where this can occur is when multiple
+                # requests are queued waiting for a single connection, which
+                # might end up as an HTTP/2 connection, but which actually ends
+                # up as HTTP/1.1.
+                with self._pool_lock:
+                    # Maintain our position in the request queue, but reset the
+                    # status so that the request becomes queued again.
+                    status.unset_connection()
+                    self._attempt_to_acquire_connection(status)
+            except Exception as exc:
+                self.response_closed(status)
+                raise exc
+            else:
+                break
 
         # When we return the response, we wrap the stream in a special class
         # that handles notifying the connection pool once the response

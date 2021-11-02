@@ -19,8 +19,14 @@ class RequestStatus:
         self._connection_acquired = AsyncEvent()
 
     def set_connection(self, connection: AsyncConnectionInterface) -> None:
+        assert self.connection is None
         self.connection = connection
         self._connection_acquired.set()
+
+    def unset_connection(self) -> None:
+        assert self.connection is not None
+        self.connection = None
+        self._connection_acquired = AsyncEvent()
 
     async def wait_for_connection(self) -> AsyncConnectionInterface:
         await self._connection_acquired.wait()
@@ -210,21 +216,28 @@ class AsyncConnectionPool(AsyncRequestInterface):
             await self._close_expired_connections()
             await self._attempt_to_acquire_connection(status)
 
-        connection = await status.wait_for_connection()
-        try:
-            response = await connection.handle_async_request(request)
-        except Exception as exc:
-            await self.response_closed(status)
-            # The ConnectionNotAvailable exception is a special case, that
-            # indicates we need to retry the request on a new connection.
-            #
-            # The most common case where this can occur is when multiple
-            # requests are queued waiting for a single connection, which
-            # might end up as an HTTP/2 connection, but which actually ends
-            # up as HTTP/1.1.
-            if isinstance(exc, ConnectionNotAvailable):  # pragma: nocover
-                return await self.handle_async_request(request)
-            raise exc
+        while True:
+            connection = await status.wait_for_connection()
+            try:
+                response = await connection.handle_async_request(request)
+            except ConnectionNotAvailable as exc:
+                # The ConnectionNotAvailable exception is a special case, that
+                # indicates we need to retry the request on a new connection.
+                #
+                # The most common case where this can occur is when multiple
+                # requests are queued waiting for a single connection, which
+                # might end up as an HTTP/2 connection, but which actually ends
+                # up as HTTP/1.1.
+                async with self._pool_lock:
+                    # Maintain our position in the request queue, but reset the
+                    # status so that the request becomes queued again.
+                    status.unset_connection()
+                    await self._attempt_to_acquire_connection(status)
+            except Exception as exc:
+                await self.response_closed(status)
+                raise exc
+            else:
+                break
 
         # When we return the response, we wrap the stream in a special class
         # that handles notifying the connection pool once the response

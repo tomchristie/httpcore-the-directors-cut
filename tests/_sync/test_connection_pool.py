@@ -316,13 +316,13 @@ def test_connection_pool_concurrency_same_domain_closing():
     )
 
     def fetch(pool, domain, info_list):
-        with pool.stream("GET", f"http://{domain}/") as response:
+        with pool.stream("GET", f"https://{domain}/") as response:
             info = [repr(c) for c in pool.connections]
             info_list.append(info)
             response.read()
 
     with ConnectionPool(
-        max_connections=1, network_backend=network_backend
+        max_connections=1, network_backend=network_backend, http2=True
     ) as pool:
         info_list = []
         with concurrency.open_nursery() as nursery:
@@ -334,11 +334,11 @@ def test_connection_pool_concurrency_same_domain_closing():
         for item in info_list:
             assert len(item) == 1
             assert item[0] in [
-                "<HTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 1]>",
-                "<HTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 2]>",
-                "<HTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 3]>",
-                "<HTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 4]>",
-                "<HTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 5]>",
+                "<HTTPConnection ['https://a.com:443', HTTP/1.1, ACTIVE, Request Count: 1]>",
+                "<HTTPConnection ['https://a.com:443', HTTP/1.1, ACTIVE, Request Count: 2]>",
+                "<HTTPConnection ['https://a.com:443', HTTP/1.1, ACTIVE, Request Count: 3]>",
+                "<HTTPConnection ['https://a.com:443', HTTP/1.1, ACTIVE, Request Count: 4]>",
+                "<HTTPConnection ['https://a.com:443', HTTP/1.1, ACTIVE, Request Count: 5]>",
             ]
 
 
@@ -359,13 +359,13 @@ def test_connection_pool_concurrency_same_domain_keepalive():
     )
 
     def fetch(pool, domain, info_list):
-        with pool.stream("GET", f"http://{domain}/") as response:
+        with pool.stream("GET", f"https://{domain}/") as response:
             info = [repr(c) for c in pool.connections]
             info_list.append(info)
             response.read()
 
     with ConnectionPool(
-        max_connections=1, network_backend=network_backend
+        max_connections=1, network_backend=network_backend, http2=True
     ) as pool:
         info_list = []
         with concurrency.open_nursery() as nursery:
@@ -377,11 +377,11 @@ def test_connection_pool_concurrency_same_domain_keepalive():
         for item in info_list:
             assert len(item) == 1
             assert item[0] in [
-                "<HTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 1]>",
-                "<HTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 2]>",
-                "<HTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 3]>",
-                "<HTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 4]>",
-                "<HTTPConnection ['http://a.com:80', HTTP/1.1, ACTIVE, Request Count: 5]>",
+                "<HTTPConnection ['https://a.com:443', HTTP/1.1, ACTIVE, Request Count: 1]>",
+                "<HTTPConnection ['https://a.com:443', HTTP/1.1, ACTIVE, Request Count: 2]>",
+                "<HTTPConnection ['https://a.com:443', HTTP/1.1, ACTIVE, Request Count: 3]>",
+                "<HTTPConnection ['https://a.com:443', HTTP/1.1, ACTIVE, Request Count: 4]>",
+                "<HTTPConnection ['https://a.com:443', HTTP/1.1, ACTIVE, Request Count: 5]>",
             ]
 
 
