@@ -271,7 +271,7 @@ class ConnectionPool(RequestInterface):
             for status in self._requests:
                 if status.connection is None:
                     acquired = self._attempt_to_acquire_connection(status)
-                    if acquired:
+                    if not acquired:
                         break
 
             # Housekeeping.

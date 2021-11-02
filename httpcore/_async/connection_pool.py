@@ -271,7 +271,7 @@ class AsyncConnectionPool(AsyncRequestInterface):
             for status in self._requests:
                 if status.connection is None:
                     acquired = await self._attempt_to_acquire_connection(status)
-                    if acquired:
+                    if not acquired:
                         break
 
             # Housekeeping.
