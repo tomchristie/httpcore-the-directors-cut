@@ -130,9 +130,7 @@ class ConnectionPool(RequestInterface):
         """
         return list(self._pool)
 
-    def _attempt_to_acquire_connection(
-        self, status: RequestStatus
-    ) -> Optional[ConnectionInterface]:
+    def _attempt_to_acquire_connection(self, status: RequestStatus) -> bool:
         """
         Attempt to provide a connection that can handle the given origin.
         """
@@ -142,14 +140,15 @@ class ConnectionPool(RequestInterface):
         # connection. We handle requests strictly in order.
         waiting = [s for s in self._requests if s.connection is None]
         if waiting and waiting[0] is not status:
-            return None
+            return False
 
         # Reuse an existing connection if one is currently available.
         for idx, connection in enumerate(self._pool):
             if connection.can_handle_request(origin) and connection.is_available():
                 self._pool.pop(idx)
                 self._pool.insert(0, connection)
-                return connection
+                status.set_connection(connection)
+                return True
 
         # If the pool is currently full, attempt to close one idle connection.
         if len(self._pool) >= self._max_connections:
@@ -161,12 +160,13 @@ class ConnectionPool(RequestInterface):
 
         # If the pool is still full, then we cannot acquire a connection.
         if len(self._pool) >= self._max_connections:
-            return None
+            return False
 
         # Otherwise create a new connection.
         connection = self.create_connection(origin)
         self._pool.insert(0, connection)
-        return connection
+        status.set_connection(connection)
+        return True
 
     def _close_expired_connections(self):
         """
@@ -207,9 +207,7 @@ class ConnectionPool(RequestInterface):
 
         with self._pool_lock:
             self._requests.append(status)
-            acquired = self._attempt_to_acquire_connection(status)
-            if acquired is not None:
-                status.set_connection(acquired)
+            self._attempt_to_acquire_connection(status)
 
         connection = status.wait_for_connection()
         try:
@@ -218,6 +216,11 @@ class ConnectionPool(RequestInterface):
             self.response_closed(status)
             # The ConnectionNotAvailable exception is a special case, that
             # indicates we need to retry the request on a new connection.
+            #
+            # The most common case where this can occur is when multiple
+            # requests are queued waiting for a single connection, which
+            # might end up as an HTTP/2 connection, but which actually ends
+            # up as HTTP/1.1.
             if isinstance(exc, ConnectionNotAvailable):
                 return self.handle_request(request)
             raise exc
@@ -246,7 +249,7 @@ class ConnectionPool(RequestInterface):
             # Update the state of the connection pool.
             self._requests.remove(status)
 
-            if connection.is_closed():
+            if connection.is_closed() and connection in self._pool:
                 self._pool.remove(connection)
 
             # Since we've had a response closed, it's possible we'll now be able
@@ -254,10 +257,8 @@ class ConnectionPool(RequestInterface):
             for status in self._requests:
                 if status.connection is None:
                     acquired = self._attempt_to_acquire_connection(status)
-                    if acquired is None:
+                    if acquired:
                         break
-                    else:
-                        status.set_connection(acquired)
 
             # Housekeeping.
             self._close_expired_connections()

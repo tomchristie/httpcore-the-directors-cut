@@ -151,7 +151,10 @@ class AsyncHTTPConnection(AsyncConnectionInterface):
 
     def is_available(self) -> bool:
         if self._connection is None:
-            return True
+            # If HTTP/2 support is enabled, and the resulting connection could
+            # end up as HTTP/2 then we should indicate the connection as being
+            # available to service multiple requests.
+            return self._http2 and (self._origin.scheme == b"https" or not self._http1)
         return self._connection.is_available()
 
     def has_expired(self) -> bool:

@@ -38,13 +38,6 @@ class AsyncSemaphore:
     def __init__(self, bound: int) -> None:
         self._semaphore = anyio.Semaphore(initial_value=bound, max_value=bound)
 
-    async def acquire_noblock(self) -> bool:
-        try:
-            self._semaphore.acquire_nowait()
-        except anyio.WouldBlock:
-            return False
-        return True
-
     async def acquire(self, timeout: float = None) -> None:
         exc_map = {TimeoutError: PoolTimeout}
         with map_exceptions(exc_map):
@@ -86,9 +79,6 @@ class Event:
 class Semaphore:
     def __init__(self, bound: int) -> None:
         self._semaphore = threading.Semaphore(value=bound)
-
-    def acquire_noblock(self) -> bool:
-        return self._semaphore.acquire(blocking=False)
 
     def acquire(self, timeout: float = None) -> None:
         if not self._semaphore.acquire(timeout=timeout):  # pragma: nocover

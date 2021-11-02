@@ -60,7 +60,7 @@ class HTTP11Connection(ConnectionInterface):
 
     def handle_request(self, request: Request) -> Response:
         if not self.can_handle_request(request.url.origin):
-            raise ConnectionNotAvailable(
+            raise RuntimeError(
                 f"Attempted to send request to {request.url.origin} on connection to {self._origin}"
             )
 
