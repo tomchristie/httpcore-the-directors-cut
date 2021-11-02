@@ -322,7 +322,7 @@ def test_connection_pool_concurrency_same_domain_closing():
             response.read()
 
     with ConnectionPool(
-        max_connections=1, max_keepalive_connections=0, network_backend=network_backend
+        max_connections=1, network_backend=network_backend
     ) as pool:
         info_list = []
         with concurrency.open_nursery() as nursery:

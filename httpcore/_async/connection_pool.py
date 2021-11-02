@@ -207,6 +207,7 @@ class AsyncConnectionPool(AsyncRequestInterface):
 
         async with self._pool_lock:
             self._requests.append(status)
+            await self._close_expired_connections()
             await self._attempt_to_acquire_connection(status)
 
         connection = await status.wait_for_connection()
@@ -221,7 +222,7 @@ class AsyncConnectionPool(AsyncRequestInterface):
             # requests are queued waiting for a single connection, which
             # might end up as an HTTP/2 connection, but which actually ends
             # up as HTTP/1.1.
-            if isinstance(exc, ConnectionNotAvailable):
+            if isinstance(exc, ConnectionNotAvailable):  # pragma: nocover
                 return await self.handle_async_request(request)
             raise exc
 

@@ -322,7 +322,7 @@ async def test_connection_pool_concurrency_same_domain_closing():
             await response.aread()
 
     async with AsyncConnectionPool(
-        max_connections=1, max_keepalive_connections=0, network_backend=network_backend
+        max_connections=1, network_backend=network_backend
     ) as pool:
         info_list = []
         async with concurrency.open_nursery() as nursery:
