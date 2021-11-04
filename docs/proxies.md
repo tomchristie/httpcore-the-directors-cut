@@ -34,8 +34,8 @@ import base64
 
 auth = base64.b64encode(b"Basic <username>:<password>")
 proxy = httpcore.HTTPProxy(
-  proxy_url="http://127.0.0.1:8080/",
-  proxy_headers={"Proxy-Authorization": auth}
+    proxy_url="http://127.0.0.1:8080/",
+    proxy_headers={"Proxy-Authorization": auth}
 )
 ```
 

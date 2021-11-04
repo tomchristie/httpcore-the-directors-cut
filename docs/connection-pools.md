@@ -9,8 +9,8 @@ To do so, instantiate a pool instance, and use it to send requests:
 ```python
 import httpcore
 
-pool = httpcore.ConnectionPool()
-r = pool.request("GET", "https://www.example.com/")
+http = httpcore.ConnectionPool()
+r = http.request("GET", "https://www.example.com/")
 
 print(r)
 # <Response [200]>
@@ -25,10 +25,10 @@ import httpcore
 import time
 
 
-pool = httpcore.ConnectionPool()
+http = httpcore.ConnectionPool()
 for counter in range(5):
     started = time.time()
-    response = pool.request("GET", "https://www.example.com/")
+    response = http.request("GET", "https://www.example.com/")
     complete = time.time()
     print(response, "in %.3f seconds" % (complete - started))
 ```
@@ -92,24 +92,24 @@ Working with a single global instance isn't a bad idea for many use case, since 
 # This is perfectly fine for most purposes.
 # The connection pool will automatically be closed when it is garbage collected,
 # or when the Python interpreter exits.
-pool = httpcore.ConnectionPool()
+http = httpcore.ConnectionPool()
 ```
 
 However, to be more explicit around the resource usage, we can use the connection pool within a context manager:
 
 ```python
-with httpcore.ConnectionPool() as pool:
+with httpcore.ConnectionPool() as http:
     ...
 ```
 
 Or else close the pool explicitly:
 
 ```python
-pool = httpcore.ConnectionPool()
+http = httpcore.ConnectionPool()
 try:
     ...
 finally:
-    pool.close()
+    http.close()
 ```
 
 ## Thread and task safety

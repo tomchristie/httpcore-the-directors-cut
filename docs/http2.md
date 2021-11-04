@@ -36,21 +36,21 @@ import concurrent.futures
 import time
 
 
-def download(pool, year):
-    pool.request("GET", f"https://en.wikipedia.org/wiki/{year}")
+def download(http, year):
+    http.request("GET", f"https://en.wikipedia.org/wiki/{year}")
 
 
 def main():
-    pool = httpcore.ConnectionPool()
+    with httpcore.ConnectionPool() as http:
+        started = time.time()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as threads:
+            for year in range(2000, 2020):
+                threads.submit(download, http, year)
+        complete = time.time()
 
-    started = time.time()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as thread_pool:
-        for year in range(2000, 2020):
-            thread_pool.submit(download, pool, year)
-    complete = time.time()
-
-    print(pool.connections)
-    print("Complete in %.3f seconds" % (complete - started))
+        for connection in http.connections:
+            print(connection)
+        print("Complete in %.3f seconds" % (complete - started))
 
 
 main()
@@ -59,17 +59,15 @@ main()
 If you run this with an HTTP/1.1 connection pool, you ought to see output similar to the following:
 
 ```python
-[
-    <HTTPConnection ['https://en.wikipedia.org:443', HTTP/1.1, IDLE, Request Count: 2]>,
-    <HTTPConnection ['https://en.wikipedia.org:443', HTTP/1.1, IDLE, Request Count: 3]>,
-    <HTTPConnection ['https://en.wikipedia.org:443', HTTP/1.1, IDLE, Request Count: 6]>,
-    <HTTPConnection ['https://en.wikipedia.org:443', HTTP/1.1, IDLE, Request Count: 5]>,
-    <HTTPConnection ['https://en.wikipedia.org:443', HTTP/1.1, IDLE, Request Count: 1]>,
-    <HTTPConnection ['https://en.wikipedia.org:443', HTTP/1.1, IDLE, Request Count: 1]>,
-    <HTTPConnection ['https://en.wikipedia.org:443', HTTP/1.1, IDLE, Request Count: 1]>,
-    <HTTPConnection ['https://en.wikipedia.org:443', HTTP/1.1, IDLE, Request Count: 1]>
-]
-Complete in 0.814 seconds
+<HTTPConnection ['https://en.wikipedia.org:443', HTTP/1.1, IDLE, Request Count: 2]>,
+<HTTPConnection ['https://en.wikipedia.org:443', HTTP/1.1, IDLE, Request Count: 3]>,
+<HTTPConnection ['https://en.wikipedia.org:443', HTTP/1.1, IDLE, Request Count: 6]>,
+<HTTPConnection ['https://en.wikipedia.org:443', HTTP/1.1, IDLE, Request Count: 5]>,
+<HTTPConnection ['https://en.wikipedia.org:443', HTTP/1.1, IDLE, Request Count: 1]>,
+<HTTPConnection ['https://en.wikipedia.org:443', HTTP/1.1, IDLE, Request Count: 1]>,
+<HTTPConnection ['https://en.wikipedia.org:443', HTTP/1.1, IDLE, Request Count: 1]>,
+<HTTPConnection ['https://en.wikipedia.org:443', HTTP/1.1, IDLE, Request Count: 1]>
+Complete in 0.586 seconds
 ```
 
 We can see that the connection pool required a number of connections in order to handle the parallel requests.
@@ -77,21 +75,20 @@ We can see that the connection pool required a number of connections in order to
 If we now upgrade our connection pool to support HTTP/2:
 
 ```python
-pool = httpcore.ConnectionPool(http2=True)
+with httpcore.ConnectionPool(http2=True) as http:
+    ...
 ```
 
 And run the same script again, we should end up with something like this:
 
 ```python
-[
-    <HTTPConnection ['https://en.wikipedia.org:443', HTTP/2, IDLE, Request Count: 20]>
-]
+<HTTPConnection ['https://en.wikipedia.org:443', HTTP/2, IDLE, Request Count: 20]>
 Complete in 0.573 seconds
 ```
 
-All of our requests have been handled over a single connection, and the resulting time to completion is typically lower.
+All of our requests have been handled over a single connection.
 
-Switching to HTTP/2 should not *necessarily* be considered an "upgrade". It is more complex, and requires more computational power, and so particularly in an interpreted language like Python it *could* be slower in some instances. It is most likely to be beneficial if you are sending requests in high concurrency, and is generally more well suited to an async context, rather than multi-threading.
+Switching to HTTP/2 should not *necessarily* be considered an "upgrade". It is more complex, and requires more computational power, and so particularly in an interpreted language like Python it *could* be slower in some instances. Moreover, utilising multiple connections may end up connecting to multiple hosts, and could sometimes appear faster to the client, at the cost of requiring more server resources. Enabling HTTP/2 is most likely to be beneficial if you are sending requests in high concurrency, and may often be more well suited to an async context, rather than multi-threading.
 
 ## Inspecting the HTTP version
 
