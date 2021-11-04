@@ -222,7 +222,17 @@ class HTTP11Connection(ConnectionInterface):
 
     def has_expired(self) -> bool:
         now = time.monotonic()
-        return self._expire_at is not None and now > self._expire_at
+        keepalive_expired = self._expire_at is not None and now > self._expire_at
+
+        # If the HTTP connection is idle but the socket is readable, then the
+        # only valid state is that the socket is about to return b"", indicating
+        # a server-initiated disconnect.
+        server_disconnected = (
+            self._state == HTTPConnectionState.IDLE and
+            self._network_stream.get_extra_info("is_readable")
+        )
+
+        return keepalive_expired or server_disconnected
 
     def is_idle(self) -> bool:
         return self._state == HTTPConnectionState.IDLE

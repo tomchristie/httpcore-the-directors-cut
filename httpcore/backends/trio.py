@@ -71,6 +71,15 @@ class TrioStream(AsyncNetworkStream):
             return self._get_socket_stream().socket.getsockname()
         if info == "server_addr":
             return self._get_socket_stream().socket.getpeername()
+        if info == "socket":
+            stream = self._stream
+            while isinstance(stream, trio.SSLStream):
+                stream = stream.transport_stream
+            assert isinstance(stream, trio.SocketStream)
+            return stream.socket
+        if info == "is_readable":
+            socket = self.get_extra_info("socket")
+            return socket.is_readable()
         return None
 
     def _get_socket_stream(self) -> trio.SocketStream:

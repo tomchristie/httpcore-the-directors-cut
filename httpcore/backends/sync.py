@@ -9,6 +9,7 @@ from .._exceptions import (
     map_exceptions,
 )
 from .._models import Origin
+from .._utils import is_socket_readable
 import socket
 import ssl
 import typing
@@ -59,6 +60,10 @@ class SyncStream(NetworkStream):
             return self._sock.getsockname()
         if info == "server_addr":
             return self._sock.getpeername()
+        if info == "socket":
+            return self._sock
+        if info == "is_readable":
+            return is_socket_readable(self._sock)
         return None
 
 

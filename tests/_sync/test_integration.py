@@ -1,4 +1,5 @@
 import pytest
+import socket
 import ssl
 from httpcore import (
     ConnectionPool,
@@ -43,5 +44,10 @@ def test_extra_info(httpbin_secure):
             remote_addr = stream.get_extra_info("server_addr")
             assert "https://%s:%d" % remote_addr == httpbin_secure.url
 
+            sock = stream.get_extra_info("socket")
+            assert (sock.family, sock.type) == (socket.AF_INET, socket.SOCK_STREAM)
+
             invalid = stream.get_extra_info("invalid")
             assert invalid is None
+
+            stream.get_extra_info("is_readable")

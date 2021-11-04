@@ -12,6 +12,7 @@ from .._exceptions import (
     map_exceptions,
 )
 from .._models import Origin
+from .._utils import is_socket_readable
 
 
 class AsyncIOStream(AsyncNetworkStream):
@@ -73,6 +74,11 @@ class AsyncIOStream(AsyncNetworkStream):
             return self._stream.extra(anyio.abc.SocketAttribute.local_address, None)
         if info == "server_addr":
             return self._stream.extra(anyio.abc.SocketAttribute.remote_address, None)
+        if info == "socket":
+            return self._stream.extra(anyio.abc.SocketAttribute.raw_socket, None)
+        if info == "is_readable":
+            sock = self._stream.extra(anyio.abc.SocketAttribute.raw_socket, None)
+            return is_socket_readable(sock)
         return None
 
 
