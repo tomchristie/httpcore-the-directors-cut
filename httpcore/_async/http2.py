@@ -82,6 +82,8 @@ class AsyncHTTP2Connection(AsyncConnectionInterface):
                 max_streams = self._h2_state.local_settings.max_concurrent_streams
                 self._max_streams_semaphore = AsyncSemaphore(max_streams)
 
+        await self._max_streams_semaphore.acquire()
+
         try:
             stream_id = self._h2_state.get_next_available_stream_id()
             self._events[stream_id] = []
@@ -89,7 +91,6 @@ class AsyncHTTP2Connection(AsyncConnectionInterface):
             self._used_all_stream_ids = True
             raise ConnectionNotAvailable()
 
-        await self._max_streams_semaphore.acquire()
         try:
             kwargs = {"request": request, "stream_id": stream_id}
             async with Trace("http2.send_request_headers", request, kwargs):

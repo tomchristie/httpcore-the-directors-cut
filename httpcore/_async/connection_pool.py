@@ -28,8 +28,8 @@ class RequestStatus:
         self.connection = None
         self._connection_acquired = AsyncEvent()
 
-    async def wait_for_connection(self) -> AsyncConnectionInterface:
-        await self._connection_acquired.wait()
+    async def wait_for_connection(self, timeout: float = None) -> AsyncConnectionInterface:
+        await self._connection_acquired.wait(timeout=timeout)
         assert self.connection is not None
         return self.connection
 
@@ -217,7 +217,9 @@ class AsyncConnectionPool(AsyncRequestInterface):
             await self._attempt_to_acquire_connection(status)
 
         while True:
-            connection = await status.wait_for_connection()
+            timeouts = request.extensions.get("timeout", {})
+            timeout = timeouts.get("pool", None)
+            connection = await status.wait_for_connection(timeout=timeout)
             try:
                 response = await connection.handle_async_request(request)
             except ConnectionNotAvailable as exc:

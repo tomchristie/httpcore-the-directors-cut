@@ -28,8 +28,8 @@ class RequestStatus:
         self.connection = None
         self._connection_acquired = Event()
 
-    def wait_for_connection(self) -> ConnectionInterface:
-        self._connection_acquired.wait()
+    def wait_for_connection(self, timeout: float = None) -> ConnectionInterface:
+        self._connection_acquired.wait(timeout=timeout)
         assert self.connection is not None
         return self.connection
 
@@ -217,7 +217,9 @@ class ConnectionPool(RequestInterface):
             self._attempt_to_acquire_connection(status)
 
         while True:
-            connection = status.wait_for_connection()
+            timeouts = request.extensions.get("timeout", {})
+            timeout = timeouts.get("pool", None)
+            connection = status.wait_for_connection(timeout=timeout)
             try:
                 response = connection.handle_request(request)
             except ConnectionNotAvailable as exc:

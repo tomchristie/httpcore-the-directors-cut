@@ -30,19 +30,19 @@ class AsyncEvent:
     def set(self) -> None:
         self._event.set()
 
-    async def wait(self) -> None:
-        await self._event.wait()
+    async def wait(self, timeout: float = None) -> None:
+        exc_map = {TimeoutError: PoolTimeout}
+        with map_exceptions(exc_map):
+            with anyio.fail_after(timeout):
+                await self._event.wait()
 
 
 class AsyncSemaphore:
     def __init__(self, bound: int) -> None:
         self._semaphore = anyio.Semaphore(initial_value=bound, max_value=bound)
 
-    async def acquire(self, timeout: float = None) -> None:
-        exc_map = {TimeoutError: PoolTimeout}
-        with map_exceptions(exc_map):
-            with anyio.fail_after(timeout):
-                await self._semaphore.acquire()
+    async def acquire(self) -> None:
+        await self._semaphore.acquire()
 
     async def release(self) -> None:
         self._semaphore.release()
@@ -72,17 +72,17 @@ class Event:
     def set(self) -> None:
         self._event.set()
 
-    def wait(self) -> None:
-        self._event.wait()
+    def wait(self, timeout: float = None) -> None:
+        if not self._event.wait(timeout=timeout):
+            raise PoolTimeout()  # pragma: nocover
 
 
 class Semaphore:
     def __init__(self, bound: int) -> None:
         self._semaphore = threading.Semaphore(value=bound)
 
-    def acquire(self, timeout: float = None) -> None:
-        if not self._semaphore.acquire(timeout=timeout):  # pragma: nocover
-            raise PoolTimeout()
+    def acquire(self) -> None:
+        self._semaphore.acquire()
 
     def release(self) -> None:
         self._semaphore.release()

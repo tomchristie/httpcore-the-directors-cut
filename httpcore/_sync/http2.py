@@ -82,6 +82,8 @@ class HTTP2Connection(ConnectionInterface):
                 max_streams = self._h2_state.local_settings.max_concurrent_streams
                 self._max_streams_semaphore = Semaphore(max_streams)
 
+        self._max_streams_semaphore.acquire()
+
         try:
             stream_id = self._h2_state.get_next_available_stream_id()
             self._events[stream_id] = []
@@ -89,7 +91,6 @@ class HTTP2Connection(ConnectionInterface):
             self._used_all_stream_ids = True
             raise ConnectionNotAvailable()
 
-        self._max_streams_semaphore.acquire()
         try:
             kwargs = {"request": request, "stream_id": stream_id}
             with Trace("http2.send_request_headers", request, kwargs):
