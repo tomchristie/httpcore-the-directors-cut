@@ -14,12 +14,11 @@ print(r)
 # <Response [200]>
 ```
 
-You can test the `httpcore` proxy support, using the Python `pproxy` tool:
+You can test the `httpcore` proxy support, using the Python [`proxy.py`](https://pypi.org/project/proxy.py/) tool:
 
 ```shell
-$ pip install pproxy
-$ pproxy
-Serving on :8080 by http,socks4,socks5
+$ pip install proxy.py
+$ proxy --hostname 127.0.0.1 --port 8080
 ```
 
 Requests will automatically use either forwarding or tunnelling, depending on if the scheme is `http` or `https`.
