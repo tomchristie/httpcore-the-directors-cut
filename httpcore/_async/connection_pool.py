@@ -273,6 +273,9 @@ class AsyncConnectionPool(AsyncRequestInterface):
             for status in self._requests:
                 if status.connection is None:
                     acquired = await self._attempt_to_acquire_connection(status)
+                    # If we could not acquire a connection for a queued request
+                    # then we don't need to check anymore requests that are
+                    # queued later behind it.
                     if not acquired:
                         break
 
