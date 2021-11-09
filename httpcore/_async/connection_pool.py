@@ -283,6 +283,9 @@ class AsyncConnectionPool(AsyncRequestInterface):
             await self._close_expired_connections()
 
     async def aclose(self) -> None:
+        """
+        Close any connections in the pool.
+        """
         async with self._pool_lock:
             for connection in self._pool:
                 await connection.aclose()

@@ -283,6 +283,9 @@ class ConnectionPool(RequestInterface):
             self._close_expired_connections()
 
     def close(self) -> None:
+        """
+        Close any connections in the pool.
+        """
         with self._pool_lock:
             for connection in self._pool:
                 connection.close()
