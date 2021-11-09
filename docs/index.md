@@ -17,11 +17,11 @@ defaults, or any of that Jazz.
 Some things HTTP Core does do:
 
 * Sending HTTP requests.
-* Provides both sync and async interfaces.
-* Supports HTTP/1.1 and HTTP/2.
-* Async backend support for `asyncio` and `trio`.
-* Automatic connection pooling.
+* Thread-safe / task-safe connection pooling.
 * HTTP(S) proxy support.
+* Supports HTTP/1.1 and HTTP/2.
+* Provides both sync and async interfaces.
+* Async backend support for `asyncio` and `trio`.
 
 ## Installation
 
@@ -48,37 +48,6 @@ print(response.content)
 # b'<!doctype html>\n<html>\n<head>\n<title>Example Domain</title>\n\n<meta charset="utf-8"/>\n ...'
 ```
 
----
+Ready to get going?
 
-# API Reference
-
-* Quickstart
-    * `httpcore.request()`
-    * `httpcore.stream()`
-* Requests, Responses, and URLs
-    * `httpcore.Request`
-    * `httpcore.Response`
-    * `httpcore.URL`
-* Connection Pools
-    * `httpcore.ConnectionPool`
-* Proxies
-    * `httpcore.HTTPProxy`
-* Connections
-    * `httpcore.HTTPConnection`
-    * `httpcore.HTTP11Connection`
-    * `httpcore.HTTP2Connection`
-* Async Support
-    * `httpcore.AsyncConnectionPool`
-    * `httpcore.AsyncHTTPProxy`
-    * `httpcore.AsyncHTTPConnection`
-    * `httpcore.AsyncHTTP11Connection`
-    * `httpcore.AsyncHTTP2Connection`
-* Network Backends
-    * `httpcore.backends.sync.SyncBackend`
-    * `httpcore.backends.auto.AutoBackend`
-    * `httpcore.backends.asyncio.AsyncioBackend`
-    * `httpcore.backends.trio.TrioBackend`
-    * `httpcore.backends.mock.MockBackend`
-    * `httpcore.backends.mock.AsyncMockBackend`
-    * `httpcore.backends.base.NetworkBackend`
-    * `httpcore.backends.base.AsyncNetworkBackend`
+Head over to [the quickstart documentation](quickstart.md).
