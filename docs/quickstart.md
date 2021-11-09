@@ -109,7 +109,9 @@ The `Transfer-Encoding: chunked` header is the mechanism that HTTP/1.1 uses for 
 
 ## Streaming responses
 
-When using the `httpcore.request()` function, the response body will automatically be read to completion, and made available in the `response.content` attribute. Sometimes you may be dealing with large responses and not want to read the entire response into memory. The `httpcore.stream()` function provides a mechanism for sending a request and dealing with a streaming response:
+When using the `httpcore.request()` function, the response body will automatically be read to completion, and made available in the `response.content` attribute.
+
+Sometimes you may be dealing with large responses and not want to read the entire response into memory. The `httpcore.stream()` function provides a mechanism for sending a request and dealing with a streaming response:
 
 ```python
 import httpcore

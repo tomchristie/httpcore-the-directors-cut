@@ -106,6 +106,8 @@ response = pool.request("GET", "https://www.example.com/")
 print(response.extensions["http_version"])
 ```
 
+See [the extensions documentation](extensions.md) for more details.
+
 ## HTTP/2 negotiation
 
 Robust servers need to support both HTTP/2 and HTTP/1.1 capable clients, and so need some way to "negotiate" with the client which protocol version will be used.

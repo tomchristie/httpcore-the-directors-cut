@@ -28,11 +28,47 @@ async with httpcore.AsyncHTTPProxy() as proxy:
 
 ### Sending requests
 
-...
+Sending requests with the async version of `httpcore` requires the `await` keyword:
+
+```python
+import asyncio
+import httpcore
+
+async def main():
+    async with httpcore.AsyncConnectionPool() as http:
+        response = await http.request("GET", "https://www.example.com/")
+
+
+asyncio.run(main())
+```
+
+When including content in the request, the content must either be bytes or an *async iterable* yielding bytes.
 
 ### Streaming responses
 
-...
+Streaming responses also require a slightly different interface to the sync version:
+
+* `with <pool>.stream(...) as response` → `async with <pool>.stream() as response`.
+* `for chunk in response.iter_stream()` → `async for chunk in response.aiter_stream()`.
+* `response.read()` → `await response.aread()`.
+* `response.close()` → `await response.aclose()`
+
+For example:
+
+```python
+import asyncio
+import httpcore
+
+
+async def main():
+    async with httpcore.AsyncConnectionPool() as http:
+        async with http.stream("GET", "https://www.example.com/") as response:
+            async for chunk in response.aiter_stream():
+                print(f"Downloaded: {chunk}")
+
+
+asyncio.run(main())
+```
 
 ### Pool lifespans
 
@@ -42,6 +78,8 @@ When using `httpcore` in an async environment it is strongly recommended that yo
 async with httpcore.AsyncConnectionPool() as http:
     ...
 ```
+
+To benefit from connection pooling it is recommended that you instantiate a single connection pool in this style, and pass it around throughout your application.
 
 If you do want to use a connection pool without this style then you'll need to ensure that you explicitly close the pool once it is no longer required:
 
@@ -159,6 +197,18 @@ anyio.run(main)
 
 ---
 
-## Reference
+# Reference
 
-...
+## `httpcore.AsyncConnectionPool`
+
+::: httpcore.AsyncConnectionPool
+    handler: python
+    rendering:
+        show_source: False
+
+## `httpcore.AsyncHTTPProxy`
+
+::: httpcore.AsyncHTTPProxy
+    handler: python
+    rendering:
+        show_source: False

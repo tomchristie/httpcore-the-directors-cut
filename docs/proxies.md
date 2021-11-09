@@ -38,41 +38,6 @@ proxy = httpcore.HTTPProxy(
 )
 ```
 
-## Proxy connections
-
-Forwarded requests can share a single connection to the proxy, even when subsequent requests are to a different origin:
-
-```python
-import httpcore
-
-proxy = httpcore.HTTPProxy(proxy_url="http://127.0.0.1:8080/")
-
-proxy.request("GET", "http://example.com/")
-proxy.request("GET", "http://httpbin.org/json")
-
-print(proxy.connections)
-# [
-#     <ForwardHTTPConnection ['http://127.0.0.1:8080', HTTP/1.1, IDLE, Request Count: 2]>
-# ]
-```
-
-In contrast, tunnelled requests require one connection to the proxy for each distinct origin:
-
-```python
-import httpcore
-
-proxy = httpcore.HTTPProxy(proxy_url="http://127.0.0.1:8080/")
-
-proxy.request("GET", "https://example.com/")
-proxy.request("GET", "https://httpbin.org/json")
-
-print(proxy.connections)
-# [
-#     <TunnelHTTPConnection ['https://httpbin.org:443', HTTP/1.1, IDLE, Request Count: 1]>,
-#     <TunnelHTTPConnection ['https://example.com:443', HTTP/1.1, IDLE, Request Count: 1]>
-# ]
-```
-
 ## HTTP Versions
 
 Proxy support currently only allows for HTTP/1.1 connections to the proxy.
